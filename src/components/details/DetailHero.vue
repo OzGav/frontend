@@ -65,6 +65,8 @@ export interface Props {
   // for a backdrop that only stands in for missing wide art, so it reads as
   // colour rather than a picture
   blurBackdrop?: boolean;
+  // leaves out the overflow menu, for items the server cannot act on
+  hideMenu?: boolean;
   height?: number;
   phoneHeight?: number;
   // off for a page with a fixed layout, which leaves "Edit rows" out of the menu
@@ -74,6 +76,7 @@ const props = withDefaults(defineProps<Props>(), {
   item: undefined,
   backdrop: undefined,
   blurBackdrop: false,
+  hideMenu: false,
   height: 440,
   phoneHeight: 340,
   editableRows: true,
@@ -107,7 +110,7 @@ useEscapeBack(backButtonClick);
 
 /** The item's overflow menu, plus "Edit rows" last on an editable page. */
 async function buildMenu(item?: MediaItemType) {
-  if (!item) {
+  if (!item || props.hideMenu) {
     menuItems.value = [];
     return;
   }

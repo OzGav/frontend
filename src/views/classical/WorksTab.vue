@@ -14,21 +14,24 @@
         :earliest="composedBounds.earliest"
         :latest="composedBounds.latest"
       />
-      <label class="works-sort">
-        {{ $t("classical_sort_label") }}
-        <select v-model="sort">
-          <option value="composer">{{ $t("classical_sort_composer") }}</option>
-          <option value="title">{{ $t("classical_sort_title") }}</option>
-          <option value="year">{{ $t("classical_sort_year") }}</option>
-          <option value="recordings">
-            {{ $t("classical_sort_recordings") }}
-          </option>
-        </select>
-      </label>
     </div>
 
-    <ul v-if="filteredWorks.length" class="work-list">
-      <li v-for="w in filteredWorks" :key="w.item_id" class="work-row">
+    <ul
+      v-if="filteredWorks.length"
+      class="work-list"
+      :class="{ touch: isTouch }"
+    >
+      <li
+        v-for="w in filteredWorks"
+        :key="w.item_id"
+        class="work-row classical-play-row"
+      >
+        <RowPlayButton
+          v-if="!isTouch"
+          side="start"
+          :label="`${$t('play')} ${w.name}`"
+          @play="playFirstRecording(w.item_id)"
+        />
         <router-link :to="`/classical/works/${w.item_id}`" class="work-link">
           <span class="work-composer">{{ w.composer }}</span>
           <span class="work-title">{{ w.name }}</span>
@@ -44,6 +47,12 @@
               : $t("classical_recordings_lower")
           }}
         </span>
+        <RowPlayButton
+          v-if="isTouch"
+          side="end"
+          :label="`${$t('play')} ${w.name}`"
+          @play="playFirstRecording(w.item_id)"
+        />
       </li>
     </ul>
     <p v-else-if="works.length" class="text-muted-foreground">
@@ -58,14 +67,16 @@
 <script setup lang="ts">
 import { normalizeForFilter } from "@/helpers/utils";
 import { getWorks } from "@/services/classical";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
+import { useClassicalListing } from "@/views/classical/listing";
+import { playFirstRecording } from "@/views/classical/playback";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
+import { useMediaQuery } from "@vueuse/core";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "WorksTab" });
-
-type SortKey = "composer" | "title" | "year" | "recordings";
 
 const { t } = useI18n();
 
@@ -79,9 +90,29 @@ interface WorkRow {
   recording_count: number;
 }
 
+const isTouch = useMediaQuery("(hover: none)");
 const works = ref<WorkRow[]>([]);
 const search = ref("");
-const sort = ref<SortKey>("composer");
+
+const { sortBy, reload } = useClassicalListing({
+  itemtype: "works",
+  sorts: [
+    { key: "composer", label: "classical_sort_composer" },
+    { key: "title", label: "classical_sort_title" },
+    { key: "year", label: "classical_sort_year" },
+    { key: "recordings", label: "classical_sort_recordings" },
+  ],
+  load: async () => {
+    works.value = (await getWorks()).map(({ work, recording_count }) => ({
+      item_id: work.item_id,
+      name: work.name,
+      composer: work.composers[0]?.name ?? "",
+      catalog_number: work.catalog_numbers[0] ?? "",
+      year_composed: work.composition_year,
+      recording_count,
+    }));
+  },
+});
 
 const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
 
@@ -89,16 +120,7 @@ const searchPlaceholder = computed(() =>
   t("classical_filter_works_placeholder"),
 );
 
-onMounted(async () => {
-  works.value = (await getWorks()).map(({ work, recording_count }) => ({
-    item_id: work.item_id,
-    name: work.name,
-    composer: work.composers[0]?.name ?? "",
-    catalog_number: work.catalog_numbers[0] ?? "",
-    year_composed: work.composition_year,
-    recording_count,
-  }));
-});
+onMounted(reload);
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
@@ -118,7 +140,7 @@ const filteredWorks = computed(() => {
   });
   const sorted = [...filtered];
   sorted.sort((a, b) => {
-    switch (sort.value) {
+    switch (sortBy.value) {
       case "title":
         return collator.compare(a.name, b.name);
       case "year":
@@ -169,25 +191,6 @@ const filteredWorks = computed(() => {
   font: inherit;
 }
 
-.works-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--muted-foreground, #aaa);
-}
-
-.works-sort select {
-  /* Pinned identically in ComposersTab and PerformersTab. */
-  min-width: 12rem;
-  background: var(--card, transparent);
-  color: inherit;
-  border: 1px solid var(--border, #444);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-  font: inherit;
-}
-
 .work-list {
   list-style: none;
   margin: 0;
@@ -195,8 +198,13 @@ const filteredWorks = computed(() => {
   /* Column tracks live on the list, and the rows borrow them through subgrid,
      so catalog, year and count line up all the way down. */
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  /* the play column leads on hover screens and trails on touch screens */
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   column-gap: 0.75rem;
+}
+
+.work-list.touch {
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
 }
 
 .work-row {
@@ -212,16 +220,16 @@ const filteredWorks = computed(() => {
   border-bottom: 0;
 }
 
+.work-row:hover {
+  background: var(--muted, rgba(255, 255, 255, 0.04));
+}
+
 .work-link {
   display: flex;
   flex-direction: column;
   min-width: 0;
   color: inherit;
   text-decoration: none;
-}
-
-.work-link:hover .work-title {
-  text-decoration: underline;
 }
 
 .work-composer {

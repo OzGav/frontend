@@ -27,6 +27,8 @@
         <span v-if="subtitle" class="toolbar-subtitle">{{ subtitle }}</span>
       </div>
     </template>
+    <!-- content between the title and the menu, e.g. tabs -->
+    <slot></slot>
 
     <template v-if="$slots.append || menuItems?.length" #append>
       <slot name="append"></slot>

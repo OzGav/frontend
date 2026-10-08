@@ -19,7 +19,9 @@ import {
   type Track,
   type Work,
 } from "@/plugins/api/interfaces";
+import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { eventbus } from "@/plugins/eventbus";
+import { Info } from "@lucide/vue";
 import { PERFORMER_ROLES } from "@/views/classical/credits";
 import type { Router } from "vue-router";
 
@@ -107,6 +109,36 @@ export async function openOtherTrackMenu(
   emit([...playItems, ...filtered], evt);
 }
 
+/**
+ * The standard artist menu for a composer or performer, without play entries
+ * and led by Show info, which opens the artist's normal page. With ownPage it
+ * is the menu of the artist's own page, which adds the page-only entries such
+ * as Update metadata and Refresh item.
+ */
+export async function classicalArtistMenuItems(
+  artist: Artist,
+  router: Router,
+  ownPage = false,
+): Promise<ContextMenuItem[]> {
+  const items = await getContextMenuItems(
+    [artist],
+    ownPage ? artist : undefined,
+  );
+  const showInfo =
+    items.find((i) => i.label === "show_info") ??
+    artistShowInfoEntry(artist, router);
+  return [showInfo, ...items.filter((i) => i.label !== "show_info")];
+}
+
+/** Open the composer or performer menu at the pointer. */
+export async function openArtistMenu(
+  artist: Artist,
+  router: Router,
+  evt: Event | MouseEvent,
+) {
+  emit(await classicalArtistMenuItems(artist, router), evt, false);
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -183,14 +215,18 @@ function reorderFavourites(items: ContextMenuItem[]) {
   else items.push(...favourites);
 }
 
-function emit(items: ContextMenuItem[], evt: Event | MouseEvent) {
+function emit(
+  items: ContextMenuItem[],
+  evt: Event | MouseEvent,
+  showPlayMenuHeader = true,
+) {
   if (items.length === 0) return;
-  const mouseEvt = evt as MouseEvent;
+  const { x, y } = getEventPosition(evt);
   eventbus.emit("contextmenu", {
     items,
-    posX: mouseEvt.clientX ?? 0,
-    posY: mouseEvt.clientY ?? 0,
-    showPlayMenuHeader: true,
+    posX: x,
+    posY: y,
+    showPlayMenuHeader,
   });
 }
 
@@ -296,4 +332,18 @@ function rolePriority(role: ArtistRole): number {
 
 function dedupe<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
+}
+
+/** Show info for a composer or performer, opening the artist's normal page. */
+function artistShowInfoEntry(artist: Artist, router: Router): ContextMenuItem {
+  return {
+    label: "show_info",
+    labelArgs: [],
+    icon: Info,
+    action: () =>
+      router.push({
+        name: artist.media_type,
+        params: { itemId: artist.item_id, provider: artist.provider },
+      }),
+  };
 }

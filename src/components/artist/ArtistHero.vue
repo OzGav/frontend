@@ -6,6 +6,7 @@
     :backdrop="backdrop"
     :height="440"
     :phone-height="340"
+    :leading-menu-items="classicalLinks"
     @edit-rows="emit('edit-rows')"
   >
     <template #toolbar-append>
@@ -68,6 +69,7 @@ import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
 import { Orbit, Shuffle } from "@lucide/vue";
+import { useClassicalArtistLinks } from "@/views/classical/artistLinks";
 import { computed } from "vue";
 
 export interface Props {
@@ -80,6 +82,8 @@ const emit = defineEmits<{
 }>();
 
 const isPhone = computed(() => isPhoneSizedScreen());
+
+const classicalLinks = useClassicalArtistLinks(() => props.item);
 
 // wide art (fanart, then landscape) suits the hero; a square thumb is the
 // last resort. No size is passed, so the server serves the original image.

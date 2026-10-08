@@ -30,17 +30,24 @@
           :label="`${$t('play')} ${w.work.name}`"
           @play="onPlayWork(w.work.item_id)"
         />
-        <router-link :to="workLink(w.work.item_id)" class="performer-work-link">
-          <span class="performer-work-composer">
-            {{ w.work.composers[0]?.name }}
-          </span>
-          <span class="performer-work-title">
+        <div class="performer-work-link">
+          <router-link
+            v-if="w.work.composers[0]"
+            :to="`/classical/composers/${w.work.composers[0].item_id}`"
+            class="performer-work-composer performer-work-composer-link"
+          >
+            {{ w.work.composers[0].name }}
+          </router-link>
+          <router-link
+            :to="workLink(w.work.item_id)"
+            class="performer-work-title"
+          >
             {{ w.work.name }}
             <span v-if="w.work.catalog_numbers[0]" class="performer-work-meta">
               [{{ w.work.catalog_numbers[0] }}]
             </span>
-          </span>
-        </router-link>
+          </router-link>
+        </div>
         <span class="meta-recordings">
           {{ w.recording_count }}
           {{
@@ -243,7 +250,10 @@ watch(
 }
 
 .performer-work-row {
-  padding: 0.5rem 0;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding: 0.5rem 0 0.5rem 7px;
+  margin-left: -7px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -271,7 +281,21 @@ watch(
   color: var(--muted-foreground, #aaa);
 }
 
+/* Only the name is the link, so the underline marks just what is clicked. */
+.performer-work-composer-link {
+  align-self: flex-start;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.performer-work-composer-link:hover,
+.performer-work-composer-link:focus-visible {
+  text-decoration: underline;
+}
+
 .performer-work-title {
+  color: inherit;
+  text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
 }

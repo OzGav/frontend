@@ -33,10 +33,19 @@
           :label="`${$t('play')} ${w.name}`"
           @play="playFirstRecording(w.item_id)"
         />
-        <router-link :to="`/classical/works/${w.item_id}`" class="work-link">
-          <span class="work-composer">{{ w.composer }}</span>
-          <span class="work-title">{{ w.name }}</span>
-        </router-link>
+        <div class="work-link">
+          <router-link
+            v-if="w.composer_id"
+            :to="`/classical/composers/${w.composer_id}`"
+            class="work-composer work-composer-link"
+          >
+            {{ w.composer }}
+          </router-link>
+          <span v-else class="work-composer">{{ w.composer }}</span>
+          <router-link :to="`/classical/works/${w.item_id}`" class="work-title">
+            {{ w.name }}
+          </router-link>
+        </div>
         <!-- Rendered even when empty so every row keeps all four columns. -->
         <span class="work-catalog">{{ w.catalog_number }}</span>
         <span class="work-year">{{ w.year_composed }}</span>
@@ -86,6 +95,7 @@ interface WorkRow {
   item_id: string;
   name: string;
   composer: string;
+  composer_id?: string;
   catalog_number: string;
   year_composed?: number | null;
   recording_count: number;
@@ -122,6 +132,7 @@ const { sortBy, reload } = useClassicalListing({
       item_id: work.item_id,
       name: work.name,
       composer: work.composers[0]?.name ?? "",
+      composer_id: work.composers[0]?.item_id,
       catalog_number: work.catalog_numbers[0] ?? "",
       year_composed: work.composition_year,
       recording_count,
@@ -222,7 +233,10 @@ const filteredWorks = computed(() => {
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: baseline;
-  padding: 0.5rem 0.25rem;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding: 0.5rem 0.25rem 0.5rem 7px;
+  margin-left: calc(0.25rem - 7px);
+  border-radius: 4px;
 }
 
 .work-row:hover {
@@ -246,7 +260,21 @@ const filteredWorks = computed(() => {
   color: var(--muted-foreground, #aaa);
 }
 
+/* Only the name is the link, so the underline marks just what is clicked. */
+.work-composer-link {
+  align-self: flex-start;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.work-composer-link:hover,
+.work-composer-link:focus-visible {
+  text-decoration: underline;
+}
+
 .work-title {
+  color: inherit;
+  text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
   white-space: nowrap;

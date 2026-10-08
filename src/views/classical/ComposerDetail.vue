@@ -196,7 +196,10 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 }
 
 .composer-work-row {
-  padding: 0.5rem 0;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding: 0.5rem 0 0.5rem 7px;
+  margin-left: -7px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 0.4rem;

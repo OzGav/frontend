@@ -71,6 +71,8 @@ export interface Props {
   phoneHeight?: number;
   // off for a page with a fixed layout, which leaves "Edit rows" out of the menu
   editableRows?: boolean;
+  // page-specific entries put first in the menu
+  leadingMenuItems?: ContextMenuItem[];
 }
 const props = withDefaults(defineProps<Props>(), {
   item: undefined,
@@ -80,6 +82,7 @@ const props = withDefaults(defineProps<Props>(), {
   height: 440,
   phoneHeight: 340,
   editableRows: true,
+  leadingMenuItems: () => [],
 });
 
 const emit = defineEmits<{
@@ -96,6 +99,10 @@ const backdropStyle = computed(() =>
 );
 
 watch(() => props.item, buildMenu, { immediate: true });
+watch(
+  () => props.leadingMenuItems,
+  () => buildMenu(props.item),
+);
 
 // pinning or unpinning the item in the sidebar changes its menu entry
 const { getPreference } = useUserPreferences();
@@ -108,13 +115,19 @@ const backButtonClick = function () {
 
 useEscapeBack(backButtonClick);
 
-/** The item's overflow menu, plus "Edit rows" last on an editable page. */
+/**
+ * The item's overflow menu after any leading entries, plus "Edit rows" last on
+ * an editable page.
+ */
 async function buildMenu(item?: MediaItemType) {
   if (!item || props.hideMenu) {
     menuItems.value = [];
     return;
   }
-  const items = await getContextMenuItems([item], item);
+  const items = [
+    ...props.leadingMenuItems,
+    ...(await getContextMenuItems([item], item)),
+  ];
   // a slower response for a previous item must not replace the current one
   if (props.item?.uri !== item.uri) return;
   menuItems.value = props.editableRows

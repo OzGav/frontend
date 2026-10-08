@@ -1,7 +1,7 @@
 <template>
   <section>
     <!-- The work has no artwork of its own; the hero borrows the composer's. -->
-    <ClassicalHero :item="heroItem">
+    <ClassicalHero :item="heroItem" section="works">
       <template v-if="work" #meta>
         <div class="work-meta-line">
           <Music :size="16" class="work-meta-icon" />

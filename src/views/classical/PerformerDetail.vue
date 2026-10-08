@@ -1,6 +1,6 @@
 <template>
   <section>
-    <ClassicalHero :item="artistItem" show-favorite />
+    <ClassicalHero :item="artistItem" section="performers" show-favorite />
     <DetailTextRow
       v-if="artistItem?.metadata.description"
       :text="artistItem.metadata.description"
@@ -109,7 +109,7 @@ import {
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import {
   navigateOnRowClick,
-  useArtistPageMenu,
+  useArtistPageUpdates,
 } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
@@ -136,7 +136,7 @@ const router = useRouter();
 
 const artistItem = ref<Artist | undefined>();
 
-useArtistPageMenu(artistItem, router);
+useArtistPageUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");

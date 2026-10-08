@@ -1,6 +1,7 @@
 <template>
   <section class="classical-view classical-typography">
     <Toolbar
+      v-if="!fullBleedContent"
       :icon="Piano"
       :title="$t('classical')"
       :menu-items="menu?.items"
@@ -37,7 +38,7 @@
         </TabsList>
       </Tabs>
     </Toolbar>
-    <v-divider />
+    <v-divider v-if="!fullBleedContent" />
     <div
       class="classical-tab-content"
       :class="{ 'full-bleed': fullBleedContent }"
@@ -52,8 +53,8 @@ import Toolbar from "@/components/Toolbar.vue";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CLASSICAL_DEFAULT_TAB,
-  CLASSICAL_LAST_TAB_KEY,
   isClassicalTab,
+  useClassicalTabNavigation,
   type ClassicalTab,
 } from "@/views/classical/tabs";
 import {
@@ -62,12 +63,11 @@ import {
 } from "@/views/classical/listing";
 import { Feather, Music3, Piano, Users } from "@lucide/vue";
 import { computed, provide, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 defineOptions({ name: "ClassicalView" });
 
 const route = useRoute();
-const router = useRouter();
 
 // Set by the open tab, so the toolbar shows that tab's menu.
 const menu = ref<ClassicalMenu>();
@@ -78,20 +78,16 @@ const activeTab = computed<ClassicalTab>(() => {
   return isClassicalTab(segment) ? segment : CLASSICAL_DEFAULT_TAB;
 });
 
-// Detail routes render their own full-bleed banner (ClassicalHero); drop the
-// inner padding so the banner reaches the edges.
+// Detail routes open on their own banner (ClassicalHero), which carries the
+// back arrow, menu and section links, so the toolbar and padding go.
 const fullBleedContent = computed(() =>
   route.matched.some((r) => r.meta?.fullBleed === true),
 );
 
 // reka-ui's Tabs only emits update:modelValue on a value change, so clicking
-// a tab that's already active (e.g. Composers while on a composer detail
-// page) wouldn't navigate. Drive navigation from a direct click handler.
-const goToTab = (tab: ClassicalTab) => {
-  const target = `/classical/${tab}`;
-  localStorage.setItem(CLASSICAL_LAST_TAB_KEY, tab);
-  if (route.path !== target) router.push(target);
-};
+// the tab already active wouldn't navigate. Drive navigation from a direct
+// click handler.
+const goToTab = useClassicalTabNavigation();
 </script>
 
 <style scoped>

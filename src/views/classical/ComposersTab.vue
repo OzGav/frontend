@@ -17,6 +17,7 @@
       :grid-size="gridSize"
       :min-card-width="280"
       :loading="loading"
+      :placeholder-icon="Feather"
     />
     <ClassicalEmpty v-else :filtered="composers.length > 0" />
   </div>
@@ -41,6 +42,7 @@ import {
 import { workCountLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { useClassicalListing } from "@/views/classical/listing";
+import { Feather } from "@lucide/vue";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 

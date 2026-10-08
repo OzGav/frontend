@@ -1,6 +1,6 @@
 <template>
   <section>
-    <ClassicalHero :item="artistItem" show-favorite />
+    <ClassicalHero :item="artistItem" section="composers" show-favorite />
     <DetailTextRow
       v-if="artistItem?.metadata.description"
       :text="artistItem.metadata.description"
@@ -74,7 +74,7 @@ import {
 import { normalizeForFilter } from "@/helpers/utils";
 import {
   navigateOnRowClick,
-  useArtistPageMenu,
+  useArtistPageUpdates,
 } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
@@ -111,7 +111,7 @@ interface WorkRow {
 
 const artistItem = ref<Artist | undefined>();
 
-useArtistPageMenu(artistItem, router);
+useArtistPageUpdates(artistItem);
 
 const works = ref<WorkRow[]>([]);
 const otherTracks = ref<Track[]>([]);

@@ -30,6 +30,7 @@
       :grid-size="gridSize"
       :min-card-width="220"
       :loading="loading"
+      :placeholder-icon="Users"
     />
     <ClassicalEmpty
       v-else
@@ -57,6 +58,7 @@ import {
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { useClassicalListing } from "@/views/classical/listing";
+import { Users } from "@lucide/vue";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";

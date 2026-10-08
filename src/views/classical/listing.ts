@@ -11,7 +11,6 @@ import {
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { classicalArtistMenuItems } from "@/views/classical/menu";
 import {
   ArrowUpDown,
   Heart,
@@ -27,7 +26,6 @@ import {
   onUnmounted,
   ref,
   toRaw,
-  watch,
   watchEffect,
   type InjectionKey,
   type Ref,
@@ -45,37 +43,10 @@ export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
   Symbol("classicalMenu");
 
 /**
- * Show a menu in the Classical view's toolbar while the calling page is open.
- *
- * :param items: The menu entries, re-read whenever what they depend on changes.
- * :param active: Whether a filter is narrowing the page, shown as a dot.
+ * Keep a composer or performer page's artist in step with the server, so like
+ * changes, refreshes and metadata updates show on the page as they happen.
  */
-export function useClassicalMenu(
-  items: () => ToolBarMenuItem[],
-  active: () => boolean = () => false,
-) {
-  const menu = inject(CLASSICAL_MENU_KEY, undefined);
-  let ownMenu: ClassicalMenu | undefined;
-  watchEffect(() => {
-    ownMenu = { items: items(), active: active() };
-    if (menu) menu.value = ownMenu;
-  });
-  // The next page sets its menu before this one unmounts, so only clear our own.
-  onUnmounted(() => {
-    if (menu && toRaw(menu.value) === ownMenu) menu.value = undefined;
-  });
-}
-
-/**
- * Show a composer or performer page's menu in the Classical toolbar, the
- * artist's own page menu, led by Show info. Like changes, refreshes and
- * metadata updates of the artist show on the page as they happen.
- */
-export function useArtistPageMenu(
-  artist: Ref<Artist | undefined>,
-  router: Router,
-) {
-  const items = ref<ToolBarMenuItem[]>([]);
+export function useArtistPageUpdates(artist: Ref<Artist | undefined>) {
   useOwnFavorites(() => (artist.value ? [artist.value] : []));
   const unsubscribe = api.subscribe(
     EventType.MEDIA_ITEM_UPDATED,
@@ -86,13 +57,6 @@ export function useArtistPageMenu(
     },
   );
   onBeforeUnmount(unsubscribe);
-  watch([artist, () => artist.value?.favorite], async ([current]) => {
-    const menu = current
-      ? await classicalArtistMenuItems(current, router, true)
-      : [];
-    if (current === artist.value) items.value = menu;
-  });
-  useClassicalMenu(() => items.value);
 }
 
 /**
@@ -305,4 +269,26 @@ const VIEW_MODE_LABELS: Record<ClassicalViewMode, string> = {
 
 function isViewMode(value: unknown): value is ClassicalViewMode {
   return value === "fanart" || value === "thumbs" || value === "list";
+}
+
+/**
+ * Show a menu in the Classical view's toolbar while the calling page is open.
+ *
+ * :param items: The menu entries, re-read whenever what they depend on changes.
+ * :param active: Whether a filter is narrowing the page, shown as a dot.
+ */
+function useClassicalMenu(
+  items: () => ToolBarMenuItem[],
+  active: () => boolean = () => false,
+) {
+  const menu = inject(CLASSICAL_MENU_KEY, undefined);
+  let ownMenu: ClassicalMenu | undefined;
+  watchEffect(() => {
+    ownMenu = { items: items(), active: active() };
+    if (menu) menu.value = ownMenu;
+  });
+  // The next page sets its menu before this one unmounts, so only clear our own.
+  onUnmounted(() => {
+    if (menu && toRaw(menu.value) === ownMenu) menu.value = undefined;
+  });
 }

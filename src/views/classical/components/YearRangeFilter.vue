@@ -101,7 +101,9 @@ const clear = () => {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem 0.6rem;
-  padding: 0.25rem 0.4rem 0.25rem 0.7rem;
+  /* as tall as the standard search box beside it, growing only when it wraps */
+  min-height: 2.25rem;
+  padding: 0 0.4rem 0 0.7rem;
   border-radius: 8px;
   background: var(--muted, rgba(255, 255, 255, 0.05));
   border: 1px solid var(--border, #3d3d3d);
@@ -125,7 +127,8 @@ const clear = () => {
 
 .year-input {
   width: 4.25rem;
-  padding: 0.3rem 0.4rem;
+  height: 1.75rem;
+  padding: 0 0.4rem;
   border-radius: 6px;
   border: 1px solid var(--border, #444);
   background: var(--card, transparent);

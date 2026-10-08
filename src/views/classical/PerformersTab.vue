@@ -45,8 +45,8 @@
         >
           <div class="performer-thumb">
             <img
-              v-if="cardImage(p.artist)"
-              :src="cardImage(p.artist)"
+              v-if="cardImage(p)"
+              :src="cardImage(p)"
               :alt="p.artist.name"
               loading="lazy"
             />

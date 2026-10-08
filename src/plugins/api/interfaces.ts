@@ -1165,12 +1165,16 @@ export interface Recording {
 
 export interface ClassicalComposer {
   artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
   work_count: number;
   recording_count: number;
 }
 
 export interface ClassicalPerformer {
   artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
   // the performing role with the most credits
   main_role: ArtistRole;
   roles: ArtistRole[];

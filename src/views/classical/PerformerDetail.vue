@@ -17,16 +17,18 @@
     <ul v-if="works.length" class="performer-works-list">
       <li
         v-for="w in works"
-        :key="w.item_id"
+        :key="w.work.item_id"
         class="performer-work-row"
         @contextmenu.prevent="onMenuWork(w, $event)"
       >
-        <router-link :to="workLink(w.item_id)" class="performer-work-link">
-          <span class="performer-work-composer">{{ w.composer }}</span>
+        <router-link :to="workLink(w.work.item_id)" class="performer-work-link">
+          <span class="performer-work-composer">
+            {{ w.work.composers[0]?.name }}
+          </span>
           <span class="performer-work-title">
-            {{ w.name }}
-            <span v-if="w.catalog_number" class="performer-work-meta">
-              [{{ w.catalog_number }}]
+            {{ w.work.name }}
+            <span v-if="w.work.catalog_numbers[0]" class="performer-work-meta">
+              [{{ w.work.catalog_numbers[0] }}]
             </span>
           </span>
         </router-link>
@@ -39,11 +41,9 @@
           }}
         </span>
         <ClassicalRowActions
-          :favorite="workFavorites[w.item_id] ?? false"
-          @toggle-favorite="
-            workFavorites[w.item_id] = !workFavorites[w.item_id]
-          "
-          @play="onPlayWork(w)"
+          :favorite="allLiked(workTracks(w.work.item_id))"
+          @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
+          @play="onPlayWork(w.work.item_id)"
           @menu="(e: Event) => onMenuWork(w, e)"
         />
       </li>
@@ -69,26 +69,25 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import Toolbar from "@/components/Toolbar.vue";
-import { type Artist } from "@/plugins/api/interfaces";
+import api from "@/plugins/api";
+import type {
+  Artist,
+  ClassicalWorkEntry,
+  Recording,
+  Track,
+} from "@/plugins/api/interfaces";
 import {
-  getComposer,
-  getOtherTracksForArtist,
-  getPerformer,
+  getClassicalArtist,
+  getOtherTracks,
   getPerformerWorks,
-  getPerformers,
   getWorkRecordings,
-  makePerformerLookup,
-  synthesiseArtist,
-  type ClassicalComposer,
-  type ClassicalOtherTrack,
-  type ClassicalPerformer,
-  type ClassicalWorkSummary,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
+import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
-import { computed, reactive, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformerDetail" });
@@ -97,29 +96,12 @@ const props = defineProps<{ id: string }>();
 
 const router = useRouter();
 
-const performer = ref<ClassicalPerformer | undefined>();
-const works = ref<ClassicalWorkSummary[]>([]);
-const otherTracks = ref<ClassicalOtherTrack[]>([]);
-const allPerformers = ref<ClassicalPerformer[]>([]);
-const composerCache = reactive<Record<string, ClassicalComposer>>({});
+const artistItem = ref<Artist | undefined>();
+const works = ref<ClassicalWorkEntry[]>([]);
+// This performer's recordings of each work, by work id.
+const recordingsByWork = ref<Record<string, Recording[]>>({});
+const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
-
-const performerLookup = computed(() =>
-  makePerformerLookup(allPerformers.value),
-);
-
-const artistItem = computed<Artist | undefined>(() => {
-  const p = performer.value;
-  if (!p) return undefined;
-  return synthesiseArtist({
-    id: p.item_id,
-    name: p.name,
-    fanart_url: p.fanart_url,
-    thumbnail_url: p.thumbnail_url,
-    logo_url: p.logo_url,
-    biography: p.biography,
-  });
-});
 
 // Open the Work detail page with this performer pre-applied as the
 // contextual filter so the recordings list defaults to ones they appear on.
@@ -128,78 +110,71 @@ const workLink = (workId: string) => ({
   query: { filterByArtistId: props.id },
 });
 
-const workFavorites = reactive<Record<string, boolean>>({});
+const workTracks = (workId: string): Track[] =>
+  (recordingsByWork.value[workId] ?? []).flatMap((r) => r.tracks);
 
-const onPlayWork = (_w: ClassicalWorkSummary) => {
-  // TODO: play_work command pre-filtered to this performer.
+const toggleWorkFavorite = (workId: string) => {
+  const tracks = workTracks(workId);
+  setTracksLiked(tracks, !allLiked(tracks));
 };
 
-// A "Works performed" row really points at this performer's recording(s) of
+const onPlayWork = (workId: string) => {
+  const tracks = workTracks(workId);
+  if (tracks.length) api.playMedia(tracks.map((t) => t.uri));
+};
+
+// A "Works performed" row really points at this performer's recordings of
 // the work, so reuse the recording menu rather than rolling a parallel work
-// menu. Where the performer has several, the menu is scoped to their most
-// recent one.
-const onMenuWork = async (w: ClassicalWorkSummary, evt: Event) => {
-  if (!performer.value) return;
-  if (!composerCache[w.composer_id]) {
-    const c = await getComposer(w.composer_id);
-    if (c) composerCache[w.composer_id] = c;
-  }
-  const recordings = await getWorkRecordings(
-    w.item_id,
-    performer.value.item_id,
-  );
-  // getWorkRecordings returns oldest first with undated last, so the newest
-  // dated recording is the last one carrying a year.
-  const dated = recordings.filter((r) => r.year != null);
-  const recording = dated.at(-1) ?? recordings[0];
-  if (!recording) return;
+// menu. It covers all of them, like the row's play and heart.
+const onMenuWork = (w: ClassicalWorkEntry, evt: Event) => {
+  const recordings = recordingsByWork.value[w.work.item_id] ?? [];
+  if (!recordings.length) return;
   openRecordingMenu(
-    recording,
-    {
-      router,
-      work: w,
-      composer: composerCache[w.composer_id],
-      performerLookup: performerLookup.value,
-    },
+    recordings,
+    { router, work: w.work, composer: w.work.composers[0] },
     evt,
   );
 };
 
 const load = async (id: string) => {
   loading.value = true;
-  performer.value = await getPerformer(id);
-  works.value = await getPerformerWorks(id);
-  otherTracks.value = await getOtherTracksForArtist(id, "performer");
-  if (allPerformers.value.length === 0) {
-    allPerformers.value = await getPerformers();
+  try {
+    const [artist, entries, tracks] = await Promise.all([
+      getClassicalArtist(id),
+      getPerformerWorks(id),
+      getOtherTracks(id, false),
+    ]);
+    // a newer load has taken over the page
+    if (id !== props.id) return;
+    recordingsByWork.value = {};
+    works.value = entries;
+    otherTracks.value = tracks;
+    artistItem.value = artist;
+    // Row hearts and play fill in as each work's recordings arrive.
+    for (const e of entries) loadWorkRecordings(id, e.work.item_id);
+  } catch {
+    if (id !== props.id) return;
+    // an unknown id leaves the page on its not-found message
+    artistItem.value = undefined;
   }
   loading.value = false;
 };
 
-const onPlayOtherTrack = (_t: ClassicalOtherTrack) => {
-  // TODO: wire to play_media on the track URI once tracks are real records.
+const loadWorkRecordings = async (id: string, workId: string) => {
+  try {
+    const recordings = await getWorkRecordings(workId, id);
+    if (id === props.id) recordingsByWork.value[workId] = recordings;
+  } catch {
+    // the row's heart and play stay without recordings to act on
+  }
 };
 
-// Other-track menu: same context as a movement menu minus the work, since
-// these tracks are Workless by definition. The composer comes from the
-// track's composer credit (if any) — looked up lazily.
-const onMenuOtherTrack = async (t: ClassicalOtherTrack, evt: Event) => {
-  const composerCredit = t.credits.find((c) => c.role === "composer");
-  if (composerCredit && !composerCache[composerCredit.artist_id]) {
-    const c = await getComposer(composerCredit.artist_id);
-    if (c) composerCache[composerCredit.artist_id] = c;
-  }
-  openOtherTrackMenu(
-    t,
-    {
-      router,
-      composer: composerCredit
-        ? composerCache[composerCredit.artist_id]
-        : undefined,
-      performerLookup: performerLookup.value,
-    },
-    evt,
-  );
+const onPlayOtherTrack = (t: Track) => {
+  api.playMedia(t.uri);
+};
+
+const onMenuOtherTrack = (t: Track, evt: Event) => {
+  openOtherTrackMenu(t, router, evt);
 };
 
 watch(

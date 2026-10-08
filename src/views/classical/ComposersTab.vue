@@ -19,26 +19,27 @@
     </div>
 
     <ul v-if="filteredComposers.length" class="composer-grid">
-      <li v-for="c in filteredComposers" :key="c.item_id" class="composer-card">
+      <li
+        v-for="c in filteredComposers"
+        :key="c.artist.item_id"
+        class="composer-card"
+      >
         <router-link
-          :to="`/classical/composers/${c.item_id}`"
+          :to="`/classical/composers/${c.artist.item_id}`"
           class="composer-card-link"
-          :aria-label="c.name"
+          :aria-label="c.artist.name"
         >
           <div class="composer-thumb">
             <img
-              v-if="c.fanart_url || c.thumbnail_url"
-              :src="c.fanart_url || c.thumbnail_url || ''"
-              :alt="c.name"
+              v-if="cardImage(c.artist)"
+              :src="cardImage(c.artist)"
+              :alt="c.artist.name"
               loading="lazy"
             />
             <div v-else class="composer-thumb-placeholder"></div>
           </div>
           <div class="composer-meta">
-            <div class="composer-name">{{ c.name }}</div>
-            <div v-if="c.year_range" class="composer-sub">
-              {{ c.year_range }}
-            </div>
+            <div class="composer-name">{{ c.artist.name }}</div>
             <div class="composer-sub">
               {{ $t("works") }}: {{ c.work_count }}
             </div>
@@ -57,7 +58,9 @@
 
 <script setup lang="ts">
 import { normalizeForFilter } from "@/helpers/utils";
-import { getComposers, type ClassicalComposer } from "@/services/classical";
+import type { ClassicalComposer } from "@/plugins/api/interfaces";
+import { getComposers } from "@/services/classical";
+import { cardImage } from "@/views/classical/images";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
@@ -84,19 +87,23 @@ const collator = new Intl.Collator(undefined, { numeric: true });
 const filteredComposers = computed(() => {
   const q = normalizeForFilter(search.value.trim());
   const filtered = q
-    ? composers.value.filter((c) => normalizeForFilter(c.name).includes(q))
+    ? composers.value.filter((c) =>
+        normalizeForFilter(c.artist.name).includes(q),
+      )
     : composers.value;
   const sorted = [...filtered];
+  const sortName = (c: ClassicalComposer) =>
+    c.artist.sort_name || c.artist.name;
   sorted.sort((a, b) => {
     if (sort.value === "works") {
       const byCount = b.work_count - a.work_count;
       if (byCount !== 0) return byCount;
-      return collator.compare(a.sort_name || a.name, b.sort_name || b.name);
+      return collator.compare(sortName(a), sortName(b));
     }
     if (sort.value === "sort_name") {
-      return collator.compare(a.sort_name || a.name, b.sort_name || b.name);
+      return collator.compare(sortName(a), sortName(b));
     }
-    return collator.compare(a.name, b.name);
+    return collator.compare(a.artist.name, b.artist.name);
   });
   return sorted;
 });

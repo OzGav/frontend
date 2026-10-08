@@ -8,15 +8,6 @@
         class="performers-search"
         :aria-label="searchPlaceholder"
       />
-      <label class="performers-sort">
-        {{ $t("classical_sort_label") }}
-        <select v-model="sort">
-          <option value="name">{{ $t("sort.name") }}</option>
-          <option value="recordings">
-            {{ $t("classical_sort_recordings") }}
-          </option>
-        </select>
-      </label>
     </div>
 
     <div class="role-chips">
@@ -32,46 +23,14 @@
       </button>
     </div>
 
-    <ul v-if="filteredPerformers.length" class="performer-grid">
-      <li
-        v-for="p in filteredPerformers"
-        :key="p.artist.item_id"
-        class="performer-card"
-      >
-        <router-link
-          :to="`/classical/performers/${p.artist.item_id}`"
-          class="performer-card-link"
-          :aria-label="p.artist.name"
-        >
-          <div class="performer-thumb">
-            <img
-              v-if="cardImage(p)"
-              :src="cardImage(p)"
-              :alt="p.artist.name"
-              loading="lazy"
-            />
-            <div v-else class="performer-thumb-placeholder">
-              <span>{{ initials(p.artist.name) }}</span>
-            </div>
-          </div>
-          <div class="performer-meta">
-            <div class="performer-name">{{ p.artist.name }}</div>
-            <div class="performer-sub performer-role">
-              {{ formatRole(p.main_role) }}
-            </div>
-            <div class="performer-sub">
-              {{ p.recording_count }}
-              {{
-                p.recording_count === 1
-                  ? $t("classical_recording")
-                  : $t("classical_recordings_lower")
-              }}
-            </div>
-          </div>
-        </router-link>
-      </li>
-    </ul>
-    <p v-else-if="search.trim()" class="text-muted-foreground">
+    <ClassicalArtistGrid
+      v-if="gridItems.length"
+      :items="gridItems"
+      :view-mode="viewMode"
+      :grid-size="gridSize"
+      :min-card-width="220"
+    />
+    <p v-else-if="search.trim() || favoritesOnly" class="text-muted-foreground">
       {{ $t("classical_no_performers_match") }}
     </p>
     <p v-else class="text-muted-foreground">
@@ -84,14 +43,17 @@
 import { normalizeForFilter } from "@/helpers/utils";
 import { ArtistRole, type ClassicalPerformer } from "@/plugins/api/interfaces";
 import { getPerformers } from "@/services/classical";
-import { cardImage } from "@/views/classical/images";
+import ClassicalArtistGrid, {
+  type ClassicalArtistGridItem,
+} from "@/views/classical/components/ClassicalArtistGrid.vue";
+import { cardImage, squareImage } from "@/views/classical/images";
+import { useOwnArtistFavorites } from "@/views/classical/favorites";
+import { useClassicalListing } from "@/views/classical/listing";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformersTab" });
-
-type SortKey = "name" | "recordings";
 
 const { t } = useI18n();
 
@@ -120,8 +82,24 @@ const chips: Chip[] = [
 ];
 
 const performers = ref<ClassicalPerformer[]>([]);
+
+useOwnArtistFavorites(() => performers.value.map((row) => row.artist));
+
 const search = ref("");
-const sort = ref<SortKey>("name");
+
+// The full list is fetched once; the role chips filter it client-side.
+const { sortBy, viewMode, favoritesOnly, gridSize, reload } =
+  useClassicalListing({
+    itemtype: "performers",
+    sorts: [
+      { key: "name", label: "sort.name" },
+      { key: "recordings", label: "classical_sort_recordings" },
+    ],
+    load: async () => {
+      performers.value = await getPerformers();
+    },
+    views: true,
+  });
 
 const searchPlaceholder = computed(() =>
   t("classical_filter_performers_placeholder"),
@@ -136,23 +114,41 @@ const collator = new Intl.Collator(undefined, { numeric: true });
 
 const filteredPerformers = computed(() => {
   const role = activeRole.value;
-  const byRole = role
-    ? performers.value.filter((p) => p.roles.includes(role))
-    : performers.value;
   const q = normalizeForFilter(search.value.trim());
-  const filtered = q
-    ? byRole.filter((p) => normalizeForFilter(p.artist.name).includes(q))
-    : byRole;
-  const sorted = [...filtered];
-  sorted.sort((a, b) => {
-    if (sort.value === "recordings") {
+  const filtered = performers.value.filter(
+    (p) =>
+      (!role || p.roles.includes(role)) &&
+      (!favoritesOnly.value || p.artist.favorite === true) &&
+      (!q || normalizeForFilter(p.artist.name).includes(q)),
+  );
+  return filtered.sort((a, b) => {
+    if (sortBy.value === "recordings") {
       const byCount = b.recording_count - a.recording_count;
       if (byCount !== 0) return byCount;
     }
     return collator.compare(a.artist.name, b.artist.name);
   });
-  return sorted;
 });
+
+const gridItems = computed<ClassicalArtistGridItem[]>(() =>
+  filteredPerformers.value.map((p) => ({
+    id: p.artist.item_id,
+    artist: p.artist,
+    name: p.artist.name,
+    link: `/classical/performers/${p.artist.item_id}`,
+    wideImage: cardImage(p),
+    squareImage: squareImage(p),
+    role: formatRole(p.main_role),
+    lines: [
+      `${p.recording_count} ${
+        p.recording_count === 1
+          ? t("classical_recording")
+          : t("classical_recordings_lower")
+      }`,
+    ],
+    initials: initials(p.artist.name),
+  })),
+);
 
 const setRole = (role: ArtistRole | null) => {
   router.replace({
@@ -176,12 +172,7 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-// Fetch the full performer list once; role chips filter client-side.
-const load = async () => {
-  performers.value = await getPerformers();
-};
-
-onMounted(load);
+onMounted(reload);
 </script>
 
 <style scoped>
@@ -206,25 +197,6 @@ onMounted(load);
   border: 1px solid var(--border, #444);
   background: var(--card, transparent);
   color: inherit;
-  font: inherit;
-}
-
-.performers-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--muted-foreground, #aaa);
-}
-
-.performers-sort select {
-  /* Pinned identically in WorksTab and ComposersTab. */
-  min-width: 12rem;
-  background: var(--card, transparent);
-  color: inherit;
-  border: 1px solid var(--border, #444);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
   font: inherit;
 }
 
@@ -257,85 +229,5 @@ onMounted(load);
   border-color: var(--primary, #4a90e2);
   color: var(--primary-foreground, #fff);
   font-weight: 600;
-}
-
-.performer-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.performer-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.performer-card-link {
-  display: flex;
-  flex-direction: column;
-  color: inherit;
-  text-decoration: none;
-  transition: transform 0.15s ease;
-}
-
-.performer-card-link:hover,
-.performer-card-link:focus-visible {
-  transform: translateY(-2px);
-}
-
-.performer-card-link:hover .performer-name,
-.performer-card-link:focus-visible .performer-name {
-  text-decoration: underline;
-}
-
-.performer-thumb {
-  display: block;
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--muted, #2a2a2a);
-}
-
-.performer-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.performer-thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--muted-foreground, #888);
-  background: linear-gradient(135deg, #4a4a4a, #1a1a1a);
-}
-
-.performer-meta {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.performer-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.performer-sub {
-  color: var(--muted-foreground, #888);
-  font-size: 0.8125rem;
-}
-
-.performer-role {
-  text-transform: capitalize;
 }
 </style>

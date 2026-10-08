@@ -32,6 +32,36 @@ export function getClassicalArtist(id: string): Promise<Artist> {
   return api.getArtist(id, "library");
 }
 
+/**
+ * The Classical composer and performer rows of a library artist, each absent
+ * when the artist holds no such role. Both are absent when the server does
+ * not offer the classical commands.
+ */
+export async function getClassicalRoles(artistId: string): Promise<{
+  composer?: ClassicalComposer;
+  performer?: ClassicalPerformer;
+}> {
+  const args = { artist_id: artistId, limit: 1 };
+  const options = { suppressGlobalError: true };
+  try {
+    const [composers, performers] = await Promise.all([
+      api.sendCommand<ClassicalComposer[]>(
+        "music/classical/composers",
+        args,
+        options,
+      ),
+      api.sendCommand<ClassicalPerformer[]>(
+        "music/classical/performers",
+        args,
+        options,
+      ),
+    ]);
+    return { composer: composers[0], performer: performers[0] };
+  } catch {
+    return {};
+  }
+}
+
 export function getComposers(): Promise<ClassicalComposer[]> {
   return api.sendCommand("music/classical/composers", { limit: 0 });
 }

@@ -124,6 +124,8 @@ export interface Props {
   phoneHeight?: number;
   // off for a page with a fixed layout, which leaves "Edit rows" out of the menu
   editableRows?: boolean;
+  // page-specific entries put first in the menu
+  leadingMenuItems?: ContextMenuItem[];
 }
 const props = withDefaults(defineProps<Props>(), {
   item: undefined,
@@ -134,6 +136,7 @@ const props = withDefaults(defineProps<Props>(), {
   height: 440,
   phoneHeight: 340,
   editableRows: true,
+  leadingMenuItems: () => [],
 });
 
 const emit = defineEmits<{
@@ -154,6 +157,7 @@ const menuItems = computed<ContextMenuItem[]>(() => {
   if (!builtMenu.value) return [];
   const { item, items } = builtMenu.value;
   return [
+    ...props.leadingMenuItems,
     ...items,
     ...getDeclaredContextMenuItems([item]),
     ...(props.editableRows

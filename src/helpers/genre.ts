@@ -43,6 +43,7 @@ export const genreMediaTypeIconMap: Record<MediaType, string | Component> = {
   [MediaType.PODCAST_EPISODE]: "mdi-podcast",
   [MediaType.FOLDER]: "mdi-folder",
   [MediaType.COLLECTION]: "mdi-note-multiple-outline",
+  [MediaType.WORK]: "mdi-music",
   [MediaType.UNKNOWN]: "mdi-help-circle-outline",
 };
 

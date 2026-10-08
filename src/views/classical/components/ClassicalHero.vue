@@ -8,6 +8,10 @@
     :phone-height="340"
     hide-menu
   >
+    <template #toolbar-append>
+      <DetailHeroFavorite v-if="favoriteItem" :item="favoriteItem" />
+    </template>
+
     <template v-if="item" #main>
       <img v-if="logo" class="classical-hero__logo" :src="logo" alt="" />
       <h1 :class="logo ? 'sr-only' : 'classical-hero__name'">
@@ -28,7 +32,9 @@
 
 <script setup lang="ts">
 import DetailHero from "@/components/details/DetailHero.vue";
+import DetailHeroFavorite from "@/components/details/DetailHeroFavorite.vue";
 import DetailHeroProviders from "@/components/details/DetailHeroProviders.vue";
+import { canHoldFavorite } from "@/helpers/favorites";
 import { getImageThumbForItem } from "@/helpers/utils";
 import { ImageType, type Artist, type Work } from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
@@ -37,10 +43,18 @@ import { computed } from "vue";
 
 export interface Props {
   item?: Artist | Work;
+  // the banner heart, as on the artist page; a work cannot be liked
+  showFavorite?: boolean;
 }
 const props = defineProps<Props>();
 
 const isPhone = computed(() => isPhoneSizedScreen());
+
+const favoriteItem = computed(() =>
+  props.showFavorite && props.item && canHoldFavorite(props.item)
+    ? props.item
+    : undefined,
+);
 
 // wide art (fanart, then landscape) suits the hero; a square thumb is the
 // last resort

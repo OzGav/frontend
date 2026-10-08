@@ -65,7 +65,8 @@ export interface Props {
   // for a backdrop that only stands in for missing wide art, so it reads as
   // colour rather than a picture
   blurBackdrop?: boolean;
-  // leaves out the overflow menu, for items the server cannot act on
+  // leaves out the overflow menu, for items the server cannot act on or pages
+  // that show the item's menu elsewhere
   hideMenu?: boolean;
   height?: number;
   phoneHeight?: number;
@@ -91,6 +92,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const menuItems = ref<ContextMenuItem[]>([]);
+let menuBuild = 0;
 
 const isPhone = computed(() => isPhoneSizedScreen());
 
@@ -120,16 +122,16 @@ useEscapeBack(backButtonClick);
  * an editable page.
  */
 async function buildMenu(item?: MediaItemType) {
+  const build = ++menuBuild;
   if (!item || props.hideMenu) {
     menuItems.value = [];
     return;
   }
-  const items = [
-    ...props.leadingMenuItems,
-    ...(await getContextMenuItems([item], item)),
-  ];
-  // a slower response for a previous item must not replace the current one
-  if (props.item?.uri !== item.uri) return;
+  const base = await getContextMenuItems([item], item);
+  // a slower build, for a previous item or older leading entries, must not
+  // replace the current one
+  if (build !== menuBuild) return;
+  const items = [...props.leadingMenuItems, ...base];
   menuItems.value = props.editableRows
     ? [
         ...items,

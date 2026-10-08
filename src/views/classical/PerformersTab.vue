@@ -35,29 +35,29 @@
     <ul v-if="filteredPerformers.length" class="performer-grid">
       <li
         v-for="p in filteredPerformers"
-        :key="p.item_id"
+        :key="p.artist.item_id"
         class="performer-card"
       >
         <router-link
-          :to="`/classical/performers/${p.item_id}`"
+          :to="`/classical/performers/${p.artist.item_id}`"
           class="performer-card-link"
-          :aria-label="p.name"
+          :aria-label="p.artist.name"
         >
           <div class="performer-thumb">
             <img
-              v-if="p.fanart_url || p.thumbnail_url"
-              :src="p.fanart_url || p.thumbnail_url || ''"
-              :alt="p.name"
+              v-if="cardImage(p.artist)"
+              :src="cardImage(p.artist)"
+              :alt="p.artist.name"
               loading="lazy"
             />
             <div v-else class="performer-thumb-placeholder">
-              <span>{{ initials(p.name) }}</span>
+              <span>{{ initials(p.artist.name) }}</span>
             </div>
           </div>
           <div class="performer-meta">
-            <div class="performer-name">{{ p.name }}</div>
+            <div class="performer-name">{{ p.artist.name }}</div>
             <div class="performer-sub performer-role">
-              {{ formatRole(p.role) }}
+              {{ formatRole(p.main_role) }}
             </div>
             <div class="performer-sub">
               {{ p.recording_count }}
@@ -81,9 +81,10 @@
 </template>
 
 <script setup lang="ts">
-import { ArtistRole } from "@/types/classical";
 import { normalizeForFilter } from "@/helpers/utils";
-import { getPerformers, type ClassicalPerformer } from "@/services/classical";
+import { ArtistRole, type ClassicalPerformer } from "@/plugins/api/interfaces";
+import { getPerformers } from "@/services/classical";
+import { cardImage } from "@/views/classical/images";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
@@ -134,12 +135,13 @@ const activeRole = computed<ArtistRole | null>(() => {
 const collator = new Intl.Collator(undefined, { numeric: true });
 
 const filteredPerformers = computed(() => {
-  const byRole = activeRole.value
-    ? performers.value.filter((p) => p.role === activeRole.value)
+  const role = activeRole.value;
+  const byRole = role
+    ? performers.value.filter((p) => p.roles.includes(role))
     : performers.value;
   const q = normalizeForFilter(search.value.trim());
   const filtered = q
-    ? byRole.filter((p) => normalizeForFilter(p.name).includes(q))
+    ? byRole.filter((p) => normalizeForFilter(p.artist.name).includes(q))
     : byRole;
   const sorted = [...filtered];
   sorted.sort((a, b) => {
@@ -147,7 +149,7 @@ const filteredPerformers = computed(() => {
       const byCount = b.recording_count - a.recording_count;
       if (byCount !== 0) return byCount;
     }
-    return collator.compare(a.name, b.name);
+    return collator.compare(a.artist.name, b.artist.name);
   });
   return sorted;
 });

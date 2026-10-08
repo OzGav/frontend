@@ -26,20 +26,21 @@
         <div class="other-track-main">
           <span class="other-track-title">{{ t.name }}</span>
           <router-link
-            :to="`/albums/library/${t.album_id}`"
+            v-if="t.album"
+            :to="`/albums/library/${t.album.item_id}`"
             class="other-track-album"
             @click.stop
           >
-            {{ t.album }}
+            {{ t.album.name }}
           </router-link>
         </div>
         <span class="other-track-duration">
-          {{ formatDuration(t.duration_seconds) }}
+          {{ formatDuration(t.duration) }}
         </span>
         <ClassicalRowActions
           :in-library="true"
-          :favorite="favorites[t.item_id] ?? false"
-          @toggle-favorite="favorites[t.item_id] = !favorites[t.item_id]"
+          :favorite="t.favorite === true"
+          @toggle-favorite="setTracksLiked([t], t.favorite !== true)"
           @play="$emit('play-track', t)"
           @menu="(e: Event) => $emit('menu-track', t, e)"
         />
@@ -51,15 +52,16 @@
 <script setup lang="ts">
 import Toolbar from "@/components/Toolbar.vue";
 import { formatDuration } from "@/helpers/utils";
-import type { ClassicalOtherTrack } from "@/services/classical";
+import type { Track } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import { computed, reactive, ref } from "vue";
+import { setTracksLiked } from "@/views/classical/favorites";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "OtherTracksSection" });
 
 const props = defineProps<{
-  tracks: ClassicalOtherTrack[];
+  tracks: Track[];
 }>();
 
 const { t } = useI18n();
@@ -69,14 +71,12 @@ const sectionTitle = computed(
 );
 
 defineEmits<{
-  (e: "play-track", track: ClassicalOtherTrack): void;
-  (e: "menu-track", track: ClassicalOtherTrack, evt: Event): void;
+  (e: "play-track", track: Track): void;
+  (e: "menu-track", track: Track, evt: Event): void;
 }>();
 
 type SortKey = "name" | "year" | "date_added";
 const sortKey = ref<SortKey>("name");
-
-const favorites = reactive<Record<string, boolean>>({});
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
@@ -85,12 +85,15 @@ const sortedTracks = computed(() => {
   switch (sortKey.value) {
     case "year":
       return list.sort((a, b) => {
-        const ay = a.year ?? -Infinity;
-        const by = b.year ?? -Infinity;
+        const ay = a.album?.year ?? -Infinity;
+        const by = b.album?.year ?? -Infinity;
         return by - ay || collator.compare(a.name, b.name);
       });
     case "date_added":
-      return list.sort((a, b) => b.timestamp_added - a.timestamp_added);
+      // ISO timestamps order correctly as plain strings
+      return list.sort((a, b) =>
+        (b.date_added ?? "").localeCompare(a.date_added ?? ""),
+      );
     case "name":
     default:
       return list.sort((a, b) => collator.compare(a.name, b.name));

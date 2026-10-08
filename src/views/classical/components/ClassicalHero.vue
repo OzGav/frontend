@@ -30,13 +30,13 @@
 import DetailHero from "@/components/details/DetailHero.vue";
 import DetailHeroProviders from "@/components/details/DetailHeroProviders.vue";
 import { getImageThumbForItem } from "@/helpers/utils";
-import { ImageType, type Artist } from "@/plugins/api/interfaces";
+import { ImageType, type Artist, type Work } from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import { $t } from "@/plugins/i18n";
 import { computed } from "vue";
 
 export interface Props {
-  item?: Artist;
+  item?: Artist | Work;
 }
 const props = defineProps<Props>();
 

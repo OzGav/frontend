@@ -64,7 +64,6 @@
         <ClassicalRowActions
           :source-item="workTracks(w.work.item_id)[0]"
           :favorite="allLiked(workTracks(w.work.item_id))"
-          :show-play="false"
           @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
           @menu="(e: Event) => onMenuWork(w, e)"
         />

@@ -21,18 +21,10 @@ import {
 } from "@/plugins/api/interfaces";
 import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { eventbus } from "@/plugins/eventbus";
-import { Info } from "@lucide/vue";
+import { Feather, Info, Music3, Users } from "@lucide/vue";
 import { PERFORMER_ROLES } from "@/views/classical/credits";
+import { roleLabel } from "@/views/classical/labels";
 import type { Router } from "vue-router";
-
-const ROLE_LABEL: Record<string, string> = {
-  [ArtistRole.CONDUCTOR]: "conductor",
-  [ArtistRole.ENSEMBLE]: "ensemble",
-  [ArtistRole.ORCHESTRA]: "orchestra",
-  [ArtistRole.CHOIR]: "choir",
-  [ArtistRole.SOLOIST]: "soloist",
-  [ArtistRole.PERFORMER]: "performer",
-};
 
 export interface ClassicalMenuContext {
   router: Router;
@@ -40,10 +32,10 @@ export interface ClassicalMenuContext {
   composer?: ItemMapping | Artist;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
+/**
+ * Menu for one movement of a recording, the standard track menu plus the
+ * classical entries.
+ */
 export async function openMovementMenu(
   movement: Track,
   recording: Recording,
@@ -104,8 +96,6 @@ export async function openOtherTrackMenu(
   ].filter((x): x is ContextMenuItem => x !== null);
   spliceAfterAlbum(filtered, classicalEntries);
 
-  reorderFavourites(filtered);
-
   emit([...playItems, ...filtered], evt);
 }
 
@@ -139,9 +129,10 @@ export async function openArtistMenu(
   emit(await classicalArtistMenuItems(artist, router), evt, false);
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+/** Open a plain menu of the given entries at the pointer, e.g. a section's sort. */
+export function openMenu(items: ContextMenuItem[], evt: Event | MouseEvent) {
+  emit(items, evt, false);
+}
 
 interface BuildArgs {
   tracks: Track[];
@@ -161,9 +152,8 @@ async function buildMenuItems({
   const playItems = await getPlaybackContextMenuItems(tracks);
   const standardItems = await getContextMenuItems(tracks);
 
-  // Filtering rules:
-  //  - goto_artist is replaced by the Go to performer submenu.
-  //  - remove_library / show_info are omitted from the recording menu.
+  // Go to artist gives way to the Go to performer submenu, and the recording
+  // menu leaves out Remove from library and Show info.
   const filtered = standardItems.filter((item) => {
     if (item.label === "goto_artist") return false;
     if (!includeRemoveFromLibrary && item.label === "remove_library")
@@ -179,9 +169,6 @@ async function buildMenuItems({
   ].filter((x): x is ContextMenuItem => x !== null);
   spliceAfterAlbum(filtered, classicalEntries);
 
-  // Favourites entry sits directly above Add to playlist.
-  reorderFavourites(filtered);
-
   return [...playItems, ...filtered];
 }
 
@@ -194,25 +181,6 @@ function spliceAfterAlbum(
   const albumIdx = items.findIndex((i) => i.label === "goto_album");
   if (albumIdx >= 0) items.splice(albumIdx + 1, 0, ...entries);
   else items.unshift(...entries);
-}
-
-// Lift favourites_add / favorites_remove to sit directly above add_playlist.
-function reorderFavourites(items: ContextMenuItem[]) {
-  const favouriteIndices: number[] = [];
-  items.forEach((item, i) => {
-    if (item.label === "favorites_add" || item.label === "favorites_remove")
-      favouriteIndices.push(i);
-  });
-  if (!favouriteIndices.length) return;
-
-  const favourites = favouriteIndices
-    .reverse()
-    .map((i) => items.splice(i, 1)[0])
-    .reverse();
-
-  const playlistIdx = items.findIndex((i) => i.label === "add_playlist");
-  if (playlistIdx >= 0) items.splice(playlistIdx, 0, ...favourites);
-  else items.push(...favourites);
 }
 
 function emit(
@@ -238,7 +206,7 @@ function gotoComposer(
   return {
     label: "classical_goto_composer",
     labelArgs: [composer.name],
-    icon: "mdi-account-music",
+    icon: Feather,
     action: () => router.push(`/classical/composers/${composer.item_id}`),
   };
 }
@@ -247,7 +215,7 @@ function gotoWork(ctx: ClassicalMenuContext): ContextMenuItem {
   return {
     label: "classical_goto_work",
     labelArgs: [ctx.work.name],
-    icon: "mdi-music",
+    icon: Music3,
     action: () => ctx.router.push(`/classical/works/${ctx.work.item_id}`),
   };
 }
@@ -261,15 +229,15 @@ function performerSubMenu(
   return {
     label: "classical_goto_performer",
     labelArgs: [],
-    icon: "mdi-account-music",
+    icon: Users,
     subItems: grouped.map((g) =>
       performerSubmenuEntry(g.artistId, g.name, g.qualifier, router),
     ),
   };
 }
 
-// Submenu entry: name plus a role/instrument qualifier in parens. Rendered
-// under the parent "Go to performer" item so the verb is already implied.
+// Submenu entry, a name plus a role or instrument qualifier in parens. Shown
+// under the parent "Go to performer" item, so the verb is already implied.
 function performerSubmenuEntry(
   artistId: string,
   name: string,
@@ -281,7 +249,7 @@ function performerSubmenuEntry(
       ? "classical_performer_with_qualifier"
       : "classical_role_label_performer",
     labelArgs: qualifier ? [name, qualifier] : [name],
-    icon: "mdi-account-music",
+    icon: Users,
     action: () => router.push(`/classical/performers/${artistId}`),
   };
 }
@@ -312,7 +280,7 @@ function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
   for (const [artistId, entries] of map) {
     entries.sort((a, b) => rolePriority(a.role) - rolePriority(b.role));
     const parts = entries.map((e) =>
-      e.instrument ? e.instrument : (ROLE_LABEL[e.role] ?? e.role),
+      e.instrument ? e.instrument : roleLabel(e.role),
     );
     aggregates.push({
       artistId,

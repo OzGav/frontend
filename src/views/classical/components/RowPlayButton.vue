@@ -1,13 +1,14 @@
 <template>
-  <!-- The standard list play affordance: on hover-capable screens a blue play
+  <!-- The standard list play affordance, on hover-capable screens a blue play
        revealed on row hover in a reserved slot at the start of the row, on
        touch screens a small play button at the end. -->
   <button
     v-if="side === 'start' && !isTouch"
     type="button"
     class="row-play-slot"
+    :disabled="disabled"
     :aria-label="label"
-    @click.stop.prevent="$emit('play')"
+    @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
     <span class="row-play-disc">
       <Play
@@ -19,13 +20,13 @@
     </span>
   </button>
   <v-btn
-    v-else-if="side === 'end' && isTouch"
+    v-else-if="side === 'end' && isTouch && !disabled"
     icon
     variant="text"
     size="small"
     class="row-play-touch"
     :aria-label="label"
-    @click.stop.prevent="$emit('play')"
+    @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
     <span class="row-play-disc-touch">
       <Play
@@ -40,7 +41,7 @@
 
 <script setup lang="ts">
 import { Play } from "@lucide/vue";
-import { useMediaQuery } from "@vueuse/core";
+import { isTouch } from "@/views/classical/touch";
 
 defineOptions({ name: "RowPlayButton" });
 
@@ -48,13 +49,13 @@ defineProps<{
   // where in the row this instance sits; each shows on its own kind of screen
   side: "start" | "end";
   label: string;
+  // nothing to play; the start slot keeps its space so rows stay aligned
+  disabled?: boolean;
 }>();
 
 defineEmits<{
-  (e: "play"): void;
+  (e: "play", evt: Event): void;
 }>();
-
-const isTouch = useMediaQuery("(hover: none)");
 </script>
 
 <style scoped>
@@ -71,6 +72,14 @@ const isTouch = useMediaQuery("(hover: none)");
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+.row-play-slot:disabled {
+  cursor: default;
+}
+
+.row-play-slot:disabled .row-play-disc {
+  visibility: hidden;
 }
 
 .row-play-disc,

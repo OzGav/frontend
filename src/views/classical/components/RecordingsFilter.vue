@@ -1,34 +1,32 @@
 <template>
   <!-- Stable wrapper carries the outer layout margin so neither inner element
-       needs a horizontal margin of its own — a margin combined with the
+       needs a horizontal margin of its own. A margin combined with the
        input's width:100% would push it past the container edge. -->
   <div class="recordings-filter-root">
-    <!-- Editable state: free-text filter the user can type into. -->
-    <input
+    <!-- Editable state, a free-text filter the user can type into. -->
+    <SearchInput
       v-if="!committed"
       ref="inputEl"
-      :value="modelValue"
-      type="search"
+      :model-value="modelValue"
+      clearable
       :placeholder="$t('classical_filter_recordings_placeholder')"
       :aria-label="$t('classical_filter_recordings_placeholder')"
       class="recordings-filter-input"
-      @input="onInput"
+      @update:model-value="(value: string) => emit('update:modelValue', value)"
       @keydown.enter.prevent="$emit('commit')"
     />
-    <!-- Committed state: status banner driven by a performer context arrival or
-         a user-committed term. Clicking the text returns to the input. -->
+    <!-- Committed state, a status banner driven by a performer context arrival
+         or a user-committed term. Clicking the text returns to the input. -->
     <div v-else class="filter-banner">
       <button type="button" class="filter-banner-text" @click="$emit('edit')">
-        <i18n-t v-if="count > 0" :keypath="bannerKey" tag="span">
+        <i18n-t
+          v-if="count > 0"
+          :keypath="bannerKey"
+          :plural="count"
+          tag="span"
+        >
           <template #count>
             <strong>{{ count }}</strong>
-          </template>
-          <template #noun>
-            {{
-              count === 1
-                ? $t("classical_recording")
-                : $t("classical_recordings_lower")
-            }}
           </template>
           <template v-if="performerName" #performer>
             <strong>{{ performerName }}</strong>
@@ -54,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import { SearchInput } from "@/components/ui/search-input";
 import { computed, nextTick, ref, watch } from "vue";
 
 defineOptions({ name: "RecordingsFilter" });
@@ -64,8 +63,10 @@ const props = defineProps<{
   count: number;
   performerName?: string;
   term?: string;
-  /** Report an empty list plainly rather than blaming the committed term,
-      for when another filter is also narrowing the list. */
+  /**
+   * Report an empty list plainly rather than blaming the committed term, for
+   * when another filter is also narrowing the list.
+   */
   genericNoMatch?: boolean;
 }>();
 
@@ -76,7 +77,7 @@ const emit = defineEmits<{
   (e: "clear"): void;
 }>();
 
-const inputEl = ref<HTMLInputElement | null>(null);
+const inputEl = ref<InstanceType<typeof SearchInput> | null>(null);
 
 const bannerKey = computed(() =>
   props.performerName
@@ -84,21 +85,16 @@ const bannerKey = computed(() =>
     : "classical_filter_showing_matching",
 );
 
-// The no-match line names whatever drove the filter — the performer for a
+// The no-match line names whatever drove the filter, the performer for a
 // context arrival, otherwise the typed term.
 const displayTerm = computed(() => props.performerName || props.term || "");
 
-const onInput = (e: Event) =>
-  emit("update:modelValue", (e.target as HTMLInputElement).value);
-
 // Focus the field when returning from a banner to the editable state so the
-// pre-filled term can be edited straight away. preventScroll stops the browser
-// from scrolling the input into view, which would jump the layout.
+// pre-filled term can be edited straight away.
 watch(
   () => props.committed,
   (committed, was) => {
-    if (was && !committed)
-      nextTick(() => inputEl.value?.focus({ preventScroll: true }));
+    if (was && !committed) nextTick(() => inputEl.value?.focus());
   },
 );
 </script>
@@ -106,12 +102,6 @@ watch(
 <style scoped>
 .recordings-filter-input {
   width: 100%;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #444);
-  background: var(--card, transparent);
-  color: inherit;
-  font: inherit;
 }
 
 .filter-banner {

@@ -101,6 +101,18 @@ export function getWorkRecordings(
 }
 
 /**
+ * Every recording an artist performs on, per work in the order of the works
+ * listing.
+ */
+export function getPerformerRecordings(
+  performerId: string,
+): Promise<Recording[]> {
+  return api.sendCommand("music/classical/recordings", {
+    performer_id: performerId,
+  });
+}
+
+/**
  * Artists with a performing role on a classical track. With a role given,
  * only those holding that role among their roles.
  */

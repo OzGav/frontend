@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 
 /**
- * State for a pair of YearRangeFilter boxes: the raw strings to bind to it,
+ * State for a pair of YearRangeFilter boxes, the raw strings to bind to it,
  * plus a predicate that tests a year against whatever the boxes hold.
  */
 export function useYearRange() {

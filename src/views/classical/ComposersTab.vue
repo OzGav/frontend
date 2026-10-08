@@ -1,40 +1,45 @@
 <template>
   <div class="composers-tab">
     <div class="composers-controls">
-      <input
+      <SearchInput
         v-model="search"
-        type="search"
-        :placeholder="searchPlaceholder"
+        clearable
         class="composers-search"
+        :placeholder="searchPlaceholder"
         :aria-label="searchPlaceholder"
       />
     </div>
 
     <ClassicalArtistGrid
-      v-if="gridItems.length"
+      v-if="gridItems.length || loading"
       :items="gridItems"
       :view-mode="viewMode"
       :grid-size="gridSize"
       :min-card-width="280"
+      :loading="loading"
     />
-    <p v-else-if="composers.length" class="text-muted-foreground">
-      {{ $t("classical_no_composers_match") }}
-    </p>
-    <p v-else class="text-muted-foreground">
-      {{ $t("classical_no_composers") }}
-    </p>
+    <ClassicalEmpty v-else :filtered="composers.length > 0" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
 import type { ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
 import ClassicalArtistGrid, {
   type ClassicalArtistGridItem,
 } from "@/views/classical/components/ClassicalArtistGrid.vue";
-import { cardImage, squareImage } from "@/views/classical/images";
-import { useOwnArtistFavorites } from "@/views/classical/favorites";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import {
+  cardImage,
+  LIST_IMAGE_SIZE,
+  SQUARE_IMAGE_SIZE,
+  squareImage,
+  WIDE_IMAGE_SIZE,
+} from "@/views/classical/images";
+import { workCountLabel } from "@/views/classical/labels";
+import { useOwnFavorites } from "@/views/classical/favorites";
 import { useClassicalListing } from "@/views/classical/listing";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -45,11 +50,11 @@ const { t } = useI18n();
 
 const composers = ref<ClassicalComposer[]>([]);
 
-useOwnArtistFavorites(() => composers.value.map((row) => row.artist));
+useOwnFavorites(() => composers.value.map((row) => row.artist));
 
 const search = ref("");
 
-const { sortBy, viewMode, favoritesOnly, gridSize, reload } =
+const { sortBy, viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: "composers",
     sorts: [
@@ -71,39 +76,50 @@ onMounted(reload);
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
-const filteredComposers = computed(() => {
-  const q = normalizeForFilter(search.value.trim());
-  const filtered = composers.value.filter(
-    (c) =>
-      (!favoritesOnly.value || c.artist.favorite === true) &&
-      (!q || normalizeForFilter(c.artist.name).includes(q)),
-  );
-  const sortName = (c: ClassicalComposer) =>
-    c.artist.sort_name || c.artist.name;
-  return filtered.sort((a, b) => {
-    if (sortBy.value === "works") {
-      const byCount = b.work_count - a.work_count;
-      if (byCount !== 0) return byCount;
-      return collator.compare(sortName(a), sortName(b));
-    }
-    if (sortBy.value === "sort_name") {
-      return collator.compare(sortName(a), sortName(b));
-    }
-    return collator.compare(a.artist.name, b.artist.name);
-  });
-});
-
-const gridItems = computed<ClassicalArtistGridItem[]>(() =>
-  filteredComposers.value.map((c) => ({
-    id: c.artist.item_id,
-    artist: c.artist,
-    name: c.artist.name,
-    link: `/classical/composers/${c.artist.item_id}`,
-    wideImage: cardImage(c),
-    squareImage: squareImage(c),
-    lines: [`${t("works")}: ${c.work_count}`],
+// Built once per load, so filtering and redrawing reuse the folded name and
+// image urls.
+const rows = computed(() =>
+  composers.value.map((c) => ({
+    composer: c,
+    haystack: normalizeForFilter(c.artist.name),
+    item: {
+      id: c.artist.item_id,
+      artist: c.artist,
+      name: c.artist.name,
+      link: `/classical/composers/${c.artist.item_id}`,
+      wideImage: cardImage(c, WIDE_IMAGE_SIZE),
+      squareImage: squareImage(c, SQUARE_IMAGE_SIZE),
+      listImage: squareImage(c, LIST_IMAGE_SIZE),
+      lines: [workCountLabel(c.work_count)],
+    } satisfies ClassicalArtistGridItem,
   })),
 );
+
+const gridItems = computed<ClassicalArtistGridItem[]>(() => {
+  const q = normalizeForFilter(search.value.trim());
+  const sortName = (c: ClassicalComposer) =>
+    c.artist.sort_name || c.artist.name;
+  return rows.value
+    .filter(
+      (r) =>
+        (!favoritesOnly.value || r.composer.artist.favorite === true) &&
+        (!q || r.haystack.includes(q)),
+    )
+    .sort((ra, rb) => {
+      const a = ra.composer;
+      const b = rb.composer;
+      if (sortBy.value === "works") {
+        const byCount = b.work_count - a.work_count;
+        if (byCount !== 0) return byCount;
+        return collator.compare(sortName(a), sortName(b));
+      }
+      if (sortBy.value === "sort_name") {
+        return collator.compare(sortName(a), sortName(b));
+      }
+      return collator.compare(a.artist.name, b.artist.name);
+    })
+    .map((r) => r.item);
+});
 </script>
 
 <style scoped>
@@ -123,11 +139,5 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() =>
 .composers-search {
   flex: 1;
   min-width: 200px;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #444);
-  background: var(--card, transparent);
-  color: inherit;
-  font: inherit;
 }
 </style>

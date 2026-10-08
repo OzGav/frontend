@@ -1,87 +1,70 @@
 <template>
-  <section v-if="artistItem">
-    <ClassicalHero :item="artistItem" />
+  <section>
+    <ClassicalHero :item="artistItem" show-favorite />
     <DetailTextRow
-      v-if="artistItem.metadata.description"
+      v-if="artistItem?.metadata.description"
       :text="artistItem.metadata.description"
       :dialog-title="artistItem.name"
       markdown
     />
-    <Toolbar
+    <ClassicalSection
       :title="$t('works')"
-      :count="filteredWorks.length"
-      color="transparent"
+      :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
       <template v-if="works.length" #append>
         <WorksFilterInput v-model="worksFilter" />
       </template>
-    </Toolbar>
-    <v-divider />
-
-    <ul v-if="filteredWorks.length" class="composer-works-list">
-      <li
-        v-for="w in filteredWorks"
-        :key="w.item_id"
-        class="composer-work-row classical-play-row"
-      >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${w.name}`"
-          @play="playFirstRecording(w.item_id)"
-        />
-        <span class="composer-work-text">
-          <router-link
-            :to="`/classical/works/${w.item_id}`"
-            class="composer-work-link"
-          >
-            {{ w.name }}
-          </router-link>
-          <span v-if="w.catalog_number" class="meta"
-            >· {{ w.catalog_number }}</span
-          >
-          <span v-if="w.work_type" class="meta">· {{ w.work_type }}</span>
-          <span class="meta">
-            ·
-            {{ w.recording_count }}
-            {{
-              w.recording_count === 1
-                ? $t("classical_recording")
-                : $t("classical_recordings_lower")
-            }}
+      <div v-if="loading">
+        <ListViewSkeleton v-for="n in 4" :key="n" />
+      </div>
+      <ul v-else-if="filteredWorks.length" class="composer-works-list">
+        <li
+          v-for="w in filteredWorks"
+          :key="w.item_id"
+          class="composer-work-row classical-play-row"
+          @click="navigateOnRowClick($event, router, workLink(w.item_id))"
+        >
+          <RowPlayButton
+            side="start"
+            :label="`${$t('play')} ${w.name}`"
+            @play="(e: Event) => playFirstRecording(w.item_id, e)"
+          />
+          <span class="composer-work-text">
+            <router-link :to="workLink(w.item_id)" class="composer-work-link">
+              {{ w.name }}
+            </router-link>
+            <span v-if="w.catalog_number" class="meta"
+              >· {{ w.catalog_number }}</span
+            >
+            <span v-if="w.work_type" class="meta">
+              · {{ workTypeLabel(w.work_type) }}
+            </span>
+            <span class="meta"
+              >· {{ recordingCountLabel(w.recording_count) }}</span
+            >
           </span>
-        </span>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${w.name}`"
-          @play="playFirstRecording(w.item_id)"
-        />
-      </li>
-    </ul>
-    <p v-else-if="works.length" class="composer-works-empty">
-      {{ $t("classical_no_works_match") }}
-    </p>
-    <p v-else class="composer-works-empty">
-      {{ $t("classical_no_works_for_composer") }}
-    </p>
+          <RowPlayButton
+            side="end"
+            :label="`${$t('play')} ${w.name}`"
+            @play="(e: Event) => playFirstRecording(w.item_id, e)"
+          />
+        </li>
+      </ul>
+      <ClassicalEmpty v-else :filtered="works.length > 0" />
+    </ClassicalSection>
 
     <OtherTracksSection
+      v-if="!loading"
       :tracks="otherTracks"
       @play-track="onPlayOtherTrack"
       @menu-track="onMenuOtherTrack"
     />
   </section>
-  <section v-else-if="!loading" class="composer-not-found">
-    <p>{{ $t("classical_composer_not_found") }}</p>
-    <router-link to="/classical/composers">
-      {{ $t("classical_back_to_composers") }}
-    </router-link>
-  </section>
 </template>
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import Toolbar from "@/components/Toolbar.vue";
-import api from "@/plugins/api";
+import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
 import {
   getClassicalArtist,
@@ -89,13 +72,23 @@ import {
   getOtherTracks,
 } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
-import { useArtistPageMenu } from "@/views/classical/listing";
+import {
+  navigateOnRowClick,
+  useArtistPageMenu,
+} from "@/views/classical/listing";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
+import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
-import { playFirstRecording } from "@/views/classical/playback";
+import {
+  recordingCountLabel,
+  workCountLabel,
+  workTypeLabel,
+} from "@/views/classical/labels";
+import { playFirstRecording, playTracks } from "@/views/classical/playback";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -130,14 +123,21 @@ const filteredWorks = computed(() => {
   return q ? works.value.filter((w) => w.haystack.includes(q)) : works.value;
 });
 
+const workLink = (workId: string) => `/classical/works/${workId}`;
+
 const load = async (id: string) => {
+  // the previous composer must not stay actionable under the new route
+  artistItem.value = undefined;
+  works.value = [];
+  otherTracks.value = [];
   loading.value = true;
   worksFilter.value = "";
   try {
     const [artist, list, tracks] = await Promise.all([
       getClassicalArtist(id),
       getComposerWorks(id),
-      getOtherTracks(id, true),
+      // without them the page still shows, minus its Other tracks
+      getOtherTracks(id, true).catch(() => []),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
@@ -164,9 +164,8 @@ const load = async (id: string) => {
     otherTracks.value = tracks;
     artistItem.value = artist;
   } catch {
-    if (id !== props.id) return;
-    // an unknown id leaves the page on its not-found message
-    artistItem.value = undefined;
+    // an unknown id leaves the page on its placeholder, as the artist page does
+    return;
   }
   loading.value = false;
 };
@@ -177,8 +176,8 @@ watch(
   { immediate: true },
 );
 
-const onPlayOtherTrack = (t: Track) => {
-  api.playMedia(t.uri);
+const onPlayOtherTrack = (t: Track, evt: Event) => {
+  playTracks([t], evt);
 };
 
 const onMenuOtherTrack = (t: Track, evt: Event) => {
@@ -190,7 +189,7 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 .composer-works-list {
   list-style: none;
   margin: 0;
-  padding: 0 1rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
@@ -200,6 +199,7 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   padding: 0.5rem 0 0.5rem 7px;
   margin-left: -7px;
   border-radius: 4px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -232,10 +232,5 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 .meta {
   color: var(--muted-foreground, #888);
   font-size: 0.875rem;
-}
-
-.composer-works-empty,
-.composer-not-found {
-  padding: 1rem;
 }
 </style>

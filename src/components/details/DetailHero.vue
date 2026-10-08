@@ -118,7 +118,8 @@ export interface Props {
   blurBackdrop?: boolean;
   // a light blur for a real picture, so the artwork and text in front stand out
   softenBackdrop?: boolean;
-  // leaves out the overflow menu, for items the server cannot act on
+  // leaves out the overflow menu, for items the server cannot act on or pages
+  // that show the item's menu elsewhere
   hideMenu?: boolean;
   height?: number;
   phoneHeight?: number;

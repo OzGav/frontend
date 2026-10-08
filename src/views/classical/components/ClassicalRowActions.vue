@@ -1,8 +1,9 @@
 <template>
-  <!-- Source / favourite / menu affordances for a list row, matching
+  <!-- Now playing / source / favourite / menu affordances for a list row, matching
        the existing ListviewItem layout. Click handlers stop propagation so
        they don't trigger the row's primary action. -->
   <div class="row-actions">
+    <NowPlayingBadge v-if="playing" :show-badge="getBreakpointValue('bp7')" />
     <span v-if="duration && !$vuetify.display.mobile" class="track-duration">
       {{ formatDuration(duration) }}
     </span>
@@ -19,7 +20,7 @@
       <FavouriteButton v-if="favoriteItem" :item="favoriteItem" />
       <!-- a row of several tracks gets the same heart, liking or clearing them all -->
       <Button
-        v-else
+        v-else-if="canEditLibrary && favorite !== undefined"
         type="button"
         variant="ghost-icon"
         size="icon-xs"
@@ -35,7 +36,7 @@
     <MAButton
       variant="icon"
       icon="mdi-dots-vertical"
-      :aria-label="$t('more_options')"
+      :aria-label="name ? `${$t('more_options')}: ${name}` : $t('more_options')"
       @click.stop.prevent="(e: Event) => $emit('menu', e)"
     />
   </div>
@@ -44,34 +45,53 @@
 <script setup lang="ts">
 import MAButton from "@/components/Button.vue";
 import FavouriteButton from "@/components/FavoriteButton.vue";
+import NowPlayingBadge from "@/components/NowPlayingBadge.vue";
 import ProviderIcon from "@/components/ProviderIcon.vue";
 import { Button } from "@/components/ui/button";
 import type { FavoritableItem } from "@/helpers/favorites";
 import { formatDuration } from "@/helpers/utils";
 import { getListItemProviderIconDomain } from "@/plugins/api/helpers";
-import type { ItemMapping, MediaItemType } from "@/plugins/api/interfaces";
+import {
+  Scope,
+  type ItemMapping,
+  type MediaItemType,
+} from "@/plugins/api/interfaces";
+import { authManager } from "@/plugins/auth";
 import { getBreakpointValue } from "@/plugins/breakpoint";
 import { Heart } from "@lucide/vue";
+import { computed } from "vue";
 
 defineOptions({ name: "ClassicalRowActions" });
 
 withDefaults(
   defineProps<{
+    // the row's title, which names its menu button for screen readers
+    name?: string;
+    // the row's track is playing, marked as on the standard list rows
+    playing?: boolean;
     // seconds, shown before the source icon as on the standard list rows
     duration?: number;
     // the item whose source icon shows, as on the standard list rows
     sourceItem?: MediaItemType | ItemMapping;
     // a single track, which gets the standard heart with its like menu
     favoriteItem?: FavoritableItem;
-    // the liked state of a row standing for several tracks
+    // the liked state of a row standing for several tracks, left out when the
+    // row has no tracks to like
     favorite?: boolean;
   }>(),
   {
+    name: undefined,
+    playing: false,
     duration: undefined,
     sourceItem: undefined,
     favoriteItem: undefined,
-    favorite: false,
+    favorite: undefined,
   },
+);
+
+// as the standard heart, only for those who may change the library
+const canEditLibrary = computed(() =>
+  authManager.hasScope(Scope.LIBRARY_WRITE),
 );
 
 defineEmits<{

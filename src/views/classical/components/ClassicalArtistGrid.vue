@@ -37,9 +37,11 @@
               class="artist-thumb-placeholder"
               :style="{ background: bannerBackground }"
             >
-              <span v-if="viewMode !== 'list'" class="artist-initials">
-                {{ itemInitials(item.name) }}
-              </span>
+              <component
+                :is="placeholderIcon"
+                class="artist-placeholder-icon"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <div class="artist-meta">
@@ -80,10 +82,7 @@
 
 <script setup lang="ts">
 import MAButton from "@/components/Button.vue";
-import {
-  bannerBackground,
-  itemInitials,
-} from "@/components/discover/editorialArtwork";
+import { bannerBackground } from "@/components/discover/editorialArtwork";
 import FavouriteButton from "@/components/FavoriteButton.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import PanelViewSkeleton from "@/components/skeletons/PanelViewSkeleton.vue";
@@ -99,7 +98,7 @@ import {
 } from "@/views/classical/listing";
 import { openArtistMenu } from "@/views/classical/menu";
 import { useElementSize } from "@vueuse/core";
-import { computed, ref } from "vue";
+import { computed, ref, type Component } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalArtistGrid" });
@@ -129,6 +128,8 @@ const props = withDefaults(
     minCardWidth: number;
     // shows placeholder cards until the first items arrive
     loading?: boolean;
+    // drawn on the cards of artists without a picture
+    placeholderIcon: Component;
   }>(),
   { gridSize: GRID_SIZE_DEFAULT, loading: false },
 );
@@ -220,7 +221,6 @@ const GRID_GAP = 8;
 
 .artist-thumb {
   position: relative;
-  container-type: inline-size;
   display: block;
   /* fanart.tv background art proportions */
   aspect-ratio: 16 / 9;
@@ -245,21 +245,19 @@ const GRID_GAP = 8;
 .artist-thumb-placeholder {
   width: 100%;
   height: 100%;
+  /* the standard banner artwork, kept quiet in grey */
+  filter: grayscale(1);
 }
 
-/* the initials of the standard cards' placeholder */
-.artist-initials {
+/* sized from the picture box, so it scales with the card */
+.artist-placeholder-icon {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 34cqh;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  user-select: none;
+  margin: auto;
+  height: 34%;
+  width: auto;
+  aspect-ratio: 1;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .artist-meta {

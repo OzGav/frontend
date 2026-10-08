@@ -6,9 +6,12 @@
     :backdrop="backdrop"
     :height="440"
     :phone-height="340"
-    hide-menu
+    :hide-menu="!artist"
+    :editable-rows="false"
+    :leading-menu-items="leadingMenuItems"
   >
     <template #toolbar-append>
+      <ClassicalSectionLinks :current="section" />
       <DetailHeroFavorite v-if="favoriteItem" :item="favoriteItem" />
     </template>
 
@@ -35,18 +38,44 @@ import DetailHero from "@/components/details/DetailHero.vue";
 import DetailHeroFavorite from "@/components/details/DetailHeroFavorite.vue";
 import DetailHeroProviders from "@/components/details/DetailHeroProviders.vue";
 import { canHoldFavorite } from "@/helpers/favorites";
+import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { getImageThumbForItem } from "@/helpers/utils";
-import { ImageType, type Artist, type Work } from "@/plugins/api/interfaces";
+import {
+  ImageType,
+  MediaType,
+  type Artist,
+  type Work,
+} from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import { $t } from "@/plugins/i18n";
+import ClassicalSectionLinks from "@/views/classical/components/ClassicalSectionLinks.vue";
+import { artistShowInfoEntry } from "@/views/classical/menu";
+import type { ClassicalTab } from "@/views/classical/tabs";
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 
 export interface Props {
   item?: Artist | Work;
   // the banner heart, as on the artist page; a work cannot be liked
   showFavorite?: boolean;
+  // the Classical section the page belongs to, highlighted in the section links
+  section?: ClassicalTab;
 }
 const props = defineProps<Props>();
+
+const router = useRouter();
+
+// A composer or performer gets the artist page menu, led by Show info; a work
+// has none.
+const artist = computed(() =>
+  props.item?.media_type === MediaType.ARTIST
+    ? (props.item as Artist)
+    : undefined,
+);
+
+const leadingMenuItems = computed<ContextMenuItem[]>(() =>
+  artist.value ? [artistShowInfoEntry(artist.value, router)] : [],
+);
 
 const isPhone = computed(() => isPhoneSizedScreen());
 

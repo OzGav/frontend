@@ -1,5 +1,5 @@
 <template>
-  <!-- Source / favourite / play / menu affordances for a list row, matching
+  <!-- Source / favourite / menu affordances for a list row, matching
        the existing ListviewItem layout. Click handlers stop propagation so
        they don't trigger the row's primary action. -->
   <div class="row-actions">
@@ -32,16 +32,6 @@
         <Heart class="size-5.5" :fill="favorite ? 'currentColor' : 'none'" />
       </Button>
     </div>
-    <v-btn
-      v-if="showPlay"
-      icon
-      variant="text"
-      size="x-small"
-      :title="$t('play')"
-      @click.stop.prevent="$emit('play')"
-    >
-      <v-icon icon="mdi-play-circle-outline" size="24" />
-    </v-btn>
     <MAButton
       variant="icon"
       icon="mdi-dots-vertical"
@@ -75,20 +65,17 @@ withDefaults(
     favoriteItem?: FavoritableItem;
     // the liked state of a row standing for several tracks
     favorite?: boolean;
-    showPlay?: boolean;
   }>(),
   {
     duration: undefined,
     sourceItem: undefined,
     favoriteItem: undefined,
     favorite: false,
-    showPlay: true,
   },
 );
 
 defineEmits<{
   (e: "toggle-favorite"): void;
-  (e: "play"): void;
   (e: "menu", evt: Event): void;
 }>();
 </script>

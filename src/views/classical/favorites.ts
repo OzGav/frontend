@@ -5,7 +5,7 @@ import {
   subscribeOwnFavorites,
 } from "@/helpers/favorites";
 import api from "@/plugins/api";
-import type { Artist, Track } from "@/plugins/api/interfaces";
+import type { Track } from "@/plugins/api/interfaces";
 import { onBeforeUnmount } from "vue";
 
 /** Whether every track is liked; an empty list never is. */
@@ -37,13 +37,15 @@ export async function setTracksLiked(
 }
 
 /**
- * Keep the like state of the given artists in step with the signed-in user's
+ * Keep the like state of the given items in step with the signed-in user's
  * own changes, wherever they make them, while the calling component lives.
  */
-export function useOwnArtistFavorites(artists: () => Artist[]): void {
+export function useOwnFavorites(
+  items: () => Array<{ uri: string; favorite?: boolean | null }>,
+): void {
   const unsubscribe = subscribeOwnFavorites((update) => {
-    for (const artist of artists())
-      if (artist.uri === update.uri) artist.favorite = update.favorite;
+    for (const item of items())
+      if (item.uri === update.uri) item.favorite = update.favorite;
   });
   onBeforeUnmount(unsubscribe);
 }

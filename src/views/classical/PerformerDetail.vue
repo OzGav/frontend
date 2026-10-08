@@ -1,100 +1,99 @@
 <template>
-  <section v-if="artistItem">
-    <ClassicalHero :item="artistItem" />
+  <section>
+    <ClassicalHero :item="artistItem" show-favorite />
     <DetailTextRow
-      v-if="artistItem.metadata.description"
+      v-if="artistItem?.metadata.description"
       :text="artistItem.metadata.description"
       :dialog-title="artistItem.name"
       markdown
     />
-    <Toolbar
+    <ClassicalSection
       :title="$t('works_performed')"
-      :count="filteredWorks.length"
-      color="transparent"
+      :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
       <template v-if="works.length" #append>
         <WorksFilterInput v-model="worksFilter" />
       </template>
-    </Toolbar>
-    <v-divider />
-
-    <ul v-if="filteredWorks.length" class="performer-works-list">
-      <li
-        v-for="w in filteredWorks"
-        :key="w.work.item_id"
-        class="performer-work-row classical-play-row"
-        @contextmenu.prevent="onMenuWork(w, $event)"
-      >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${w.work.name}`"
-          @play="onPlayWork(w.work.item_id)"
-        />
-        <div class="performer-work-link">
-          <router-link
-            v-if="w.work.composers[0]"
-            :to="`/classical/composers/${w.work.composers[0].item_id}`"
-            class="performer-work-composer performer-work-composer-link"
-          >
-            {{ w.work.composers[0].name }}
-          </router-link>
-          <router-link
-            :to="workLink(w.work.item_id)"
-            class="performer-work-title"
-          >
-            {{ w.work.name }}
-            <span v-if="w.work.catalog_numbers[0]" class="performer-work-meta">
-              [{{ w.work.catalog_numbers[0] }}]
-            </span>
-          </router-link>
-        </div>
-        <span class="meta-recordings">
-          {{ w.recording_count }}
-          {{
-            w.recording_count === 1
-              ? $t("classical_recording")
-              : $t("classical_recordings_lower")
-          }}
-        </span>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${w.work.name}`"
-          @play="onPlayWork(w.work.item_id)"
-        />
-        <ClassicalRowActions
-          :source-item="workTracks(w.work.item_id)[0]"
-          :favorite="allLiked(workTracks(w.work.item_id))"
-          @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
-          @menu="(e: Event) => onMenuWork(w, e)"
-        />
-      </li>
-    </ul>
-    <p v-else-if="works.length" class="performer-works-empty">
-      {{ $t("classical_no_works_match") }}
-    </p>
-    <p v-else class="performer-works-empty">
-      {{ $t("classical_no_works_for_performer") }}
-    </p>
+      <div v-if="loading">
+        <ListViewSkeleton v-for="n in 4" :key="n" />
+      </div>
+      <ul v-else-if="filteredWorks.length" class="performer-works-list">
+        <li
+          v-for="w in filteredWorks"
+          :key="w.work.item_id"
+          v-hold="(e: TouchEvent) => onHold(e, w)"
+          class="performer-work-row classical-play-row"
+          @click.capture="swallowClickAfterHold"
+          @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
+          @contextmenu.prevent="onMenuWork(w, $event)"
+          @touchstart.passive="onTouchStart"
+        >
+          <RowPlayButton
+            side="start"
+            :label="`${$t('play')} ${w.work.name}`"
+            :disabled="!tracksByWork[w.work.item_id]?.length"
+            @play="(e: Event) => onPlayWork(w.work.item_id, e)"
+          />
+          <div class="performer-work-link">
+            <router-link
+              v-if="w.work.composers[0]"
+              :to="`/classical/composers/${w.work.composers[0].item_id}`"
+              class="performer-work-composer performer-work-composer-link"
+            >
+              {{ w.work.composers[0].name }}
+            </router-link>
+            <router-link
+              :to="workLink(w.work.item_id)"
+              class="performer-work-title"
+            >
+              {{ w.work.name }}
+              <span
+                v-if="w.work.catalog_numbers[0]"
+                class="performer-work-meta"
+              >
+                [{{ w.work.catalog_numbers[0] }}]
+              </span>
+            </router-link>
+          </div>
+          <span class="meta-recordings">
+            {{ recordingCountLabel(w.recording_count) }}
+          </span>
+          <RowPlayButton
+            side="end"
+            :label="`${$t('play')} ${w.work.name}`"
+            :disabled="!tracksByWork[w.work.item_id]?.length"
+            @play="(e: Event) => onPlayWork(w.work.item_id, e)"
+          />
+          <ClassicalRowActions
+            :name="w.work.name"
+            :source-item="tracksByWork[w.work.item_id]?.[0]"
+            :favorite="
+              tracksByWork[w.work.item_id]?.length
+                ? allLiked(tracksByWork[w.work.item_id])
+                : undefined
+            "
+            @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
+            @menu="(e: Event) => onMenuWork(w, e)"
+          />
+        </li>
+      </ul>
+      <ClassicalEmpty v-else :filtered="works.length > 0" />
+    </ClassicalSection>
 
     <OtherTracksSection
+      v-if="!loading"
       :tracks="otherTracks"
       @play-track="onPlayOtherTrack"
       @menu-track="onMenuOtherTrack"
     />
   </section>
-  <section v-else-if="!loading" class="performer-not-found">
-    <p>{{ $t("classical_performer_not_found") }}</p>
-    <router-link to="/classical/performers">
-      {{ $t("classical_back_to_performers") }}
-    </router-link>
-  </section>
 </template>
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import Toolbar from "@/components/Toolbar.vue";
+import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import { normalizeForFilter } from "@/helpers/utils";
-import api from "@/plugins/api";
 import type {
   Artist,
   ClassicalWorkEntry,
@@ -104,16 +103,27 @@ import type {
 import {
   getClassicalArtist,
   getOtherTracks,
+  getPerformerRecordings,
   getPerformerWorks,
-  getWorkRecordings,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import { useArtistPageMenu } from "@/views/classical/listing";
+import {
+  navigateOnRowClick,
+  useArtistPageMenu,
+} from "@/views/classical/listing";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
+import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
-import { allLiked, setTracksLiked } from "@/views/classical/favorites";
+import {
+  allLiked,
+  setTracksLiked,
+  useOwnFavorites,
+} from "@/views/classical/favorites";
+import { recordingCountLabel, workCountLabel } from "@/views/classical/labels";
+import { playTracks } from "@/views/classical/playback";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -130,10 +140,24 @@ useArtistPageMenu(artistItem, router);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");
-// This performer's recordings of each work, by work id.
-const recordingsByWork = ref<Record<string, Recording[]>>({});
+const recordings = ref<Recording[]>([]);
 const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
+
+useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
+
+// This performer's recordings of each work, and all their tracks, by work id.
+const recordingsByWork = computed(() => {
+  const byWork: Record<string, Recording[]> = {};
+  for (const r of recordings.value) (byWork[r.work.item_id] ??= []).push(r);
+  return byWork;
+});
+const tracksByWork = computed(() => {
+  const byWork: Record<string, Track[]> = {};
+  for (const [workId, list] of Object.entries(recordingsByWork.value))
+    byWork[workId] = list.flatMap((r) => r.tracks);
+  return byWork;
+});
 
 // Title, catalog numbers and composer of each work, folded for the filter.
 const searchableWorks = computed(() =>
@@ -164,68 +188,64 @@ const workLink = (workId: string) => ({
   query: { filterByArtistId: props.id },
 });
 
-const workTracks = (workId: string): Track[] =>
-  (recordingsByWork.value[workId] ?? []).flatMap((r) => r.tracks);
-
 const toggleWorkFavorite = (workId: string) => {
-  const tracks = workTracks(workId);
+  const tracks = tracksByWork.value[workId] ?? [];
   setTracksLiked(tracks, !allLiked(tracks));
 };
 
-const onPlayWork = (workId: string) => {
-  const tracks = workTracks(workId);
-  if (tracks.length) api.playMedia(tracks.map((t) => t.uri));
+const onPlayWork = (workId: string, evt: Event) => {
+  playTracks(tracksByWork.value[workId] ?? [], evt);
 };
 
 // A "Works performed" row really points at this performer's recordings of
 // the work, so reuse the recording menu rather than rolling a parallel work
 // menu. It covers all of them, like the row's play and heart.
 const onMenuWork = (w: ClassicalWorkEntry, evt: Event) => {
-  const recordings = recordingsByWork.value[w.work.item_id] ?? [];
-  if (!recordings.length) return;
+  const workRecordings = recordingsByWork.value[w.work.item_id] ?? [];
+  if (!workRecordings.length) return;
   openRecordingMenu(
-    recordings,
+    workRecordings,
     { router, work: w.work, composer: w.work.composers[0] },
     evt,
   );
 };
 
+const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
+  (evt: Event, w: ClassicalWorkEntry) => onMenuWork(w, evt),
+);
+
 const load = async (id: string) => {
+  // the previous performer must not stay actionable under the new route
+  artistItem.value = undefined;
+  works.value = [];
+  recordings.value = [];
+  otherTracks.value = [];
   loading.value = true;
   worksFilter.value = "";
   try {
-    const [artist, entries, tracks] = await Promise.all([
+    const [artist, entries, performed, tracks] = await Promise.all([
       getClassicalArtist(id),
       getPerformerWorks(id),
-      getOtherTracks(id, false),
+      // without them the rows show no play, heart or menu
+      getPerformerRecordings(id).catch(() => []),
+      // without them the page still shows, minus its Other tracks
+      getOtherTracks(id, false).catch(() => []),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
-    recordingsByWork.value = {};
     works.value = entries;
+    recordings.value = performed;
     otherTracks.value = tracks;
     artistItem.value = artist;
-    // Row hearts and play fill in as each work's recordings arrive.
-    for (const e of entries) loadWorkRecordings(id, e.work.item_id);
   } catch {
-    if (id !== props.id) return;
-    // an unknown id leaves the page on its not-found message
-    artistItem.value = undefined;
+    // an unknown id leaves the page on its placeholder, as the artist page does
+    return;
   }
   loading.value = false;
 };
 
-const loadWorkRecordings = async (id: string, workId: string) => {
-  try {
-    const recordings = await getWorkRecordings(workId, id);
-    if (id === props.id) recordingsByWork.value[workId] = recordings;
-  } catch {
-    // the row's heart and play stay without recordings to act on
-  }
-};
-
-const onPlayOtherTrack = (t: Track) => {
-  api.playMedia(t.uri);
+const onPlayOtherTrack = (t: Track, evt: Event) => {
+  playTracks([t], evt);
 };
 
 const onMenuOtherTrack = (t: Track, evt: Event) => {
@@ -243,12 +263,13 @@ watch(
 .performer-works-list {
   list-style: none;
   margin: 0;
-  padding: 0 1rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
 
 .performer-work-row {
+  cursor: pointer;
   /* like the standard rows, the highlight starts 7px before the play slot */
   padding: 0.5rem 0 0.5rem 7px;
   margin-left: -7px;
@@ -299,7 +320,6 @@ watch(
   font-size: 0.95rem;
 }
 
-.meta,
 .meta-recordings,
 .performer-work-meta {
   color: var(--muted-foreground, #888);
@@ -313,10 +333,5 @@ watch(
 .performer-work-meta {
   font-variant-numeric: tabular-nums;
   margin-left: 0.4rem;
-}
-
-.performer-works-empty,
-.performer-not-found {
-  padding: 1rem;
 }
 </style>

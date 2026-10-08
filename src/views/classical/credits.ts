@@ -3,8 +3,8 @@ import { ArtistRole, type Credit } from "@/plugins/api/interfaces";
 /** Performing roles, in the order credits are ranked for display. */
 export const PERFORMER_ROLES: readonly ArtistRole[] = [
   ArtistRole.CONDUCTOR,
-  ArtistRole.ENSEMBLE,
   ArtistRole.ORCHESTRA,
+  ArtistRole.ENSEMBLE,
   ArtistRole.CHOIR,
   ArtistRole.SOLOIST,
   ArtistRole.PERFORMER,

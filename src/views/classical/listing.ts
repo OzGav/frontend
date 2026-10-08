@@ -2,7 +2,7 @@ import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { useUserPreferences } from "@/composables/userPreferences";
 import { keepOwnFavorite } from "@/helpers/favorites";
-import { GRID_SIZE_DEFAULT, normalizeGridSize } from "@/helpers/grid_size";
+import { normalizeGridSize } from "@/helpers/grid_size";
 import api from "@/plugins/api";
 import {
   EventType,
@@ -10,7 +10,7 @@ import {
   type EventMessage,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
-import { useOwnArtistFavorites } from "@/views/classical/favorites";
+import { useOwnFavorites } from "@/views/classical/favorites";
 import { classicalArtistMenuItems } from "@/views/classical/menu";
 import {
   ArrowUpDown,
@@ -32,7 +32,7 @@ import {
   type InjectionKey,
   type Ref,
 } from "vue";
-import type { Router } from "vue-router";
+import type { RouteLocationRaw, Router } from "vue-router";
 
 /** The toolbar menu a classical page hands to the Classical view. */
 export interface ClassicalMenu {
@@ -67,7 +67,7 @@ export function useClassicalMenu(
 }
 
 /**
- * Show a composer or performer page's menu in the Classical toolbar: the
+ * Show a composer or performer page's menu in the Classical toolbar, the
  * artist's own page menu, led by Show info. Like changes, refreshes and
  * metadata updates of the artist show on the page as they happen.
  */
@@ -76,7 +76,7 @@ export function useArtistPageMenu(
   router: Router,
 ) {
   const items = ref<ToolBarMenuItem[]>([]);
-  useOwnArtistFavorites(() => (artist.value ? [artist.value] : []));
+  useOwnFavorites(() => (artist.value ? [artist.value] : []));
   const unsubscribe = api.subscribe(
     EventType.MEDIA_ITEM_UPDATED,
     (evt: EventMessage) => {
@@ -93,6 +93,27 @@ export function useArtistPageMenu(
     if (current === artist.value) items.value = menu;
   });
   useClassicalMenu(() => items.value);
+}
+
+/**
+ * Whether a click inside a list row landed on one of the row's own links or
+ * buttons, which handle it themselves.
+ */
+export function isRowControlClick(evt: MouseEvent): boolean {
+  return !!(evt.target as HTMLElement).closest("a, button");
+}
+
+/**
+ * Open a list row's page when the click lands on the row itself, leaving
+ * clicks on its own links and buttons to them.
+ */
+export function navigateOnRowClick(
+  evt: MouseEvent,
+  router: Router,
+  to: RouteLocationRaw,
+) {
+  if (isRowControlClick(evt)) return;
+  router.push(to);
 }
 
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";
@@ -116,7 +137,7 @@ export interface ClassicalListingOptions {
 }
 
 /**
- * State and toolbar menu for a classical browse tab: sort, refresh and,
+ * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode and cover size. The settings
  * are kept per user like those of the other library listings, and the menu
  * shows in the Classical view's toolbar while the tab is open.
@@ -125,12 +146,9 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const { getItemsListingPreferences, setItemsListingPreference } =
     useUserPreferences();
   const prefs = getItemsListingPreferences(PREFS_PATH, options.itemtype).value;
-  const sortKeys = options.sorts.map((s) => s.key);
-
-  const chosenSort = ref(
-    prefs.sortBy && sortKeys.includes(prefs.sortBy)
-      ? prefs.sortBy
-      : sortKeys[0],
+  const { sortBy: chosenSort, setSort } = useClassicalSort(
+    options.itemtype,
+    options.sorts.map((s) => s.key),
   );
   const availableSorts = computed(() =>
     options.sorts.filter((s) => s.available?.() ?? true),
@@ -146,10 +164,11 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   );
   const favoritesOnly = ref(options.views === true && !!prefs.favoriteFilter);
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
-  const loading = ref(false);
+  // the tabs load on mount, so they start out loading
+  const loading = ref(true);
 
   const save = (
-    key: "sortBy" | "viewMode" | "favoriteFilter" | "gridSize",
+    key: "viewMode" | "favoriteFilter" | "gridSize",
     value: string | boolean | number,
   ) => setItemsListingPreference(PREFS_PATH, options.itemtype, key, value);
 
@@ -168,7 +187,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     icon: viewMode.value === "list" ? LayoutList : LayoutGrid,
     overflowAllowed: true,
     subItems: [
-      ...(["fanart", "thumbs", "list"] as const).map((mode) => ({
+      ...(["list", "fanart", "thumbs"] as const).map((mode) => ({
         label: VIEW_MODE_LABELS[mode],
         icon: mode === "list" ? LayoutList : LayoutGrid,
         selected: viewMode.value === mode,
@@ -180,7 +199,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       {
         label: "grid_size",
         hide: viewMode.value === "list",
-        // markRaw: the menu items land in a reactive array; a bare component
+        // markRaw, as the menu items land in a reactive array; a bare component
         // definition there would be needlessly made reactive.
         component: markRaw(GridSizeSlider),
         componentProps: {
@@ -226,10 +245,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       subItems: availableSorts.value.map((s) => ({
         label: s.label,
         selected: sortBy.value === s.key,
-        action: () => {
-          chosenSort.value = s.key;
-          save("sortBy", s.key);
-        },
+        action: () => setSort(s.key),
       })),
     });
     if (options.views) list.push(viewModeItem());
@@ -242,6 +258,22 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   );
 
   return { sortBy, viewMode, favoritesOnly, gridSize, loading, reload };
+}
+
+/**
+ * A sort choice kept per user under the given name, like the other library
+ * listings keep theirs. The first key is the default.
+ */
+export function useClassicalSort(itemtype: string, keys: readonly string[]) {
+  const { getItemsListingPreferences, setItemsListingPreference } =
+    useUserPreferences();
+  const stored = getItemsListingPreferences(PREFS_PATH, itemtype).value.sortBy;
+  const sortBy = ref(stored && keys.includes(stored) ? stored : keys[0]);
+  const setSort = (key: string) => {
+    sortBy.value = key;
+    setItemsListingPreference(PREFS_PATH, itemtype, "sortBy", key);
+  };
+  return { sortBy, setSort };
 }
 
 /**

@@ -180,6 +180,10 @@ const leadPerformers = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding-left: 7px;
+  margin-left: -7px;
+  border-radius: 4px;
 }
 
 .recording-header {
@@ -271,6 +275,10 @@ const leadPerformers = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding-left: 7px;
+  margin-left: -7px;
+  border-radius: 4px;
 }
 
 .movement-play {

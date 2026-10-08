@@ -177,10 +177,6 @@ const sortedTracks = computed(() => {
   white-space: nowrap;
 }
 
-.other-track-album:hover {
-  text-decoration: underline;
-}
-
 .other-track-duration {
   color: var(--muted-foreground, #888);
   font-size: 0.85rem;

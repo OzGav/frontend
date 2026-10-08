@@ -119,7 +119,8 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 0.9rem;
+  /* Sized like YearRangeFilter so the two sit level side by side. */
+  padding: 0.25rem 0.4rem 0.25rem 0.7rem;
   border-radius: 8px;
   background: var(--muted, rgba(255, 255, 255, 0.05));
   border: 1px solid var(--border, #2a2a2a);
@@ -144,6 +145,7 @@ watch(
   border-radius: 6px;
   padding: 0.3rem 0.7rem;
   font: inherit;
+  line-height: normal;
   color: inherit;
   cursor: pointer;
   white-space: nowrap;

@@ -101,23 +101,34 @@ export async function openOtherTrackMenu(
 
 /**
  * The standard artist menu for a composer or performer, without play entries
- * and led by Show info, which opens the artist's normal page. With ownPage it
- * is the menu of the artist's own page, which adds the page-only entries such
- * as Update metadata and Refresh item.
+ * and led by Show info, which opens the artist's normal page.
  */
 export async function classicalArtistMenuItems(
   artist: Artist,
   router: Router,
-  ownPage = false,
 ): Promise<ContextMenuItem[]> {
-  const items = await getContextMenuItems(
-    [artist],
-    ownPage ? artist : undefined,
-  );
+  const items = await getContextMenuItems([artist]);
   const showInfo =
     items.find((i) => i.label === "show_info") ??
     artistShowInfoEntry(artist, router);
   return [showInfo, ...items.filter((i) => i.label !== "show_info")];
+}
+
+/** Show info for a composer or performer, opening the artist's normal page. */
+export function artistShowInfoEntry(
+  artist: Artist,
+  router: Router,
+): ContextMenuItem {
+  return {
+    label: "show_info",
+    labelArgs: [],
+    icon: Info,
+    action: () =>
+      router.push({
+        name: artist.media_type,
+        params: { itemId: artist.item_id, provider: artist.provider },
+      }),
+  };
 }
 
 /** Open the composer or performer menu at the pointer. */
@@ -300,18 +311,4 @@ function rolePriority(role: ArtistRole): number {
 
 function dedupe<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
-}
-
-/** Show info for a composer or performer, opening the artist's normal page. */
-function artistShowInfoEntry(artist: Artist, router: Router): ContextMenuItem {
-  return {
-    label: "show_info",
-    labelArgs: [],
-    icon: Info,
-    action: () =>
-      router.push({
-        name: artist.media_type,
-        params: { itemId: artist.item_id, provider: artist.provider },
-      }),
-  };
 }

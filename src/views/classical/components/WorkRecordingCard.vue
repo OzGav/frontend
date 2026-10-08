@@ -1,9 +1,14 @@
 <template>
   <article class="recording-card" :class="{ expanded }">
     <div
-      class="recording-header-row"
+      class="recording-header-row classical-play-row"
       @contextmenu.prevent="$emit('menu-recording', recording, $event)"
     >
+      <RowPlayButton
+        side="start"
+        :label="$t('play')"
+        @play="$emit('play-recording', recording)"
+      />
       <!-- Not a <button>, as the credited names inside are links. -->
       <div
         role="button"
@@ -30,9 +35,6 @@
             <span v-if="recording.year" class="year">
               ({{ recording.year }})
             </span>
-            <span class="duration-inline">
-              [{{ formatDuration(recording.duration) }}]
-            </span>
           </div>
           <span
             v-if="performers.length && !leadPerformers.length"
@@ -42,11 +44,17 @@
           </span>
         </div>
       </div>
-      <ClassicalRowActions
-        :in-library="true"
-        :favorite="favorite"
-        @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
+      <RowPlayButton
+        side="end"
+        :label="$t('play')"
         @play="$emit('play-recording', recording)"
+      />
+      <ClassicalRowActions
+        :duration="recording.duration"
+        :source-item="recording.tracks[0]"
+        :favorite="favorite"
+        :show-play="false"
+        @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
         @menu="(e: Event) => $emit('menu-recording', recording, e)"
       />
     </div>
@@ -55,11 +63,16 @@
         <li
           v-for="m in recording.tracks"
           :key="m.item_id"
-          class="movement"
+          class="movement classical-play-row"
           @contextmenu.prevent.stop="
             $emit('menu-movement', m, recording, $event)
           "
         >
+          <RowPlayButton
+            side="start"
+            :label="$t('play')"
+            @play="$emit('play-movement', m)"
+          />
           <button
             type="button"
             class="movement-play"
@@ -67,15 +80,17 @@
             @click="$emit('play-movement', m)"
           >
             <span class="movement-title">{{ m.movement_name || m.name }}</span>
-            <span class="duration-inline">
-              [{{ formatDuration(m.duration) }}]
-            </span>
           </button>
-          <ClassicalRowActions
-            :in-library="true"
-            :favorite="m.favorite === true"
-            @toggle-favorite="setTracksLiked([m], m.favorite !== true)"
+          <RowPlayButton
+            side="end"
+            :label="$t('play')"
             @play="$emit('play-movement', m)"
+          />
+          <ClassicalRowActions
+            :duration="m.duration"
+            :source-item="m"
+            :favorite-item="m"
+            :show-play="false"
             @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
           />
         </li>
@@ -95,7 +110,6 @@
 </template>
 
 <script setup lang="ts">
-import { formatDuration } from "@/helpers/utils";
 import {
   ArtistRole,
   type Recording,
@@ -103,6 +117,7 @@ import {
 } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import CreditLinks from "@/views/classical/components/CreditLinks.vue";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { creditedArtists } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { ChevronRight } from "@lucide/vue";
@@ -161,10 +176,6 @@ const leadPerformers = computed(() =>
 </script>
 
 <style scoped>
-.recording-card:not(:last-child) {
-  border-bottom: 1px solid var(--border, #2a2a2a);
-}
-
 .recording-header-row {
   display: flex;
   align-items: center;
@@ -186,8 +197,12 @@ const leadPerformers = computed(() =>
   color: inherit;
 }
 
-.recording-header:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+.recording-header-row:hover {
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .chevron {
@@ -217,13 +232,6 @@ const leadPerformers = computed(() =>
   margin-left: 0.25rem;
 }
 
-.duration-inline {
-  color: var(--muted-foreground, #888);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  margin-left: 0.4rem;
-}
-
 .performer-credits {
   display: block;
   font-weight: 400;
@@ -232,8 +240,19 @@ const leadPerformers = computed(() =>
   margin-top: 0.1rem;
 }
 
+.recording-card {
+  /* the play slot in front of each row, absent on touch screens */
+  --play-offset: calc(32px + 0.4rem);
+}
+
+@media (hover: none) {
+  .recording-card {
+    --play-offset: 0px;
+  }
+}
+
 .recording-body {
-  padding: 0 0 0.8rem 2.5rem;
+  padding: 0 0 0.8rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -260,7 +279,8 @@ const leadPerformers = computed(() =>
   text-align: left;
   background: transparent;
   border: 0;
-  padding: 0.25rem 0;
+  /* movement titles sit indented under the recording's credits */
+  padding: 0.25rem 0 0.25rem 2.5rem;
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -270,7 +290,11 @@ const leadPerformers = computed(() =>
 }
 
 .movement:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .movement-title {
@@ -287,6 +311,7 @@ const leadPerformers = computed(() =>
 }
 
 .source-album {
+  margin-left: calc(var(--play-offset) + 2.5rem);
   font-size: 0.85rem;
   color: var(--muted-foreground, #888);
   display: flex;

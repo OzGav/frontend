@@ -34,13 +34,10 @@
             {{ t.album.name }}
           </router-link>
         </div>
-        <span class="other-track-duration">
-          {{ formatDuration(t.duration) }}
-        </span>
         <ClassicalRowActions
-          :in-library="true"
-          :favorite="t.favorite === true"
-          @toggle-favorite="setTracksLiked([t], t.favorite !== true)"
+          :duration="t.duration"
+          :source-item="t"
+          :favorite-item="t"
           @play="$emit('play-track', t)"
           @menu="(e: Event) => $emit('menu-track', t, e)"
         />
@@ -51,10 +48,8 @@
 
 <script setup lang="ts">
 import Toolbar from "@/components/Toolbar.vue";
-import { formatDuration } from "@/helpers/utils";
 import type { Track } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import { setTracksLiked } from "@/views/classical/favorites";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
@@ -141,15 +136,14 @@ const sortedTracks = computed(() => {
   gap: 0.75rem;
   padding: 0.5rem 0.25rem;
   cursor: pointer;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
-}
-
-.other-track-row:last-child {
-  border-bottom: 0;
 }
 
 .other-track-row:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .other-track-main {
@@ -174,13 +168,6 @@ const sortedTracks = computed(() => {
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.other-track-duration {
-  color: var(--muted-foreground, #888);
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 </style>

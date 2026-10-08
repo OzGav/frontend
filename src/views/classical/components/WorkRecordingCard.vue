@@ -20,6 +20,9 @@
             <span v-if="orchestra" class="orchestra">
               {{ orchestra }}
             </span>
+            <span v-if="leadPerformers" class="performers">
+              {{ leadPerformers }}
+            </span>
             <span v-if="recording.year" class="year">
               ({{ recording.year }})
             </span>
@@ -27,7 +30,10 @@
               [{{ formatDuration(recording.duration) }}]
             </span>
           </div>
-          <span v-if="performerCredits" class="performer-credits">
+          <span
+            v-if="performerCredits && !leadPerformers"
+            class="performer-credits"
+          >
             {{ performerCredits }}
           </span>
         </div>
@@ -128,15 +134,29 @@ const orchestra = computed(() =>
   creditNames(props.recording.credits, [ArtistRole.ORCHESTRA]).join(", "),
 );
 
+const PERFORMING_ROLES = [
+  ArtistRole.ENSEMBLE,
+  ArtistRole.CHOIR,
+  ArtistRole.SOLOIST,
+  ArtistRole.PERFORMER,
+];
+
 // Ensembles, choirs, soloists and other performers, below the header line.
 const performerCredits = computed(() =>
-  creditNames(props.recording.credits, [
-    ArtistRole.ENSEMBLE,
-    ArtistRole.CHOIR,
-    ArtistRole.SOLOIST,
-    ArtistRole.PERFORMER,
-  ]).join(" · "),
+  creditNames(props.recording.credits, PERFORMING_ROLES).join(" · "),
 );
+
+// Without a conductor or orchestra the performers lead the header instead,
+// each with their instrument.
+const leadPerformers = computed(() => {
+  if (conductor.value || orchestra.value) return "";
+  const labels = props.recording.credits
+    .filter((c) => PERFORMING_ROLES.includes(c.role))
+    .map((c) =>
+      c.instrument ? `${c.artist.name} (${c.instrument})` : c.artist.name,
+    );
+  return Array.from(new Set(labels)).join(", ");
+});
 </script>
 
 <style scoped>

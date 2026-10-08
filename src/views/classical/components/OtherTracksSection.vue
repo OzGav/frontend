@@ -1,23 +1,32 @@
 <template>
-  <section v-if="tracks.length" class="other-tracks-section">
-    <Toolbar
-      :title="sectionTitle"
-      :menu-items="menuItems"
-      color="transparent"
-    />
-    <v-divider />
+  <ClassicalSection
+    v-if="tracks.length"
+    :title="$t('classical_other_tracks')"
+    :meta="$t('n_tracks', tracks.length, { named: { count: tracks.length } })"
+  >
+    <template #append>
+      <MAButton
+        variant="icon"
+        icon="mdi-dots-vertical"
+        :aria-label="$t('menu')"
+        @click.stop="(e: Event) => openMenu(menuItems, e)"
+      />
+    </template>
     <ul class="other-tracks-list">
       <li
         v-for="t in sortedTracks"
         :key="t.item_id"
+        v-hold="(e: TouchEvent) => onHold(e, t)"
         class="other-track-row classical-play-row"
-        @click="$emit('play-track', t)"
+        @click.capture="swallowClickAfterHold"
+        @click="onRowClick(t, $event)"
         @contextmenu.prevent="$emit('menu-track', t, $event)"
+        @touchstart.passive="onTouchStart"
       >
         <RowPlayButton
           side="start"
           :label="`${$t('play')} ${t.name}`"
-          @play="$emit('play-track', t)"
+          @play="(e: Event) => $emit('play-track', t, e)"
         />
         <div class="other-track-main">
           <span class="other-track-title">{{ t.name }}</span>
@@ -33,9 +42,11 @@
         <RowPlayButton
           side="end"
           :label="`${$t('play')} ${t.name}`"
-          @play="$emit('play-track', t)"
+          @play="(e: Event) => $emit('play-track', t, e)"
         />
         <ClassicalRowActions
+          :name="t.name"
+          :playing="isTrackPlaying(t)"
           :duration="t.duration"
           :source-item="t"
           :favorite-item="t"
@@ -43,17 +54,27 @@
         />
       </li>
     </ul>
-  </section>
+  </ClassicalSection>
 </template>
 
 <script setup lang="ts">
-import Toolbar, { type ToolBarMenuItem } from "@/components/Toolbar.vue";
+import MAButton from "@/components/Button.vue";
+import {
+  getEventPosition,
+  useHoldToOpenMenu,
+} from "@/composables/useHoldToOpenMenu";
+import type { ContextMenuItem } from "@/helpers/context_menu_item";
+import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import type { Track } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import { useOwnFavorites } from "@/views/classical/favorites";
+import { isRowControlClick, useClassicalSort } from "@/views/classical/listing";
+import { openMenu } from "@/views/classical/menu";
+import { isTrackPlaying } from "@/views/classical/playback";
 import { ArrowUpDown } from "@lucide/vue";
-import { computed, ref } from "vue";
-import { useI18n } from "vue-i18n";
+import { computed } from "vue";
 
 defineOptions({ name: "OtherTracksSection" });
 
@@ -61,40 +82,47 @@ const props = defineProps<{
   tracks: Track[];
 }>();
 
-const { t } = useI18n();
-
-const sectionTitle = computed(
-  () => `${t("classical_other_tracks")} (${props.tracks.length})`,
-);
-
-defineEmits<{
-  (e: "play-track", track: Track): void;
+const emit = defineEmits<{
+  (e: "play-track", track: Track, evt: Event): void;
   (e: "menu-track", track: Track, evt: Event): void;
 }>();
 
-type SortKey = "name" | "year" | "date_added";
-const sortKey = ref<SortKey>("name");
+useOwnFavorites(() => props.tracks);
 
-const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
-  { key: "name", label: "classical_sort_name" },
-  { key: "year", label: "classical_sort_year_newest" },
-  { key: "date_added", label: "classical_sort_date_added" },
-];
+const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
+  (evt: Event, track: Track) => emit("menu-track", track, evt),
+);
 
-// The same sort button the standard listings show in their toolbar.
-const menuItems = computed<ToolBarMenuItem[]>(() => [
+const SORT_OPTIONS = [
+  { key: "name", label: "sort.name" },
+  { key: "year", label: "sort.year_desc" },
+  { key: "date_added", label: "sort.timestamp_added_desc" },
+] as const;
+
+const { sortBy: sortKey, setSort } = useClassicalSort(
+  "other_tracks",
+  SORT_OPTIONS.map((o) => o.key),
+);
+
+// The sort entry the standard listings show in their toolbar menu.
+const menuItems = computed<ContextMenuItem[]>(() => [
   {
     label: "tooltip.sort_options",
     icon: ArrowUpDown,
     subItems: SORT_OPTIONS.map((option) => ({
       label: option.label,
       selected: sortKey.value === option.key,
-      action: () => {
-        sortKey.value = option.key;
-      },
+      action: () => setSort(option.key),
     })),
   },
 ]);
+
+// A click on the row itself does what a click on any track row does.
+const onRowClick = (track: Track, evt: MouseEvent) => {
+  if (isRowControlClick(evt)) return;
+  const { x, y } = getEventPosition(evt);
+  handleMediaItemClick(track, x, y);
+};
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
@@ -120,14 +148,10 @@ const sortedTracks = computed(() => {
 </script>
 
 <style scoped>
-.other-tracks-section {
-  margin-top: 1rem;
-}
-
 .other-tracks-list {
   list-style: none;
   margin: 0;
-  padding: 0 1rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }

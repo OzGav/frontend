@@ -1,13 +1,16 @@
 <template>
   <article class="recording-card" :class="{ expanded }">
     <div
+      v-hold="(e: TouchEvent) => onHold(e)"
       class="recording-header-row classical-play-row"
+      @click.capture="swallowClickAfterHold"
       @contextmenu.prevent="$emit('menu-recording', recording, $event)"
+      @touchstart.passive="onTouchStart"
     >
       <RowPlayButton
         side="start"
-        :label="$t('play')"
-        @play="$emit('play-recording', recording)"
+        :label="`${$t('play')} ${recordingName}`"
+        @play="(e: Event) => $emit('play-recording', recording, e)"
       />
       <!-- Not a <button>, as the credited names inside are links. -->
       <div
@@ -46,10 +49,11 @@
       </div>
       <RowPlayButton
         side="end"
-        :label="$t('play')"
-        @play="$emit('play-recording', recording)"
+        :label="`${$t('play')} ${recordingName}`"
+        @play="(e: Event) => $emit('play-recording', recording, e)"
       />
       <ClassicalRowActions
+        :name="recordingName"
         :duration="recording.duration"
         :source-item="recording.tracks[0]"
         :favorite="favorite"
@@ -62,30 +66,35 @@
         <li
           v-for="m in recording.tracks"
           :key="m.item_id"
+          v-hold="(e: TouchEvent) => onHold(e, m)"
           class="movement classical-play-row"
+          @click.capture="swallowClickAfterHold"
+          @click="onMovementClick(m, $event)"
           @contextmenu.prevent.stop="
             $emit('menu-movement', m, recording, $event)
           "
+          @touchstart.passive="onTouchStart"
         >
           <RowPlayButton
             side="start"
-            :label="$t('play')"
-            @play="$emit('play-movement', m)"
+            :label="`${$t('play')} ${m.movement_name || m.name}`"
+            @play="(e: Event) => $emit('play-movement', m, e)"
           />
           <button
             type="button"
             class="movement-play"
-            :title="$t('play')"
-            @click="$emit('play-movement', m)"
+            @click="(e: MouseEvent) => openMovement(m, e)"
           >
             <span class="movement-title">{{ m.movement_name || m.name }}</span>
           </button>
           <RowPlayButton
             side="end"
-            :label="$t('play')"
-            @play="$emit('play-movement', m)"
+            :label="`${$t('play')} ${m.movement_name || m.name}`"
+            @play="(e: Event) => $emit('play-movement', m, e)"
           />
           <ClassicalRowActions
+            :name="m.movement_name || m.name"
+            :playing="isTrackPlaying(m)"
             :duration="m.duration"
             :source-item="m"
             :favorite-item="m"
@@ -109,6 +118,11 @@
 
 <script setup lang="ts">
 import {
+  getEventPosition,
+  useHoldToOpenMenu,
+} from "@/composables/useHoldToOpenMenu";
+import { handleMediaItemClick } from "@/helpers/media_item_actions";
+import {
   ArtistRole,
   type Recording,
   type Track,
@@ -116,8 +130,10 @@ import {
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import CreditLinks from "@/views/classical/components/CreditLinks.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import { isRowControlClick } from "@/views/classical/listing";
 import { creditedArtists } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
+import { isTrackPlaying } from "@/views/classical/playback";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
 
@@ -127,14 +143,33 @@ const props = defineProps<{
   recording: Recording;
 }>();
 
-defineEmits<{
-  (e: "play-recording", recording: Recording): void;
-  (e: "play-movement", movement: Track): void;
+const emit = defineEmits<{
+  (e: "play-recording", recording: Recording, evt: Event): void;
+  (e: "play-movement", movement: Track, evt: Event): void;
   (e: "menu-recording", recording: Recording, evt: Event): void;
   (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
 }>();
 
 const expanded = ref(false);
+
+// A long press opens the recording's menu, or a movement's when given one.
+const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
+  (evt: Event, movement?: Track) => {
+    if (movement) emit("menu-movement", movement, props.recording, evt);
+    else emit("menu-recording", props.recording, evt);
+  },
+);
+
+// A movement opens or plays the way a click on any track row does.
+const openMovement = (track: Track, evt: MouseEvent) => {
+  const { x, y } = getEventPosition(evt);
+  handleMediaItemClick(track, x, y);
+};
+
+const onMovementClick = (track: Track, evt: MouseEvent) => {
+  if (isRowControlClick(evt)) return;
+  openMovement(track, evt);
+};
 
 const toggle = () => {
   expanded.value = !expanded.value;
@@ -170,6 +205,14 @@ const leadPerformers = computed(() =>
   conductors.value.length || orchestras.value.length
     ? []
     : creditedArtists(props.recording.credits, PERFORMING_ROLES, true),
+);
+
+// The names leading the header, which name its buttons for screen readers.
+const recordingName = computed(
+  () =>
+    [...conductors.value, ...orchestras.value, ...leadPerformers.value]
+      .map((a) => a.name)
+      .join(", ") || props.recording.work.name,
 );
 </script>
 
@@ -277,6 +320,7 @@ const leadPerformers = computed(() =>
   padding-left: 7px;
   margin-left: -7px;
   border-radius: 4px;
+  cursor: pointer;
 }
 
 .movement-play {

@@ -4,24 +4,28 @@
       class="recording-header-row"
       @contextmenu.prevent="$emit('menu-recording', recording, $event)"
     >
-      <button
-        type="button"
+      <!-- Not a <button>, as the credited names inside are links. -->
+      <div
+        role="button"
+        tabindex="0"
         class="recording-header"
         :aria-expanded="expanded"
         @click="toggle"
+        @keydown.enter.self.prevent="toggle"
+        @keydown.space.self.prevent="toggle"
       >
         <ChevronRight class="chevron" :class="{ rotated: expanded }" />
         <div class="recording-title">
           <div class="recording-credits">
-            <span v-if="conductor" class="conductor">
-              {{ conductor }}
+            <span v-if="conductors.length" class="conductor">
+              <CreditLinks :artists="conductors" separator=", " />
             </span>
-            <span v-if="conductor && orchestra"> / </span>
-            <span v-if="orchestra" class="orchestra">
-              {{ orchestra }}
+            <span v-if="conductors.length && orchestras.length"> / </span>
+            <span v-if="orchestras.length" class="orchestra">
+              <CreditLinks :artists="orchestras" separator=", " />
             </span>
-            <span v-if="leadPerformers" class="performers">
-              {{ leadPerformers }}
+            <span v-if="leadPerformers.length" class="performers">
+              <CreditLinks :artists="leadPerformers" separator=", " />
             </span>
             <span v-if="recording.year" class="year">
               ({{ recording.year }})
@@ -31,13 +35,13 @@
             </span>
           </div>
           <span
-            v-if="performerCredits && !leadPerformers"
+            v-if="performers.length && !leadPerformers.length"
             class="performer-credits"
           >
-            {{ performerCredits }}
+            <CreditLinks :artists="performers" separator=" · " />
           </span>
         </div>
-      </button>
+      </div>
       <ClassicalRowActions
         :in-library="true"
         :favorite="favorite"
@@ -98,7 +102,8 @@ import {
   type Track,
 } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import { creditNames } from "@/views/classical/credits";
+import CreditLinks from "@/views/classical/components/CreditLinks.vue";
+import { creditedArtists } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -126,12 +131,12 @@ const toggle = () => {
 // renders as unfavourited.
 const favorite = computed(() => allLiked(props.recording.tracks));
 
-const conductor = computed(() =>
-  creditNames(props.recording.credits, [ArtistRole.CONDUCTOR]).join(", "),
+const conductors = computed(() =>
+  creditedArtists(props.recording.credits, [ArtistRole.CONDUCTOR]),
 );
 
-const orchestra = computed(() =>
-  creditNames(props.recording.credits, [ArtistRole.ORCHESTRA]).join(", "),
+const orchestras = computed(() =>
+  creditedArtists(props.recording.credits, [ArtistRole.ORCHESTRA]),
 );
 
 const PERFORMING_ROLES = [
@@ -142,21 +147,17 @@ const PERFORMING_ROLES = [
 ];
 
 // Ensembles, choirs, soloists and other performers, below the header line.
-const performerCredits = computed(() =>
-  creditNames(props.recording.credits, PERFORMING_ROLES).join(" · "),
+const performers = computed(() =>
+  creditedArtists(props.recording.credits, PERFORMING_ROLES),
 );
 
 // Without a conductor or orchestra the performers lead the header instead,
 // each with their instrument.
-const leadPerformers = computed(() => {
-  if (conductor.value || orchestra.value) return "";
-  const labels = props.recording.credits
-    .filter((c) => PERFORMING_ROLES.includes(c.role))
-    .map((c) =>
-      c.instrument ? `${c.artist.name} (${c.instrument})` : c.artist.name,
-    );
-  return Array.from(new Set(labels)).join(", ");
-});
+const leadPerformers = computed(() =>
+  conductors.value.length || orchestras.value.length
+    ? []
+    : creditedArtists(props.recording.credits, PERFORMING_ROLES, true),
+);
 </script>
 
 <style scoped>

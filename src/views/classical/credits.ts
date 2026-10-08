@@ -10,16 +10,31 @@ export const PERFORMER_ROLES: readonly ArtistRole[] = [
   ArtistRole.PERFORMER,
 ];
 
+export interface CreditedArtist {
+  id: string;
+  name: string;
+  instrument?: string;
+}
+
 /**
- * Names of the artists credited with any of the given roles, in credit order
- * and without repeats.
+ * The artists credited with any of the given roles, in credit order and
+ * without repeats. With instruments, each credit's instrument is kept, so an
+ * artist playing two instruments appears once per instrument.
  */
-export function creditNames(
+export function creditedArtists(
   credits: Credit[],
   roles: readonly ArtistRole[],
-): string[] {
-  const names = credits
-    .filter((c) => roles.includes(c.role))
-    .map((c) => c.artist.name);
-  return Array.from(new Set(names));
+  withInstruments = false,
+): CreditedArtist[] {
+  const seen = new Set<string>();
+  const artists: CreditedArtist[] = [];
+  for (const c of credits) {
+    if (!roles.includes(c.role)) continue;
+    const instrument = (withInstruments && c.instrument) || undefined;
+    const key = `${c.artist.item_id}|${instrument ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    artists.push({ id: c.artist.item_id, name: c.artist.name, instrument });
+  }
+  return artists;
 }

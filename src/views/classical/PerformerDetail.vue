@@ -55,6 +55,7 @@
           @play="onPlayWork(w.work.item_id)"
         />
         <ClassicalRowActions
+          :source-item="workTracks(w.work.item_id)[0]"
           :favorite="allLiked(workTracks(w.work.item_id))"
           :show-play="false"
           @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
@@ -243,18 +244,17 @@ watch(
 
 .performer-work-row {
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.performer-work-row:last-child {
-  border-bottom: 0;
-}
-
 .performer-work-row:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .performer-work-link {

@@ -9,6 +9,7 @@
         :aria-label="searchPlaceholder"
       />
       <YearRangeFilter
+        v-if="hasComposedYears"
         v-model:from="yearFrom"
         v-model:to="yearTo"
         :earliest="composedBounds.earliest"
@@ -94,12 +95,26 @@ const isTouch = useMediaQuery("(hover: none)");
 const works = ref<WorkRow[]>([]);
 const search = ref("");
 
+// Placeholder years, so the boxes advertise the span the library actually covers.
+const composedBounds = computed(() =>
+  yearBounds(works.value.map((w) => w.year_composed)),
+);
+
+// Year filtering and sorting only make sense once some work has a year.
+const hasComposedYears = computed(
+  () => composedBounds.value.earliest !== undefined,
+);
+
 const { sortBy, reload } = useClassicalListing({
   itemtype: "works",
   sorts: [
     { key: "composer", label: "classical_sort_composer" },
     { key: "title", label: "classical_sort_title" },
-    { key: "year", label: "classical_sort_year" },
+    {
+      key: "year",
+      label: "classical_sort_year",
+      available: () => hasComposedYears.value,
+    },
     { key: "recordings", label: "classical_sort_recordings" },
   ],
   load: async () => {
@@ -123,11 +138,6 @@ const searchPlaceholder = computed(() =>
 onMounted(reload);
 
 const collator = new Intl.Collator(undefined, { numeric: true });
-
-// Placeholder years, so the boxes advertise the span the library actually covers.
-const composedBounds = computed(() =>
-  yearBounds(works.value.map((w) => w.year_composed)),
-);
 
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(search.value.trim());
@@ -213,15 +223,14 @@ const filteredWorks = computed(() => {
   grid-template-columns: subgrid;
   align-items: baseline;
   padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
-}
-
-.work-row:last-child {
-  border-bottom: 0;
 }
 
 .work-row:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .work-link {

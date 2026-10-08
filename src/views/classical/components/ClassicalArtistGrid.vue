@@ -263,7 +263,10 @@ const GRID_GAP = 16;
 
 .artist-grid--list .artist-card-link:hover,
 .artist-grid--list .artist-card-link:focus-visible {
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .artist-grid--list .artist-thumb {

@@ -4,6 +4,7 @@ import { DASHBOARD_VIEWER_PATH_STORAGE_KEY } from "@/helpers/guest_session";
 import { returnedByHistory } from "@/helpers/navigation";
 import { parseStatisticsPeriod } from "@/helpers/statistics_period";
 import { $t } from "@/plugins/i18n";
+import { getLastVisitedClassicalTab } from "@/views/classical/tabs";
 import { nextTick, watch } from "vue";
 import {
   createRouter,
@@ -416,16 +417,9 @@ export const routes: RouteRecordRaw[] = [
           {
             path: "",
             name: "classical",
-            redirect: () => {
-              const stored = localStorage.getItem(
-                "frontend.classical.last_tab",
-              );
-              const tab =
-                stored === "works" || stored === "performers"
-                  ? stored
-                  : "composers";
-              return { path: `/classical/${tab}` };
-            },
+            redirect: () => ({
+              path: `/classical/${getLastVisitedClassicalTab()}`,
+            }),
           },
           {
             path: "composers",
@@ -443,7 +437,7 @@ export const routes: RouteRecordRaw[] = [
                 /* webpackChunkName: "classical" */ "@/views/classical/ComposerDetail.vue"
               ),
             props: true,
-            meta: { hideTabs: true },
+            meta: { fullBleed: true },
           },
           {
             path: "works",
@@ -470,7 +464,7 @@ export const routes: RouteRecordRaw[] = [
               ...route.params,
               ...route.query,
             }),
-            meta: { hideTabs: true },
+            meta: { fullBleed: true },
           },
           {
             path: "performers",
@@ -494,7 +488,7 @@ export const routes: RouteRecordRaw[] = [
                 /* webpackChunkName: "classical" */ "@/views/classical/PerformerDetail.vue"
               ),
             props: true,
-            meta: { hideTabs: true },
+            meta: { fullBleed: true },
           },
         ],
       },

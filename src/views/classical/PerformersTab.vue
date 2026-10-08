@@ -1,11 +1,11 @@
 <template>
   <div class="performers-tab">
     <div class="performers-controls">
-      <input
+      <SearchInput
         v-model="search"
-        type="search"
-        :placeholder="searchPlaceholder"
+        clearable
         class="performers-search"
+        :placeholder="searchPlaceholder"
         :aria-label="searchPlaceholder"
       />
     </div>
@@ -24,30 +24,38 @@
     </div>
 
     <ClassicalArtistGrid
-      v-if="gridItems.length"
+      v-if="gridItems.length || loading"
       :items="gridItems"
       :view-mode="viewMode"
       :grid-size="gridSize"
       :min-card-width="220"
+      :loading="loading"
     />
-    <p v-else-if="search.trim() || favoritesOnly" class="text-muted-foreground">
-      {{ $t("classical_no_performers_match") }}
-    </p>
-    <p v-else class="text-muted-foreground">
-      {{ $t("classical_no_performers_for_role") }}
-    </p>
+    <ClassicalEmpty
+      v-else
+      :filtered="!!search.trim() || favoritesOnly || !!activeRole"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
 import { ArtistRole, type ClassicalPerformer } from "@/plugins/api/interfaces";
 import { getPerformers } from "@/services/classical";
 import ClassicalArtistGrid, {
   type ClassicalArtistGridItem,
 } from "@/views/classical/components/ClassicalArtistGrid.vue";
-import { cardImage, squareImage } from "@/views/classical/images";
-import { useOwnArtistFavorites } from "@/views/classical/favorites";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import {
+  cardImage,
+  LIST_IMAGE_SIZE,
+  SQUARE_IMAGE_SIZE,
+  squareImage,
+  WIDE_IMAGE_SIZE,
+} from "@/views/classical/images";
+import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
+import { useOwnFavorites } from "@/views/classical/favorites";
 import { useClassicalListing } from "@/views/classical/listing";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -83,12 +91,12 @@ const chips: Chip[] = [
 
 const performers = ref<ClassicalPerformer[]>([]);
 
-useOwnArtistFavorites(() => performers.value.map((row) => row.artist));
+useOwnFavorites(() => performers.value.map((row) => row.artist));
 
 const search = ref("");
 
 // The full list is fetched once; the role chips filter it client-side.
-const { sortBy, viewMode, favoritesOnly, gridSize, reload } =
+const { sortBy, viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: "performers",
     sorts: [
@@ -112,43 +120,47 @@ const activeRole = computed<ArtistRole | null>(() => {
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
-const filteredPerformers = computed(() => {
-  const role = activeRole.value;
-  const q = normalizeForFilter(search.value.trim());
-  const filtered = performers.value.filter(
-    (p) =>
-      (!role || p.roles.includes(role)) &&
-      (!favoritesOnly.value || p.artist.favorite === true) &&
-      (!q || normalizeForFilter(p.artist.name).includes(q)),
-  );
-  return filtered.sort((a, b) => {
-    if (sortBy.value === "recordings") {
-      const byCount = b.recording_count - a.recording_count;
-      if (byCount !== 0) return byCount;
-    }
-    return collator.compare(a.artist.name, b.artist.name);
-  });
-});
-
-const gridItems = computed<ClassicalArtistGridItem[]>(() =>
-  filteredPerformers.value.map((p) => ({
-    id: p.artist.item_id,
-    artist: p.artist,
-    name: p.artist.name,
-    link: `/classical/performers/${p.artist.item_id}`,
-    wideImage: cardImage(p),
-    squareImage: squareImage(p),
-    role: formatRole(p.main_role),
-    lines: [
-      `${p.recording_count} ${
-        p.recording_count === 1
-          ? t("classical_recording")
-          : t("classical_recordings_lower")
-      }`,
-    ],
-    initials: initials(p.artist.name),
+// Built once per load, so filtering and redrawing reuse the folded name and
+// image urls.
+const rows = computed(() =>
+  performers.value.map((p) => ({
+    performer: p,
+    haystack: normalizeForFilter(p.artist.name),
+    item: {
+      id: p.artist.item_id,
+      artist: p.artist,
+      name: p.artist.name,
+      link: `/classical/performers/${p.artist.item_id}`,
+      wideImage: cardImage(p, WIDE_IMAGE_SIZE),
+      squareImage: squareImage(p, SQUARE_IMAGE_SIZE),
+      listImage: squareImage(p, LIST_IMAGE_SIZE),
+      role: roleLabel(p.main_role),
+      lines: [recordingCountLabel(p.recording_count)],
+    } satisfies ClassicalArtistGridItem,
   })),
 );
+
+const gridItems = computed<ClassicalArtistGridItem[]>(() => {
+  const role = activeRole.value;
+  const q = normalizeForFilter(search.value.trim());
+  return rows.value
+    .filter(
+      (r) =>
+        (!role || r.performer.roles.includes(role)) &&
+        (!favoritesOnly.value || r.performer.artist.favorite === true) &&
+        (!q || r.haystack.includes(q)),
+    )
+    .sort((ra, rb) => {
+      const a = ra.performer;
+      const b = rb.performer;
+      if (sortBy.value === "recordings") {
+        const byCount = b.recording_count - a.recording_count;
+        if (byCount !== 0) return byCount;
+      }
+      return collator.compare(a.artist.name, b.artist.name);
+    })
+    .map((r) => r.item);
+});
 
 const setRole = (role: ArtistRole | null) => {
   router.replace({
@@ -156,21 +168,6 @@ const setRole = (role: ArtistRole | null) => {
     query: role ? { role } : {},
   });
 };
-
-const formatRole = (raw: string) =>
-  raw
-    .split("_")
-    .map((w) => w[0]?.toUpperCase() + w.slice(1))
-    .join(" ");
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
 
 onMounted(reload);
 </script>
@@ -192,12 +189,6 @@ onMounted(reload);
 .performers-search {
   flex: 1;
   min-width: 200px;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #444);
-  background: var(--card, transparent);
-  color: inherit;
-  font: inherit;
 }
 
 .role-chips {

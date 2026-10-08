@@ -7,15 +7,11 @@
       @edit-rows="rowsEditorOpen = true"
     />
 
-    <!-- TODO(classical-credits): Insert CREDITS section here, above APPEARS ON.
-         Show only when the track is classical. v1 detection: match
-         itemDetails.metadata.genres against a classical-ish tag list
-         (classical / opera / orchestral / chamber / choral). This is a
-         stopgap — tighten once backend ships Track.is_classical (computed
-         per the spec classification rules). Row rendering is deferred:
-         when Track.credits lands we render structured {name, role,
-         instrument} rows and link each name via findPerformerForArtist()
-         to /classical/performers/<id>. Until then, do not render anything. -->
+    <!-- TODO(classical-credits): Insert a CREDITS section here, above APPEARS
+         ON, shown only when itemDetails.is_classical is set. Render
+         itemDetails.credits as {name, role, instrument} rows, each name
+         linking to /classical/performers/<id> (or the composer page for a
+         composer credit). -->
     <template v-if="itemDetails">
       <template v-for="rowId in visibleRows" :key="rowId">
         <!-- lyrics -->

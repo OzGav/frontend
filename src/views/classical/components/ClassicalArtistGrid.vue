@@ -1,72 +1,100 @@
 <template>
+  <div v-if="loading && !items.length && viewMode === 'list'">
+    <ListViewSkeleton v-for="n in 8" :key="n" />
+  </div>
   <ul
+    v-else
     ref="gridEl"
     class="artist-grid"
     :class="`artist-grid--${viewMode}`"
     :style="gridStyle"
   >
-    <li
-      v-for="item in items"
-      :key="item.id"
-      v-hold="(e: TouchEvent) => onHold(e, item.artist)"
-      class="artist-card"
-      @click.capture="swallowClickAfterHold"
-      @contextmenu.prevent="openArtistMenu(item.artist, router, $event)"
-      @touchstart.passive="onTouchStart"
-    >
-      <router-link
-        :to="item.link"
-        class="artist-card-link"
-        :aria-label="item.name"
+    <template v-if="loading && !items.length">
+      <li v-for="n in 12" :key="n">
+        <PanelViewSkeleton />
+      </li>
+    </template>
+    <template v-else>
+      <li
+        v-for="{ item, image } in rows"
+        :key="item.id"
+        v-hold="(e: TouchEvent) => onHold(e, item.artist)"
+        class="artist-card"
+        @click.capture="swallowClickAfterHold"
+        @click="navigateOnRowClick($event, router, item.link)"
+        @contextmenu.prevent="openArtistMenu(item.artist, router, $event)"
+        @touchstart.passive="onTouchStart"
       >
-        <div class="artist-thumb">
-          <img
-            v-if="image(item)"
-            :src="image(item)"
-            :alt="item.name"
-            loading="lazy"
-          />
-          <div v-else class="artist-thumb-placeholder">
-            <span v-if="item.initials && viewMode !== 'list'">
-              {{ item.initials }}
-            </span>
+        <router-link
+          :to="item.link"
+          class="artist-card-link"
+          :aria-label="item.name"
+        >
+          <div class="artist-thumb">
+            <img v-if="image" :src="image" :alt="item.name" loading="lazy" />
+            <div
+              v-else
+              class="artist-thumb-placeholder"
+              :style="{ background: bannerBackground }"
+            >
+              <span v-if="viewMode !== 'list'" class="artist-initials">
+                {{ itemInitials(item.name) }}
+              </span>
+            </div>
           </div>
+          <div class="artist-meta">
+            <div class="artist-name">{{ item.name }}</div>
+            <template v-if="viewMode === 'list'">
+              <div v-if="item.role || item.lines.length" class="artist-sub">
+                {{ [item.role, ...item.lines].filter(Boolean).join(" · ") }}
+              </div>
+            </template>
+            <template v-else>
+              <div v-if="item.role" class="artist-sub">
+                {{ item.role }}
+              </div>
+              <div v-for="line in item.lines" :key="line" class="artist-sub">
+                {{ line }}
+              </div>
+            </template>
+          </div>
+        </router-link>
+        <!-- the actions row of the standard panel cards -->
+        <div class="artist-actions" @click.stop>
+          <FavouriteButton
+            v-if="showHeart && canHoldFavorite(item.artist)"
+            :item="item.artist"
+          />
+          <MAButton
+            variant="list"
+            icon="mdi-dots-vertical"
+            class="artist-menu-btn"
+            :aria-label="`${$t('more_options')}: ${item.name}`"
+            @click.stop="openArtistMenu(item.artist, router, $event)"
+          />
         </div>
-        <div class="artist-meta">
-          <div class="artist-name">{{ item.name }}</div>
-          <template v-if="viewMode === 'list'">
-            <div v-if="item.role || item.lines.length" class="artist-sub">
-              {{ [item.role, ...item.lines].filter(Boolean).join(" · ") }}
-            </div>
-          </template>
-          <template v-else>
-            <div v-if="item.role" class="artist-sub artist-role">
-              {{ item.role }}
-            </div>
-            <div v-for="line in item.lines" :key="line" class="artist-sub">
-              {{ line }}
-            </div>
-          </template>
-        </div>
-      </router-link>
-      <MAButton
-        variant="list"
-        icon="mdi-dots-vertical"
-        class="artist-menu-btn"
-        :aria-label="`${$t('more_options')}: ${item.name}`"
-        @click.stop="openArtistMenu(item.artist, router, $event)"
-      />
-    </li>
+      </li>
+    </template>
   </ul>
 </template>
 
 <script setup lang="ts">
 import MAButton from "@/components/Button.vue";
+import {
+  bannerBackground,
+  itemInitials,
+} from "@/components/discover/editorialArtwork";
+import FavouriteButton from "@/components/FavoriteButton.vue";
+import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import PanelViewSkeleton from "@/components/skeletons/PanelViewSkeleton.vue";
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
+import { canHoldFavorite } from "@/helpers/favorites";
 import { GRID_SIZE_DEFAULT } from "@/helpers/grid_size";
 import type { Artist } from "@/plugins/api/interfaces";
+import { getBreakpointValue } from "@/plugins/breakpoint";
 import {
   classicalGridColumns,
+  navigateOnRowClick,
   type ClassicalViewMode,
 } from "@/views/classical/listing";
 import { openArtistMenu } from "@/views/classical/menu";
@@ -85,12 +113,11 @@ export interface ClassicalArtistGridItem {
   link: string;
   wideImage?: string;
   squareImage?: string;
+  listImage?: string;
   // a performer's role, the first line below the name
   role?: string;
   // text below the name, one line each in the picture views
   lines: string[];
-  // shown on the placeholder when there is no image
-  initials?: string;
 }
 
 const props = withDefaults(
@@ -100,16 +127,31 @@ const props = withDefaults(
     gridSize?: number;
     // narrowest wide card, in pixels
     minCardWidth: number;
+    // shows placeholder cards until the first items arrive
+    loading?: boolean;
   }>(),
-  { gridSize: GRID_SIZE_DEFAULT },
+  { gridSize: GRID_SIZE_DEFAULT, loading: false },
 );
 
 const router = useRouter();
 const gridEl = ref<HTMLElement | null>(null);
 const { width } = useElementSize(gridEl);
 
-const image = (item: ClassicalArtistGridItem) =>
-  props.viewMode === "fanart" ? item.wideImage : item.squareImage;
+// The heart's own menu checks the permission, as on the standard panel cards.
+const showHeart = computed(() => getBreakpointValue("bp3"));
+
+// The image for the current view, picked once per item rather than per use.
+const rows = computed(() =>
+  props.items.map((item) => ({
+    item,
+    image:
+      props.viewMode === "fanart"
+        ? item.wideImage
+        : props.viewMode === "thumbs"
+          ? item.squareImage
+          : item.listImage,
+  })),
+);
 
 const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event, artist: Artist) => openArtistMenu(artist, router, evt),
@@ -135,57 +177,58 @@ const gridStyle = computed(() => {
 });
 
 const SQUARE_MIN_WIDTH = 160;
-// matches the 1rem grid gap
-const GRID_GAP = 16;
+// matches the grid gap
+const GRID_GAP = 8;
 </script>
 
 <style scoped>
+/* The card's 8px padding sits outside the line the rest of the page uses. */
 .artist-grid {
   list-style: none;
-  margin: 0;
+  margin: 0 -8px;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(
     auto-fill,
     minmax(var(--artist-card-min, 220px), 1fr)
   );
-  gap: 1rem;
+  gap: 8px;
 }
 
+/* The standard panel card, padded with a hover tile. */
 .artist-card {
-  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  transition: transform 0.15s ease;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.artist-card:hover,
-.artist-card:focus-within {
-  transform: translateY(-2px);
-}
-
-/* Bottom right of the card, beside the name and its lines. */
-.artist-menu-btn {
-  position: absolute;
-  right: 0;
-  bottom: 0;
+.artist-card:hover {
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .artist-card-link {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   color: inherit;
   text-decoration: none;
 }
 
 .artist-thumb {
+  position: relative;
+  container-type: inline-size;
   display: block;
   /* fanart.tv background art proportions */
   aspect-ratio: 16 / 9;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--muted, #2a2a2a);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .artist-grid--thumbs .artist-thumb {
@@ -202,37 +245,69 @@ const GRID_GAP = 16;
 .artist-thumb-placeholder {
   width: 100%;
   height: 100%;
+}
+
+/* the initials of the standard cards' placeholder */
+.artist-initials {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 34cqh;
   font-weight: 700;
-  color: var(--muted-foreground, #888);
-  background: linear-gradient(135deg, #4a4a4a, #1a1a1a);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  user-select: none;
 }
 
 .artist-meta {
-  margin-top: 0.5rem;
-  /* room for the menu button */
-  padding-right: 2.5rem;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
   min-width: 0;
 }
 
 .artist-name {
+  font-size: 14px;
   font-weight: 600;
-  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .artist-sub {
-  color: var(--muted-foreground, #888);
-  font-size: 0.8125rem;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
-.artist-role {
-  text-transform: capitalize;
+.artist-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  height: 32px;
+}
+
+.artist-menu-btn {
+  margin-left: auto;
+}
+
+@media (max-width: 500px) {
+  .artist-card {
+    padding: 4px;
+  }
+  .artist-meta {
+    margin-top: 4px;
+  }
+  .artist-sub {
+    margin-top: 0;
+  }
 }
 
 /* Multi-column list, laid out like an artist's top tracks. */
@@ -240,33 +315,28 @@ const GRID_GAP = 16;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: 56px;
   gap: 0 16px;
-  margin-left: -8px;
 }
 
 .artist-grid--list .artist-card {
-  transition: none;
-}
-
-.artist-grid--list .artist-card:hover,
-.artist-grid--list .artist-card:focus-within {
-  transform: none;
-}
-
-.artist-grid--list .artist-card-link {
   flex-direction: row;
   align-items: center;
   gap: 12px;
   height: 56px;
   padding: 0 8px;
-  border-radius: 8px;
 }
 
-.artist-grid--list .artist-card-link:hover,
-.artist-grid--list .artist-card-link:focus-visible {
+.artist-grid--list .artist-card:hover {
   background: rgba(
     var(--v-theme-on-surface),
     calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
   );
+}
+
+.artist-grid--list .artist-card-link {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .artist-grid--list .artist-thumb {
@@ -275,37 +345,31 @@ const GRID_GAP = 16;
   flex: none;
   aspect-ratio: auto;
   border-radius: 6px;
-}
-
-.artist-grid--list .artist-menu-btn {
-  bottom: 8px;
+  box-shadow: none;
 }
 
 .artist-grid--list .artist-meta {
   margin-top: 0;
   flex: 1;
-  gap: 0;
 }
 
 .artist-grid--list .artist-name {
-  font-size: 14px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .artist-grid--list .artist-sub {
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: 0;
+}
+
+.artist-grid--list .artist-actions {
+  margin-top: 0;
+  flex: none;
 }
 
 @media (max-width: 768px) {
   .artist-grid--list {
     grid-template-columns: minmax(0, 1fr);
-    margin-left: 0;
+    margin: 0;
   }
 }
 </style>

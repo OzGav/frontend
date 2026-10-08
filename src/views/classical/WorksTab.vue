@@ -1,11 +1,11 @@
 <template>
   <div class="works-tab">
     <div class="works-controls">
-      <input
+      <SearchInput
         v-model="search"
-        type="search"
-        :placeholder="searchPlaceholder"
+        clearable
         class="works-search"
+        :placeholder="searchPlaceholder"
         :aria-label="searchPlaceholder"
       />
       <YearRangeFilter
@@ -17,8 +17,11 @@
       />
     </div>
 
+    <div v-if="loading && !works.length">
+      <ListViewSkeleton v-for="n in 8" :key="n" />
+    </div>
     <ul
-      v-if="filteredWorks.length"
+      v-else-if="filteredWorks.length"
       class="work-list"
       :class="{ touch: isTouch }"
     >
@@ -26,12 +29,14 @@
         v-for="w in filteredWorks"
         :key="w.item_id"
         class="work-row classical-play-row"
+        @click="
+          navigateOnRowClick($event, router, `/classical/works/${w.item_id}`)
+        "
       >
         <RowPlayButton
-          v-if="!isTouch"
           side="start"
           :label="`${$t('play')} ${w.name}`"
-          @play="playFirstRecording(w.item_id)"
+          @play="(e: Event) => playFirstRecording(w.item_id, e)"
         />
         <div class="work-link">
           <router-link
@@ -49,42 +54,37 @@
         <!-- Rendered even when empty so every row keeps all four columns. -->
         <span class="work-catalog">{{ w.catalog_number }}</span>
         <span class="work-year">{{ w.year_composed }}</span>
-        <span class="work-recordings">
-          {{ w.recording_count }}
-          {{
-            w.recording_count === 1
-              ? $t("classical_recording")
-              : $t("classical_recordings_lower")
-          }}
-        </span>
+        <span class="work-recordings">{{ w.recordings_label }}</span>
         <RowPlayButton
-          v-if="isTouch"
           side="end"
           :label="`${$t('play')} ${w.name}`"
-          @play="playFirstRecording(w.item_id)"
+          @play="(e: Event) => playFirstRecording(w.item_id, e)"
         />
       </li>
     </ul>
-    <p v-else-if="works.length" class="text-muted-foreground">
-      {{ $t("classical_no_works_match") }}
-    </p>
-    <p v-else class="text-muted-foreground">
-      {{ $t("classical_no_works") }}
-    </p>
+    <ClassicalEmpty v-else :filtered="works.length > 0" />
   </div>
 </template>
 
 <script setup lang="ts">
+import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
 import { getWorks } from "@/services/classical";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
-import { useClassicalListing } from "@/views/classical/listing";
+import {
+  navigateOnRowClick,
+  useClassicalListing,
+} from "@/views/classical/listing";
+import { recordingCountLabel } from "@/views/classical/labels";
 import { playFirstRecording } from "@/views/classical/playback";
+import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { useMediaQuery } from "@vueuse/core";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorksTab" });
 
@@ -99,9 +99,11 @@ interface WorkRow {
   catalog_number: string;
   year_composed?: number | null;
   recording_count: number;
+  recordings_label: string;
+  // composer, title and catalog number folded for the filter
+  haystack: string;
 }
 
-const isTouch = useMediaQuery("(hover: none)");
 const works = ref<WorkRow[]>([]);
 const search = ref("");
 
@@ -115,7 +117,9 @@ const hasComposedYears = computed(
   () => composedBounds.value.earliest !== undefined,
 );
 
-const { sortBy, reload } = useClassicalListing({
+const router = useRouter();
+
+const { sortBy, loading, reload } = useClassicalListing({
   itemtype: "works",
   sorts: [
     { key: "composer", label: "classical_sort_composer" },
@@ -128,15 +132,23 @@ const { sortBy, reload } = useClassicalListing({
     { key: "recordings", label: "classical_sort_recordings" },
   ],
   load: async () => {
-    works.value = (await getWorks()).map(({ work, recording_count }) => ({
-      item_id: work.item_id,
-      name: work.name,
-      composer: work.composers[0]?.name ?? "",
-      composer_id: work.composers[0]?.item_id,
-      catalog_number: work.catalog_numbers[0] ?? "",
-      year_composed: work.composition_year,
-      recording_count,
-    }));
+    works.value = (await getWorks()).map(({ work, recording_count }) => {
+      const composer = work.composers[0]?.name ?? "";
+      const catalogNumber = work.catalog_numbers[0] ?? "";
+      return {
+        item_id: work.item_id,
+        name: work.name,
+        composer,
+        composer_id: work.composers[0]?.item_id,
+        catalog_number: catalogNumber,
+        year_composed: work.composition_year,
+        recording_count,
+        recordings_label: recordingCountLabel(recording_count),
+        haystack: normalizeForFilter(
+          `${composer} ${work.name} ${catalogNumber}`,
+        ),
+      };
+    });
   },
 });
 
@@ -152,20 +164,20 @@ const collator = new Intl.Collator(undefined, { numeric: true });
 
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(search.value.trim());
-  const filtered = works.value.filter((w) => {
-    if (q) {
-      const hay = `${w.composer} ${w.name} ${w.catalog_number}`;
-      if (!normalizeForFilter(hay).includes(q)) return false;
-    }
-    return matchesYear(w.year_composed);
-  });
+  const filtered = works.value.filter(
+    (w) => (!q || w.haystack.includes(q)) && matchesYear(w.year_composed),
+  );
   const sorted = [...filtered];
   sorted.sort((a, b) => {
     switch (sortBy.value) {
       case "title":
         return collator.compare(a.name, b.name);
-      case "year":
-        return (a.year_composed ?? Infinity) - (b.year_composed ?? Infinity);
+      case "year": {
+        // works without a year sort last
+        const ay = a.year_composed ?? Infinity;
+        const by = b.year_composed ?? Infinity;
+        return ay === by ? 0 : ay < by ? -1 : 1;
+      }
       case "recordings":
         return b.recording_count - a.recording_count;
       case "composer":
@@ -204,12 +216,6 @@ const filteredWorks = computed(() => {
 .works-search {
   flex: 1;
   min-width: 200px;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #444);
-  background: var(--card, transparent);
-  color: inherit;
-  font: inherit;
 }
 
 .work-list {
@@ -229,6 +235,7 @@ const filteredWorks = computed(() => {
 }
 
 .work-row {
+  cursor: pointer;
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;

@@ -1,28 +1,24 @@
 <template>
   <section v-if="tracks.length" class="other-tracks-section">
-    <Toolbar :title="sectionTitle" color="transparent">
-      <template #append>
-        <div class="sort-control">
-          <label class="sort-label">{{ $t("classical_sort_label") }}</label>
-          <select v-model="sortKey" class="sort-select">
-            <option value="name">{{ $t("classical_sort_name") }}</option>
-            <option value="year">{{ $t("classical_sort_year_newest") }}</option>
-            <option value="date_added">
-              {{ $t("classical_sort_date_added") }}
-            </option>
-          </select>
-        </div>
-      </template>
-    </Toolbar>
+    <Toolbar
+      :title="sectionTitle"
+      :menu-items="menuItems"
+      color="transparent"
+    />
     <v-divider />
     <ul class="other-tracks-list">
       <li
         v-for="t in sortedTracks"
         :key="t.item_id"
-        class="other-track-row"
+        class="other-track-row classical-play-row"
         @click="$emit('play-track', t)"
         @contextmenu.prevent="$emit('menu-track', t, $event)"
       >
+        <RowPlayButton
+          side="start"
+          :label="`${$t('play')} ${t.name}`"
+          @play="$emit('play-track', t)"
+        />
         <div class="other-track-main">
           <span class="other-track-title">{{ t.name }}</span>
           <router-link
@@ -34,11 +30,15 @@
             {{ t.album.name }}
           </router-link>
         </div>
+        <RowPlayButton
+          side="end"
+          :label="`${$t('play')} ${t.name}`"
+          @play="$emit('play-track', t)"
+        />
         <ClassicalRowActions
           :duration="t.duration"
           :source-item="t"
           :favorite-item="t"
-          @play="$emit('play-track', t)"
           @menu="(e: Event) => $emit('menu-track', t, e)"
         />
       </li>
@@ -47,9 +47,11 @@
 </template>
 
 <script setup lang="ts">
-import Toolbar from "@/components/Toolbar.vue";
+import Toolbar, { type ToolBarMenuItem } from "@/components/Toolbar.vue";
 import type { Track } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import { ArrowUpDown } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
@@ -72,6 +74,27 @@ defineEmits<{
 
 type SortKey = "name" | "year" | "date_added";
 const sortKey = ref<SortKey>("name");
+
+const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
+  { key: "name", label: "classical_sort_name" },
+  { key: "year", label: "classical_sort_year_newest" },
+  { key: "date_added", label: "classical_sort_date_added" },
+];
+
+// The same sort button the standard listings show in their toolbar.
+const menuItems = computed<ToolBarMenuItem[]>(() => [
+  {
+    label: "tooltip.sort_options",
+    icon: ArrowUpDown,
+    subItems: SORT_OPTIONS.map((option) => ({
+      label: option.label,
+      selected: sortKey.value === option.key,
+      action: () => {
+        sortKey.value = option.key;
+      },
+    })),
+  },
+]);
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
@@ -101,27 +124,6 @@ const sortedTracks = computed(() => {
   margin-top: 1rem;
 }
 
-.sort-control {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-}
-
-.sort-label {
-  color: var(--muted-foreground, #aaa);
-}
-
-.sort-select {
-  background: transparent;
-  color: inherit;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-  border-radius: 4px;
-  padding: 0.15rem 0.35rem;
-  font: inherit;
-  font-size: 0.85rem;
-}
-
 .other-tracks-list {
   list-style: none;
   margin: 0;
@@ -133,8 +135,11 @@ const sortedTracks = computed(() => {
 .other-track-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.25rem;
+  gap: 0.4rem;
+  /* like the standard rows, the highlight starts 7px before the play slot */
+  padding: 0.5rem 0.25rem 0.5rem 7px;
+  margin-left: calc(0.25rem - 7px);
+  border-radius: 4px;
   cursor: pointer;
 }
 

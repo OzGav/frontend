@@ -53,7 +53,6 @@
         :duration="recording.duration"
         :source-item="recording.tracks[0]"
         :favorite="favorite"
-        :show-play="false"
         @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
         @menu="(e: Event) => $emit('menu-recording', recording, e)"
       />
@@ -90,7 +89,6 @@
             :duration="m.duration"
             :source-item="m"
             :favorite-item="m"
-            :show-play="false"
             @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
           />
         </li>

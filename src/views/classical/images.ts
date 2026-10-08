@@ -14,3 +14,13 @@ export function cardImage(
   if (row.fanart) return getMediaItemImageUrl(row.fanart);
   return getImageThumbForItem(row.artist);
 }
+
+/**
+ * The square image for a composer or performer row, falling back to the
+ * fanart.
+ */
+export function squareImage(
+  row: ClassicalComposer | ClassicalPerformer,
+): string | undefined {
+  return getImageThumbForItem(row.artist) || cardImage(row);
+}

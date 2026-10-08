@@ -28,7 +28,9 @@ defineProps<{
   text-decoration: none;
 }
 
-.credit-link:hover {
+/* Several names share one row, so the underline shows which one is hovered. */
+.credit-link:hover,
+.credit-link:focus-visible {
   text-decoration: underline;
 }
 </style>

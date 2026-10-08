@@ -1,14 +1,13 @@
 <template>
   <section class="classical-view classical-typography">
-    <v-toolbar color="transparent" class="classical-toolbar">
-      <template #prepend>
-        <v-btn :disabled="true" size="small" style="opacity: 0.8">
-          <Piano class="w-6 h-6" />
-        </v-btn>
-      </template>
-      <v-toolbar-title class="classical-toolbar-title">
-        {{ $t("classical") }}
-      </v-toolbar-title>
+    <Toolbar
+      :icon="Piano"
+      :title="$t('classical')"
+      :menu-items="menu?.items"
+      :menu-active="menu?.active"
+      :enforce-overflow-menu="true"
+      class="classical-toolbar"
+    >
       <Tabs :model-value="activeTab" class="classical-tabs-inline">
         <TabsList class="classical-tabs w-full h-auto">
           <TabsTrigger
@@ -37,7 +36,7 @@
           </TabsTrigger>
         </TabsList>
       </Tabs>
-    </v-toolbar>
+    </Toolbar>
     <v-divider />
     <div
       class="classical-tab-content"
@@ -49,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+import Toolbar from "@/components/Toolbar.vue";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CLASSICAL_DEFAULT_TAB,
@@ -56,14 +56,22 @@ import {
   isClassicalTab,
   type ClassicalTab,
 } from "@/views/classical/tabs";
+import {
+  CLASSICAL_MENU_KEY,
+  type ClassicalMenu,
+} from "@/views/classical/listing";
 import { Feather, Music3, Piano, Users } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, provide, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalView" });
 
 const route = useRoute();
 const router = useRouter();
+
+// Set by the open tab, so the toolbar shows that tab's menu.
+const menu = ref<ClassicalMenu>();
+provide(CLASSICAL_MENU_KEY, menu);
 
 const activeTab = computed<ClassicalTab>(() => {
   const segment = route.path.split("/")[2];
@@ -98,7 +106,6 @@ const goToTab = (tab: ClassicalTab) => {
     "Roboto Serif", ui-serif, Georgia, "Times New Roman", serif;
 }
 
-.classical-typography .classical-toolbar-title,
 .classical-typography :deep(.classical-tab-trigger),
 .classical-typography :deep(.classical-tab-trigger span) {
   font-family: var(--font-classical-serif);
@@ -126,7 +133,7 @@ const goToTab = (tab: ClassicalTab) => {
   gap: 0.75rem;
 }
 
-.classical-toolbar-title {
+.classical-toolbar :deep(.v-toolbar-title) {
   flex: 0 0 auto;
   font-weight: 600;
   padding-right: 2rem;

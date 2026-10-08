@@ -54,23 +54,17 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import Toolbar from "@/components/Toolbar.vue";
-import { type Artist } from "@/plugins/api/interfaces";
+import api from "@/plugins/api";
+import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
 import {
-  getComposer,
+  getClassicalArtist,
   getComposerWorks,
-  getOtherTracksForArtist,
-  getPerformers,
-  makePerformerLookup,
-  synthesiseArtist,
-  type ClassicalComposer,
-  type ClassicalOtherTrack,
-  type ClassicalPerformer,
-  type ClassicalWorkSummary,
+  getOtherTracks,
 } from "@/services/classical";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ComposerDetail" });
@@ -79,43 +73,53 @@ const props = defineProps<{ id: string }>();
 
 const router = useRouter();
 
-const composer = ref<ClassicalComposer | undefined>();
-const works = ref<ClassicalWorkSummary[]>([]);
-const otherTracks = ref<ClassicalOtherTrack[]>([]);
-const performers = ref<ClassicalPerformer[]>([]);
+// Flattened to the fields the rows show and sort on.
+interface WorkRow {
+  item_id: string;
+  name: string;
+  catalog_number: string;
+  work_type?: WorkType | null;
+  recording_count: number;
+}
+
+const artistItem = ref<Artist | undefined>();
+const works = ref<WorkRow[]>([]);
+const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
-
-const performerLookup = computed(() => makePerformerLookup(performers.value));
-
-const artistItem = computed<Artist | undefined>(() => {
-  const c = composer.value;
-  if (!c) return undefined;
-  return synthesiseArtist({
-    id: c.item_id,
-    name: c.name,
-    fanart_url: c.fanart_url,
-    thumbnail_url: c.thumbnail_url,
-    logo_url: c.logo_url,
-    biography: c.biography,
-  });
-});
 
 const load = async (id: string) => {
   loading.value = true;
-  composer.value = await getComposer(id);
-  const list = await getComposerWorks(id);
-  // Sort by catalog number so Op./BWV/K. order is preserved; empty catalogs last.
-  works.value = [...list].sort((a, b) => {
-    const ac = a.catalog_number || "";
-    const bc = b.catalog_number || "";
-    if (!ac && !bc) return 0;
-    if (!ac) return 1;
-    if (!bc) return -1;
-    return ac.localeCompare(bc, undefined, { numeric: true });
-  });
-  otherTracks.value = await getOtherTracksForArtist(id, "composer");
-  if (performers.value.length === 0) {
-    performers.value = await getPerformers();
+  try {
+    const [artist, list, tracks] = await Promise.all([
+      getClassicalArtist(id),
+      getComposerWorks(id),
+      getOtherTracks(id, true),
+    ]);
+    // a newer load has taken over the page
+    if (id !== props.id) return;
+    // Sort by catalog number so Op./BWV/K. order is preserved; empty catalogs last.
+    works.value = list
+      .map(({ work, recording_count }) => ({
+        item_id: work.item_id,
+        name: work.name,
+        catalog_number: work.catalog_numbers[0] ?? "",
+        work_type: work.work_type,
+        recording_count,
+      }))
+      .sort((a, b) => {
+        const ac = a.catalog_number;
+        const bc = b.catalog_number;
+        if (!ac && !bc) return 0;
+        if (!ac) return 1;
+        if (!bc) return -1;
+        return ac.localeCompare(bc, undefined, { numeric: true });
+      });
+    otherTracks.value = tracks;
+    artistItem.value = artist;
+  } catch {
+    if (id !== props.id) return;
+    // an unknown id leaves the page on its not-found message
+    artistItem.value = undefined;
   }
   loading.value = false;
 };
@@ -126,20 +130,12 @@ watch(
   { immediate: true },
 );
 
-const onPlayOtherTrack = (_t: ClassicalOtherTrack) => {
-  // TODO: play_media on the track URI once tracks are real records.
+const onPlayOtherTrack = (t: Track) => {
+  api.playMedia(t.uri);
 };
 
-const onMenuOtherTrack = (t: ClassicalOtherTrack, evt: Event) => {
-  openOtherTrackMenu(
-    t,
-    {
-      router,
-      composer: composer.value,
-      performerLookup: performerLookup.value,
-    },
-    evt,
-  );
+const onMenuOtherTrack = (t: Track, evt: Event) => {
+  openOtherTrackMenu(t, router, evt);
 };
 </script>
 

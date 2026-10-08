@@ -1,547 +1,108 @@
-// Service layer for the Classical view.
-//
-// Method signatures track the upcoming Stage 3 WebSocket API. Until that
-// lands, every call reads from the JSON fixtures under src/fixtures/classical/.
-// Flip USE_MOCKS to false once the backend ships.
+// Service layer for the Classical view, over the server's classical commands.
+// Lists are fetched whole; the views filter and sort them client-side.
 
-import {
-  ImageType,
-  MediaType,
-  type Artist,
-  type ItemMapping,
-  type MediaItemImage,
-  type Track,
+import api from "@/plugins/api";
+import type {
+  Artist,
+  ArtistRole,
+  ClassicalComposer,
+  ClassicalPerformer,
+  ClassicalWorkEntry,
+  Recording,
+  Track,
+  Work,
 } from "@/plugins/api/interfaces";
-import { ArtistRole, PERFORMER_ROLES } from "@/types/classical";
 
-import composersFixture from "@/fixtures/classical/composers.json";
-import otherTracksFixture from "@/fixtures/classical/other_tracks.json";
-import performersFixture from "@/fixtures/classical/performers.json";
-import recordingsFixture from "@/fixtures/classical/recordings.json";
-import worksFixture from "@/fixtures/classical/works.json";
-
-// TODO: set to false and verify every call returns the expected shape once
-// the WebSocket controllers are wired. Once stable, this flag and the
-// fixture imports above can be removed entirely.
-const USE_MOCKS = true;
-
-export interface ListOpts {
-  limit?: number;
-  offset?: number;
-  search?: string;
-  sort?: string;
+/**
+ * Whether the library holds any classical tracks the user can see. False
+ * when the server does not offer the classical commands.
+ */
+export function hasClassicalContent(): Promise<boolean> {
+  return api
+    .sendCommand<boolean>("music/has_classical_content", undefined, {
+      suppressGlobalError: true,
+    })
+    .catch(() => false);
 }
 
-export interface ClassicalComposer {
-  item_id: string;
-  name: string;
-  sort_name?: string;
-  year_range?: string;
-  work_count: number;
-  recording_count: number;
-  fanart_url?: string | null;
-  thumbnail_url?: string | null;
-  logo_url?: string | null;
-  biography?: string;
+/**
+ * A composer's or performer's full library artist, for a detail page header.
+ */
+export function getClassicalArtist(id: string): Promise<Artist> {
+  return api.getArtist(id, "library");
 }
 
-export interface ClassicalWorkSummary {
-  item_id: string;
-  name: string;
-  composer: string;
-  composer_id: string;
-  catalog_number?: string;
-  work_type?: string;
-  year_composed?: number | null;
-  recording_count: number;
-  description?: string;
-  arrangement_of?: Array<{ item_id: string; name: string; composer: string }>;
+export function getComposers(): Promise<ClassicalComposer[]> {
+  return api.sendCommand("music/classical/composers", { limit: 0 });
 }
 
-export interface ClassicalPerformer {
-  item_id: string;
-  name: string;
-  role: ArtistRole | string;
-  year_range?: string;
-  recording_count: number;
-  work_count: number;
-  fanart_url?: string | null;
-  thumbnail_url?: string | null;
-  logo_url?: string | null;
-  biography?: string | null;
-}
-
-export interface ClassicalRecordingMovement {
-  track_id: string;
-  title: string;
-  duration_seconds: number;
-}
-
-// Mock-shaped credit. When the backend ships Credit[] (artist: ItemMapping,
-// role, instrument, position), this maps trivially — only the artist field
-// becomes a full ItemMapping instead of a bare id.
-export interface ClassicalCreditRecord {
-  artist_id: string;
-  role: ArtistRole | string;
-  instrument?: string | null;
-  position: number;
-}
-
-// A library track credited to a composer or performer but with no Work
-// linkage. Stage 3d's API will expose a query for "tracks where artist X is
-// credited AND work_id IS NULL"; until then we filter the fixture client-side.
-export interface ClassicalOtherTrack {
-  item_id: string;
-  name: string;
-  album: string;
-  album_id: string;
-  duration_seconds: number;
-  year?: number | null;
-  timestamp_added: number;
-  credits: ClassicalCreditRecord[];
-}
-
-export interface ClassicalRecording {
-  item_id: string;
-  work_id: string;
-  // Legacy flat fields kept for back-compat with WorkRecordingCard's display
-  // text. Derived from `credits` when both are present; prefer credits.
-  conductor?: string;
-  conductor_id?: string;
-  orchestra?: string;
-  orchestra_id?: string;
-  performer_ids?: string[];
-  // Full credits list for menu builders and aggregations.
-  credits?: ClassicalCreditRecord[];
-  year?: number;
-  duration_seconds: number;
-  source_album?: string;
-  source_album_id?: string;
-  movements: ClassicalRecordingMovement[];
-}
-
-// ---------------------------------------------------------------------------
-// Library-level signals
-// ---------------------------------------------------------------------------
-
-// Drives the greyed-out state of the Classical nav entry. The real
-// implementation will report whether the library contains any Work entity
-// or any track tagged as classical.
-export async function hasClassicalContent(): Promise<boolean> {
-  if (USE_MOCKS) {
-    return (
-      composersFixture.length > 0 ||
-      worksFixture.length > 0 ||
-      performersFixture.length > 0
-    );
-  }
-  throw new Error("hasClassicalContent: real backend not wired yet");
-}
-
-// ---------------------------------------------------------------------------
-// Composers
-// ---------------------------------------------------------------------------
-
-export async function getComposers(
-  _opts: ListOpts = {},
-): Promise<ClassicalComposer[]> {
-  if (USE_MOCKS) return composersFixture as ClassicalComposer[];
-  throw new Error("getComposers: real backend not wired yet");
-}
-
-export async function getComposer(
-  id: string,
-): Promise<ClassicalComposer | undefined> {
-  if (USE_MOCKS) {
-    return (composersFixture as ClassicalComposer[]).find(
-      (c) => c.item_id === id,
-    );
-  }
-  throw new Error("getComposer: real backend not wired yet");
-}
-
-export async function getComposerWorks(
+export function getComposerWorks(
   composerId: string,
-  _opts: ListOpts = {},
-): Promise<ClassicalWorkSummary[]> {
-  if (USE_MOCKS) {
-    return (worksFixture as ClassicalWorkSummary[]).filter(
-      (w) => w.composer_id === composerId,
-    );
-  }
-  throw new Error("getComposerWorks: real backend not wired yet");
-}
-
-// ---------------------------------------------------------------------------
-// Works
-// ---------------------------------------------------------------------------
-
-export async function getWorks(
-  _opts: ListOpts = {},
-): Promise<ClassicalWorkSummary[]> {
-  if (USE_MOCKS) return worksFixture as ClassicalWorkSummary[];
-  throw new Error("getWorks: real backend not wired yet");
-}
-
-export async function getWork(
-  id: string,
-): Promise<ClassicalWorkSummary | undefined> {
-  if (USE_MOCKS) {
-    return (worksFixture as ClassicalWorkSummary[]).find(
-      (w) => w.item_id === id,
-    );
-  }
-  throw new Error("getWork: real backend not wired yet");
-}
-
-/**
- * A work's recordings in chronological order, oldest first, optionally
- * narrowed to those an artist appears on. Sorting is applied here rather than
- * left to the data source, so the order holds whatever the backend returns.
- */
-export async function getWorkRecordings(
-  workId: string,
-  filterByArtistId?: string,
-): Promise<ClassicalRecording[]> {
-  if (USE_MOCKS) {
-    const all = (recordingsFixture as ClassicalRecording[]).filter(
-      (r) => r.work_id === workId,
-    );
-    const matching = filterByArtistId
-      ? all.filter(
-          (r) =>
-            r.conductor_id === filterByArtistId ||
-            r.orchestra_id === filterByArtistId ||
-            r.performer_ids?.includes(filterByArtistId),
-        )
-      : all;
-    return [...matching].sort(compareRecordings);
-  }
-  throw new Error("getWorkRecordings: real backend not wired yet");
-}
-
-// ---------------------------------------------------------------------------
-// Performers
-// ---------------------------------------------------------------------------
-
-export async function getPerformers(
-  opts: ListOpts & { role?: ArtistRole } = {},
-): Promise<ClassicalPerformer[]> {
-  if (USE_MOCKS) {
-    // Lyricists/arrangers are credits but not performers; exclude them at the
-    // service boundary so callers (and the "All" chip in PerformersTab) never
-    // have to worry about leaking non-performer roles into performer UI.
-    const all = (performersFixture as ClassicalPerformer[]).filter((p) =>
-      PERFORMER_ROLES.includes(p.role as ArtistRole),
-    );
-    if (!opts.role) return all;
-    return all.filter((p) => p.role === opts.role);
-  }
-  throw new Error("getPerformers: real backend not wired yet");
-}
-
-export async function getPerformer(
-  id: string,
-): Promise<ClassicalPerformer | undefined> {
-  if (USE_MOCKS) {
-    return (performersFixture as ClassicalPerformer[]).find(
-      (p) => p.item_id === id,
-    );
-  }
-  throw new Error("getPerformer: real backend not wired yet");
-}
-
-export async function getPerformerWorks(
-  performerId: string,
-): Promise<ClassicalWorkSummary[]> {
-  if (USE_MOCKS) {
-    // recording_count is per-performer here, not the work's library-wide total.
-    const countsByWork = new Map<string, number>();
-    for (const r of recordingsFixture as ClassicalRecording[]) {
-      const involved =
-        r.conductor_id === performerId ||
-        r.orchestra_id === performerId ||
-        r.performer_ids?.includes(performerId);
-      if (involved) {
-        countsByWork.set(r.work_id, (countsByWork.get(r.work_id) ?? 0) + 1);
-      }
-    }
-    return (worksFixture as ClassicalWorkSummary[])
-      .filter((w) => countsByWork.has(w.item_id))
-      .map((w) => ({ ...w, recording_count: countsByWork.get(w.item_id)! }));
-  }
-  throw new Error("getPerformerWorks: real backend not wired yet");
-}
-
-// ---------------------------------------------------------------------------
-// "Other tracks" — tracks credited to an entity but unlinked to any Work.
-// ---------------------------------------------------------------------------
-
-export type OtherTracksMode = "composer" | "performer";
-
-/**
- * Tracks where the entity has a credit on the track AND the track is not
- * linked to a Work entity. For `mode="composer"` only composer credits
- * count; for `mode="performer"` only non-composer credits count. The
- * Work-bound filter is implicit in mock mode — the fixture only contains
- * Workless tracks; the real API will apply `work_id IS NULL` server-side.
- */
-export async function getOtherTracksForArtist(
-  artistId: string,
-  mode: OtherTracksMode,
-): Promise<ClassicalOtherTrack[]> {
-  if (USE_MOCKS) {
-    const all = otherTracksFixture as ClassicalOtherTrack[];
-    return all.filter((t) =>
-      t.credits.some(
-        (c) =>
-          c.artist_id === artistId &&
-          (mode === "composer"
-            ? c.role === ArtistRole.COMPOSER
-            : c.role !== ArtistRole.COMPOSER),
-      ),
-    );
-  }
-  throw new Error("getOtherTracksForArtist: real backend not wired yet");
-}
-
-// ---------------------------------------------------------------------------
-// Hero synthesis
-// ---------------------------------------------------------------------------
-
-/**
- * Build an Artist-shaped MediaItem so ClassicalHero can render a classical
- * entity (composer, performer, work) using the artist-detail hero layout.
- * The "http" image provider bypasses the provider-availability filter in
- * getMediaItemImage and the imageproxy in getMediaItemImageUrl, so the
- * supplied URLs are used directly.
- *
- * Drops out once the backend returns proper Artist records for composers
- * and performers.
- */
-export interface SynthesiseArtistInput {
-  id: string;
-  name: string;
-  uri?: string;
-  fanart_url?: string | null;
-  thumbnail_url?: string | null;
-  logo_url?: string | null;
-  biography?: string | null;
-}
-
-export function synthesiseArtist(input: SynthesiseArtistInput): Artist {
-  const fanart = input.fanart_url ?? undefined;
-  const thumb = input.thumbnail_url ?? input.fanart_url ?? undefined;
-  const logo = input.logo_url ?? undefined;
-  const makeImage = (type: ImageType, path: string): MediaItemImage => ({
-    type,
-    path,
-    provider: "http",
-    remotely_accessible: true,
+): Promise<ClassicalWorkEntry[]> {
+  return api.sendCommand("music/classical/works", {
+    composer_id: composerId,
+    limit: 0,
   });
-  const images: MediaItemImage[] = [];
-  if (thumb) images.push(makeImage(ImageType.THUMB, thumb));
-  if (fanart) images.push(makeImage(ImageType.FANART, fanart));
-  if (logo) images.push(makeImage(ImageType.LOGO, logo));
+}
 
-  return {
-    item_id: input.id,
-    provider: "library",
-    name: input.name,
-    uri: input.uri ?? `library://artist/${input.id}`,
-    is_playable: true,
-    media_type: MediaType.ARTIST,
-    provider_mappings: [
-      {
-        item_id: input.id,
-        provider_domain: "library",
-        provider_instance: "library",
-        available: true,
-        in_library: true,
-      },
-    ],
-    metadata: {
-      description: input.biography ?? undefined,
-      images,
-    },
-    favorite: false,
-    timestamp_added: 0,
-    timestamp_modified: 0,
-  };
+export function getWorks(): Promise<ClassicalWorkEntry[]> {
+  return api.sendCommand("music/classical/works", { limit: 0 });
+}
+
+export function getWork(id: string): Promise<Work> {
+  return api.sendCommand("music/works/get", {
+    item_id: id,
+    provider_instance_id_or_domain: "library",
+  });
 }
 
 /**
- * Build a Track-shaped MediaItem from a movement plus its enclosing recording
- * / work / composer / performers so the standard context-menu builders
- * accept the row. Synthetic URIs do not resolve on the backend, so play /
- * favourite / playlist actions are visually present but no-op.
- *
- * TODO: remove once movements are delivered as real Track records by the
- * backend; callers will then pass the Track directly to the menu helpers.
+ * A work's recordings in their canonical order, optionally narrowed to those
+ * an artist performs on.
  */
-export function synthesiseTrack(
-  movement: ClassicalRecordingMovement,
-  recording: ClassicalRecording,
-  composer: ClassicalComposer | undefined,
-  performers: ClassicalPerformer[],
-  trackNumber = 1,
-): Track {
-  const composerMapping = composer ? performerToMapping(composer) : undefined;
-  const performerMappings = performers.map(performerToMapping);
-  // Multiple artists disable the standard "Go to artist" entry — classical
-  // credits surface via the performer submenu instead.
-  const artists: ItemMapping[] = composerMapping
-    ? [composerMapping, ...performerMappings]
-    : performerMappings;
-
-  const album: ItemMapping = {
-    item_id: recording.source_album_id ?? recording.item_id,
-    provider: "library",
-    name: recording.source_album ?? "",
-    uri: `library://album/${recording.source_album_id ?? recording.item_id}`,
-    available: true,
-    is_playable: true,
-    media_type: MediaType.ALBUM,
-  };
-
-  return {
-    item_id: movement.track_id,
-    provider: "library",
-    name: movement.title,
-    uri: `library://track/${movement.track_id}`,
-    is_playable: true,
-    media_type: MediaType.TRACK,
-    duration: movement.duration_seconds,
-    artists,
-    album,
-    track_number: trackNumber,
-    provider_mappings: [
-      {
-        item_id: movement.track_id,
-        provider_domain: "library",
-        provider_instance: "library",
-        available: true,
-        in_library: true,
-      },
-    ],
-    metadata: {},
-    favorite: false,
-    timestamp_added: 0,
-    timestamp_modified: 0,
-  };
+export function getWorkRecordings(
+  workId: string,
+  performerId?: string,
+): Promise<Recording[]> {
+  return api.sendCommand("music/classical/recordings", {
+    work_id: workId,
+    performer_id: performerId,
+  });
 }
 
 /**
- * Build a Track-shaped MediaItem from a ClassicalOtherTrack so the standard
- * context-menu builders accept the row. Mirrors synthesiseTrack but without
- * a parent recording — the other-track is its own album row.
+ * Artists with a performing role on a classical track. With a role given,
+ * only those holding that role among their roles.
  */
-export function synthesiseOtherTrack(
-  track: ClassicalOtherTrack,
-  composer: ClassicalComposer | undefined,
-  performers: ClassicalPerformer[],
-): Track {
-  const composerMapping = composer ? performerToMapping(composer) : undefined;
-  const performerMappings = performers.map(performerToMapping);
-  const artists: ItemMapping[] = composerMapping
-    ? [composerMapping, ...performerMappings]
-    : performerMappings;
-
-  const album: ItemMapping = {
-    item_id: track.album_id,
-    provider: "library",
-    name: track.album,
-    uri: `library://album/${track.album_id}`,
-    available: true,
-    is_playable: true,
-    media_type: MediaType.ALBUM,
-  };
-
-  return {
-    item_id: track.item_id,
-    provider: "library",
-    name: track.name,
-    uri: `library://track/${track.item_id}`,
-    is_playable: true,
-    media_type: MediaType.TRACK,
-    duration: track.duration_seconds,
-    artists,
-    album,
-    track_number: 1,
-    provider_mappings: [
-      {
-        item_id: track.item_id,
-        provider_domain: "library",
-        provider_instance: "library",
-        available: true,
-        in_library: true,
-      },
-    ],
-    metadata: {},
-    favorite: false,
-    timestamp_added: track.timestamp_added,
-    timestamp_modified: track.timestamp_added,
-  };
+export function getPerformers(
+  role?: ArtistRole,
+): Promise<ClassicalPerformer[]> {
+  return api.sendCommand("music/classical/performers", { role, limit: 0 });
 }
 
-// Helper used by detail views that need to resolve performer ids referenced
-// from a recording's credits into full ClassicalPerformer records.
-export function makePerformerLookup(
-  performers: ClassicalPerformer[],
-): Record<string, ClassicalPerformer> {
-  const out: Record<string, ClassicalPerformer> = {};
-  for (const p of performers) out[p.item_id] = p;
-  return out;
+/**
+ * The works a performer appears on, with recording counts scoped to them.
+ */
+export function getPerformerWorks(
+  performerId: string,
+): Promise<ClassicalWorkEntry[]> {
+  return api.sendCommand("music/classical/works", {
+    performer_id: performerId,
+    limit: 0,
+  });
 }
 
-// Diacritic-blind, case-insensitive, natural ordering — matches the collator
-// the tab views sort with.
-const recordingCollator = new Intl.Collator(undefined, {
-  numeric: true,
-  sensitivity: "base",
-});
-
-const ENSEMBLE_ROLES: ReadonlySet<string> = new Set([
-  ArtistRole.ORCHESTRA,
-  ArtistRole.ENSEMBLE,
-  ArtistRole.CHOIR,
-]);
-
-// Reading a work's recordings oldest-first shows its interpretive history in
-// order. Undated recordings sort last so a page never opens on one.
-function compareRecordings(
-  a: ClassicalRecording,
-  b: ClassicalRecording,
-): number {
-  const byYear = (a.year ?? Infinity) - (b.year ?? Infinity);
-  if (byYear !== 0) return byYear;
-  const byConductor = recordingCollator.compare(
-    a.conductor ?? "",
-    b.conductor ?? "",
-  );
-  if (byConductor !== 0) return byConductor;
-  return recordingCollator.compare(ensembleLabel(a), ensembleLabel(b));
-}
-
-// The name the card shows for the performing body: the legacy orchestra field
-// when set, otherwise the first orchestra/ensemble/choir credit resolved to a
-// name.
-function ensembleLabel(recording: ClassicalRecording): string {
-  if (recording.orchestra) return recording.orchestra;
-  const credit = recording.credits?.find((c) => ENSEMBLE_ROLES.has(c.role));
-  if (!credit) return "";
-  const performers = performersFixture as ClassicalPerformer[];
-  return performers.find((p) => p.item_id === credit.artist_id)?.name ?? "";
-}
-
-function performerToMapping(p: { item_id: string; name: string }): ItemMapping {
-  return {
-    item_id: p.item_id,
-    provider: "library",
-    name: p.name,
-    uri: `library://artist/${p.item_id}`,
-    available: true,
-    is_playable: true,
-    media_type: MediaType.ARTIST,
-  };
+/**
+ * Classical tracks credited to an artist that are not linked to any work.
+ * With asComposer only composer credits count, otherwise only the others.
+ */
+export function getOtherTracks(
+  artistId: string,
+  asComposer: boolean,
+): Promise<Track[]> {
+  return api.sendCommand("music/classical/other_tracks", {
+    artist_id: artistId,
+    as_composer: asComposer,
+    limit: 0,
+  });
 }

@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 import { normalizeForFilter } from "@/helpers/utils";
-import { getWorks, type ClassicalWorkSummary } from "@/services/classical";
+import { getWorks } from "@/services/classical";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { computed, onMounted, ref } from "vue";
@@ -69,7 +69,17 @@ type SortKey = "composer" | "title" | "year" | "recordings";
 
 const { t } = useI18n();
 
-const works = ref<ClassicalWorkSummary[]>([]);
+// Flattened to the fields the rows show and filter on.
+interface WorkRow {
+  item_id: string;
+  name: string;
+  composer: string;
+  catalog_number: string;
+  year_composed?: number | null;
+  recording_count: number;
+}
+
+const works = ref<WorkRow[]>([]);
 const search = ref("");
 const sort = ref<SortKey>("composer");
 
@@ -80,7 +90,14 @@ const searchPlaceholder = computed(() =>
 );
 
 onMounted(async () => {
-  works.value = await getWorks();
+  works.value = (await getWorks()).map(({ work, recording_count }) => ({
+    item_id: work.item_id,
+    name: work.name,
+    composer: work.composers[0]?.name ?? "",
+    catalog_number: work.catalog_numbers[0] ?? "",
+    year_composed: work.composition_year,
+    recording_count,
+  }));
 });
 
 const collator = new Intl.Collator(undefined, { numeric: true });
@@ -94,7 +111,7 @@ const filteredWorks = computed(() => {
   const q = normalizeForFilter(search.value.trim());
   const filtered = works.value.filter((w) => {
     if (q) {
-      const hay = `${w.composer} ${w.name} ${w.catalog_number ?? ""}`;
+      const hay = `${w.composer} ${w.name} ${w.catalog_number}`;
       if (!normalizeForFilter(hay).includes(q)) return false;
     }
     return matchesYear(w.year_composed);

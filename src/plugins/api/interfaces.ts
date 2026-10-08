@@ -202,6 +202,7 @@ export enum MediaType {
   GENRE = "genre",
   GENRE_ALIAS = "genre_alias",
   FOLDER = "folder",
+  WORK = "work",
   UNKNOWN = "unknown",
 }
 
@@ -1048,12 +1049,18 @@ export interface ItemMapping extends _MediaItemBase {
 
 export interface Artist extends MediaItem {
   artist_type: ArtistType;
+  period?: Period | null;
+  is_classical?: boolean;
 }
 
 export interface Album extends MediaItem {
   year?: number | null;
   artists: Array<ItemMapping | Artist>;
   album_type: AlbumType;
+  // credits are only sent with the full album, never on listings
+  credits?: Credit[];
+  is_classical?: boolean;
+  classical_tag?: boolean;
 }
 
 export interface AudioMetadata {
@@ -1072,6 +1079,109 @@ export interface Track extends MediaItem {
   track_number: number;
   // only populated when the full track is requested (get_track), never on listings
   audio_metadata?: AudioMetadata | null;
+  // credits are only sent with the full track, never on listings
+  credits?: Credit[];
+  work?: ItemMapping | null;
+  movement_number?: number | null;
+  movement_total?: number | null;
+  movement_name?: string | null;
+  is_classical?: boolean;
+  classical_tag?: boolean;
+}
+
+export enum ArtistRole {
+  MAIN_ARTIST = "main_artist",
+  COMPOSER = "composer",
+  LYRICIST = "lyricist",
+  ARRANGER = "arranger",
+  CONDUCTOR = "conductor",
+  ORCHESTRA = "orchestra",
+  ENSEMBLE = "ensemble",
+  CHOIR = "choir",
+  SOLOIST = "soloist",
+  PERFORMER = "performer",
+}
+
+export enum WorkType {
+  SYMPHONY = "symphony",
+  CONCERTO = "concerto",
+  SONATA = "sonata",
+  SUITE = "suite",
+  OPERA = "opera",
+  ORATORIO = "oratorio",
+  CANTATA = "cantata",
+  MASS = "mass",
+  SONG_CYCLE = "song_cycle",
+  QUARTET = "quartet",
+  OVERTURE = "overture",
+  BALLET = "ballet",
+  OTHER = "other",
+}
+
+export enum Period {
+  MEDIEVAL = "medieval",
+  RENAISSANCE = "renaissance",
+  BAROQUE = "baroque",
+  CLASSICAL = "classical",
+  ROMANTIC = "romantic",
+  MODERN = "modern",
+  CONTEMPORARY = "contemporary",
+}
+
+export interface Credit {
+  artist: ItemMapping | Artist;
+  role: ArtistRole;
+  // only meaningful for soloists and other performers
+  instrument: string | null;
+  // ordering within a role group
+  position: number;
+}
+
+export interface Work extends MediaItem {
+  composers: Array<ItemMapping | Artist>;
+  catalog_numbers: string[];
+  work_type?: WorkType | null;
+  parent_work?: ItemMapping | null;
+  arrangement_of: ItemMapping[];
+  composition_year?: number | null;
+  language?: string | null;
+  musical_key?: string | null;
+}
+
+// One performance of a work, grouped by the server from its movement tracks.
+export interface Recording {
+  key: string;
+  work: ItemMapping;
+  // movements in movement order
+  tracks: Track[];
+  // performing credits, the composer excluded
+  credits: Credit[];
+  year: number | null;
+  // every album it appears on, the album its tracks come from first
+  albums: ItemMapping[];
+  // seconds, sum of the movements
+  duration: number;
+}
+
+export interface ClassicalComposer {
+  artist: Artist;
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalPerformer {
+  artist: Artist;
+  // the performing role with the most credits
+  main_role: ArtistRole;
+  roles: ArtistRole[];
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalWorkEntry {
+  work: Work;
+  // scoped to the performer when the list is filtered by one
+  recording_count: number;
 }
 
 export interface Playlist extends MediaItem {
@@ -1212,7 +1322,8 @@ export type MediaItemType =
   | PodcastEpisode
   | Genre
   | MediaCollection<MediaItemType>
-  | BrowseFolder;
+  | BrowseFolder
+  | Work;
 
 export type PlayableMediaItemType =
   Track | Radio | AudioSource | Audiobook | PodcastEpisode;

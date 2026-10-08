@@ -13,18 +13,18 @@
         <ChevronRight class="chevron" :class="{ rotated: expanded }" />
         <div class="recording-title">
           <div class="recording-credits">
-            <span v-if="recording.conductor" class="conductor">
-              {{ recording.conductor }}
+            <span v-if="conductor" class="conductor">
+              {{ conductor }}
             </span>
-            <span v-if="recording.conductor && recording.orchestra"> / </span>
-            <span v-if="recording.orchestra" class="orchestra">
-              {{ recording.orchestra }}
+            <span v-if="conductor && orchestra"> / </span>
+            <span v-if="orchestra" class="orchestra">
+              {{ orchestra }}
             </span>
             <span v-if="recording.year" class="year">
               ({{ recording.year }})
             </span>
             <span class="duration-inline">
-              [{{ formatDuration(recording.duration_seconds) }}]
+              [{{ formatDuration(recording.duration) }}]
             </span>
           </div>
           <span v-if="performerCredits" class="performer-credits">
@@ -35,17 +35,16 @@
       <ClassicalRowActions
         :in-library="true"
         :favorite="favorite"
-        @toggle-favorite="toggleRecordingFavorite"
+        @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
         @play="$emit('play-recording', recording)"
         @menu="(e: Event) => $emit('menu-recording', recording, e)"
       />
     </div>
-
     <div v-if="expanded" class="recording-body">
       <ol class="movements">
         <li
-          v-for="m in recording.movements"
-          :key="m.track_id"
+          v-for="m in recording.tracks"
+          :key="m.item_id"
           class="movement"
           @contextmenu.prevent.stop="
             $emit('menu-movement', m, recording, $event)
@@ -57,31 +56,29 @@
             :title="$t('play')"
             @click="$emit('play-movement', m)"
           >
-            <span class="movement-title">{{ m.title }}</span>
+            <span class="movement-title">{{ m.movement_name || m.name }}</span>
             <span class="duration-inline">
-              [{{ formatDuration(m.duration_seconds) }}]
+              [{{ formatDuration(m.duration) }}]
             </span>
           </button>
           <ClassicalRowActions
             :in-library="true"
-            :favorite="movementFavorites[m.track_id] ?? false"
-            @toggle-favorite="
-              movementFavorites[m.track_id] = !movementFavorites[m.track_id]
-            "
+            :favorite="m.favorite === true"
+            @toggle-favorite="setTracksLiked([m], m.favorite !== true)"
             @play="$emit('play-movement', m)"
             @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
           />
         </li>
       </ol>
-      <div v-if="recording.source_album" class="source-album">
+      <div
+        v-for="album in recording.albums"
+        :key="album.item_id"
+        class="source-album"
+      >
         <span class="source-album-arrow">→</span>
-        <router-link
-          v-if="recording.source_album_id"
-          :to="`/albums/library/${recording.source_album_id}`"
-        >
-          {{ recording.source_album }}
+        <router-link :to="`/albums/library/${album.item_id}`">
+          {{ album.year ? `${album.name} (${album.year})` : album.name }}
         </router-link>
-        <span v-else>{{ recording.source_album }}</span>
       </div>
     </div>
   </article>
@@ -89,68 +86,57 @@
 
 <script setup lang="ts">
 import { formatDuration } from "@/helpers/utils";
-import type {
-  ClassicalRecording,
-  ClassicalRecordingMovement,
-} from "@/services/classical";
+import {
+  ArtistRole,
+  type Recording,
+  type Track,
+} from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import { creditNames } from "@/views/classical/credits";
+import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { ChevronRight } from "@lucide/vue";
-import { computed, reactive, ref } from "vue";
+import { computed, ref } from "vue";
 
 defineOptions({ name: "WorkRecordingCard" });
 
 const props = defineProps<{
-  recording: ClassicalRecording;
-  performerLookup?: Record<string, string>;
+  recording: Recording;
 }>();
 
 defineEmits<{
-  (e: "play-recording", recording: ClassicalRecording): void;
-  (e: "play-movement", movement: ClassicalRecordingMovement): void;
-  (e: "menu-recording", recording: ClassicalRecording, evt: Event): void;
-  (
-    e: "menu-movement",
-    movement: ClassicalRecordingMovement,
-    recording: ClassicalRecording,
-    evt: Event,
-  ): void;
+  (e: "play-recording", recording: Recording): void;
+  (e: "play-movement", movement: Track): void;
+  (e: "menu-recording", recording: Recording, evt: Event): void;
+  (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
 }>();
 
 const expanded = ref(false);
+
 const toggle = () => {
   expanded.value = !expanded.value;
 };
 
-// Cosmetic per-movement favourite state. TODO: replace with the underlying
-// Track.favorite flag once movements are real MediaItem records.
-const movementFavorites = reactive<Record<string, boolean>>({});
-
 // Recording is favourited only when every member movement is. Partial state
 // renders as unfavourited.
-const favorite = computed(
-  () =>
-    props.recording.movements.length > 0 &&
-    props.recording.movements.every((m) => movementFavorites[m.track_id]),
+const favorite = computed(() => allLiked(props.recording.tracks));
+
+const conductor = computed(() =>
+  creditNames(props.recording.credits, [ArtistRole.CONDUCTOR]).join(", "),
 );
 
-// Multi-write: toggle every movement in lockstep. TODO: swap for sequential
-// `await api.toggleFavorite(track)` per movement once tracks are real.
-const toggleRecordingFavorite = () => {
-  const next = !favorite.value;
-  for (const m of props.recording.movements) {
-    movementFavorites[m.track_id] = next;
-  }
-};
+const orchestra = computed(() =>
+  creditNames(props.recording.credits, [ArtistRole.ORCHESTRA]).join(", "),
+);
 
-// Performer credits (soloists / ensembles / choirs) for non-conducted
-// recordings. Falls back to the raw id when no name lookup is supplied.
-const performerCredits = computed(() => {
-  if (!props.recording.performer_ids?.length) return "";
-  const lookup = props.performerLookup ?? {};
-  return props.recording.performer_ids
-    .map((id) => lookup[id] ?? id)
-    .join(" · ");
-});
+// Ensembles, choirs, soloists and other performers, below the header line.
+const performerCredits = computed(() =>
+  creditNames(props.recording.credits, [
+    ArtistRole.ENSEMBLE,
+    ArtistRole.CHOIR,
+    ArtistRole.SOLOIST,
+    ArtistRole.PERFORMER,
+  ]).join(" · "),
+);
 </script>
 
 <style scoped>

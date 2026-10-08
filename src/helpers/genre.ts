@@ -58,6 +58,7 @@ export const genreMediaTypeIconMap: Record<MediaType, Component> = {
   [MediaType.PODCAST_EPISODE]: Podcast,
   [MediaType.FOLDER]: Folder,
   [MediaType.COLLECTION]: Library,
+  [MediaType.WORK]: Music,
   [MediaType.UNKNOWN]: CircleHelp,
 };
 

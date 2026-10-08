@@ -368,10 +368,6 @@ const formatWorkType = (raw: string) => {
   text-decoration: none;
 }
 
-.work-composer-link:hover {
-  text-decoration: underline;
-}
-
 .work-meta-sep {
   margin: 0 4px;
   opacity: 0.5;

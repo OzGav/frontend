@@ -269,8 +269,8 @@ const leadPerformers = computed(() =>
   gap: 0;
 }
 
-.movement-play:hover .movement-title {
-  text-decoration: underline;
+.movement:hover {
+  background: var(--muted, rgba(255, 255, 255, 0.04));
 }
 
 .movement-title {

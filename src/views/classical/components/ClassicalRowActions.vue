@@ -20,6 +20,7 @@
       <v-icon :icon="favorite ? 'mdi-heart' : 'mdi-heart-outline'" size="20" />
     </v-btn>
     <v-btn
+      v-if="showPlay"
       icon
       variant="text"
       size="x-small"
@@ -47,10 +48,12 @@ withDefaults(
   defineProps<{
     inLibrary?: boolean;
     favorite?: boolean;
+    showPlay?: boolean;
   }>(),
   {
     inLibrary: true,
     favorite: false,
+    showPlay: true,
   },
 );
 

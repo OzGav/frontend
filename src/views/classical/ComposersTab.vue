@@ -8,45 +8,15 @@
         class="composers-search"
         :aria-label="searchPlaceholder"
       />
-      <label class="composers-sort">
-        {{ $t("classical_sort_label") }}
-        <select v-model="sort">
-          <option value="sort_name">{{ $t("sort.sort_name") }}</option>
-          <option value="name">{{ $t("sort.name") }}</option>
-          <option value="works">{{ $t("classical_sort_works") }}</option>
-        </select>
-      </label>
     </div>
 
-    <ul v-if="filteredComposers.length" class="composer-grid">
-      <li
-        v-for="c in filteredComposers"
-        :key="c.artist.item_id"
-        class="composer-card"
-      >
-        <router-link
-          :to="`/classical/composers/${c.artist.item_id}`"
-          class="composer-card-link"
-          :aria-label="c.artist.name"
-        >
-          <div class="composer-thumb">
-            <img
-              v-if="cardImage(c)"
-              :src="cardImage(c)"
-              :alt="c.artist.name"
-              loading="lazy"
-            />
-            <div v-else class="composer-thumb-placeholder"></div>
-          </div>
-          <div class="composer-meta">
-            <div class="composer-name">{{ c.artist.name }}</div>
-            <div class="composer-sub">
-              {{ $t("works") }}: {{ c.work_count }}
-            </div>
-          </div>
-        </router-link>
-      </li>
-    </ul>
+    <ClassicalArtistGrid
+      v-if="gridItems.length"
+      :items="gridItems"
+      :view-mode="viewMode"
+      :grid-size="gridSize"
+      :min-card-width="280"
+    />
     <p v-else-if="composers.length" class="text-muted-foreground">
       {{ $t("classical_no_composers_match") }}
     </p>
@@ -60,53 +30,80 @@
 import { normalizeForFilter } from "@/helpers/utils";
 import type { ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
-import { cardImage } from "@/views/classical/images";
+import ClassicalArtistGrid, {
+  type ClassicalArtistGridItem,
+} from "@/views/classical/components/ClassicalArtistGrid.vue";
+import { cardImage, squareImage } from "@/views/classical/images";
+import { useOwnArtistFavorites } from "@/views/classical/favorites";
+import { useClassicalListing } from "@/views/classical/listing";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "ComposersTab" });
 
-type SortKey = "name" | "sort_name" | "works";
-
 const { t } = useI18n();
 
 const composers = ref<ClassicalComposer[]>([]);
+
+useOwnArtistFavorites(() => composers.value.map((row) => row.artist));
+
 const search = ref("");
-const sort = ref<SortKey>("sort_name");
+
+const { sortBy, viewMode, favoritesOnly, gridSize, reload } =
+  useClassicalListing({
+    itemtype: "composers",
+    sorts: [
+      { key: "sort_name", label: "sort.sort_name" },
+      { key: "name", label: "sort.name" },
+      { key: "works", label: "classical_sort_works" },
+    ],
+    load: async () => {
+      composers.value = await getComposers();
+    },
+    views: true,
+  });
 
 const searchPlaceholder = computed(() =>
   t("classical_filter_composers_placeholder"),
 );
 
-onMounted(async () => {
-  composers.value = await getComposers();
-});
+onMounted(reload);
 
 const collator = new Intl.Collator(undefined, { numeric: true });
 
 const filteredComposers = computed(() => {
   const q = normalizeForFilter(search.value.trim());
-  const filtered = q
-    ? composers.value.filter((c) =>
-        normalizeForFilter(c.artist.name).includes(q),
-      )
-    : composers.value;
-  const sorted = [...filtered];
+  const filtered = composers.value.filter(
+    (c) =>
+      (!favoritesOnly.value || c.artist.favorite === true) &&
+      (!q || normalizeForFilter(c.artist.name).includes(q)),
+  );
   const sortName = (c: ClassicalComposer) =>
     c.artist.sort_name || c.artist.name;
-  sorted.sort((a, b) => {
-    if (sort.value === "works") {
+  return filtered.sort((a, b) => {
+    if (sortBy.value === "works") {
       const byCount = b.work_count - a.work_count;
       if (byCount !== 0) return byCount;
       return collator.compare(sortName(a), sortName(b));
     }
-    if (sort.value === "sort_name") {
+    if (sortBy.value === "sort_name") {
       return collator.compare(sortName(a), sortName(b));
     }
     return collator.compare(a.artist.name, b.artist.name);
   });
-  return sorted;
 });
+
+const gridItems = computed<ClassicalArtistGridItem[]>(() =>
+  filteredComposers.value.map((c) => ({
+    id: c.artist.item_id,
+    artist: c.artist,
+    name: c.artist.name,
+    link: `/classical/composers/${c.artist.item_id}`,
+    wideImage: cardImage(c),
+    squareImage: squareImage(c),
+    lines: [`${t("works")}: ${c.work_count}`],
+  })),
+);
 </script>
 
 <style scoped>
@@ -132,95 +129,5 @@ const filteredComposers = computed(() => {
   background: var(--card, transparent);
   color: inherit;
   font: inherit;
-}
-
-.composers-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--muted-foreground, #aaa);
-}
-
-.composers-sort select {
-  /* Pinned identically in WorksTab and PerformersTab. */
-  min-width: 12rem;
-  background: var(--card, transparent);
-  color: inherit;
-  border: 1px solid var(--border, #444);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-  font: inherit;
-}
-
-.composer-grid {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.composer-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.composer-card-link {
-  display: flex;
-  flex-direction: column;
-  color: inherit;
-  text-decoration: none;
-  transition: transform 0.15s ease;
-}
-
-.composer-card-link:hover,
-.composer-card-link:focus-visible {
-  transform: translateY(-2px);
-}
-
-.composer-thumb {
-  display: block;
-  /* fanart.tv background art proportions */
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--muted, #2a2a2a);
-}
-
-.composer-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.composer-thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #4a4a4a, #1a1a1a);
-}
-
-.composer-meta {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.composer-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.composer-card-link:hover .composer-name,
-.composer-card-link:focus-visible .composer-name {
-  text-decoration: underline;
-}
-
-.composer-sub {
-  color: var(--muted-foreground, #888);
-  font-size: 0.8125rem;
 }
 </style>

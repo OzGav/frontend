@@ -7,32 +7,59 @@
       :dialog-title="artistItem.name"
       markdown
     />
-    <Toolbar :title="$t('works')" :count="works.length" color="transparent" />
+    <Toolbar
+      :title="$t('works')"
+      :count="filteredWorks.length"
+      color="transparent"
+    >
+      <template v-if="works.length" #append>
+        <WorksFilterInput v-model="worksFilter" />
+      </template>
+    </Toolbar>
     <v-divider />
 
-    <ul v-if="works.length" class="composer-works-list">
-      <li v-for="w in works" :key="w.item_id" class="composer-work-row">
-        <router-link
-          :to="`/classical/works/${w.item_id}`"
-          class="composer-work-link"
-        >
-          {{ w.name }}
-        </router-link>
-        <span v-if="w.catalog_number" class="meta"
-          >· {{ w.catalog_number }}</span
-        >
-        <span v-if="w.work_type" class="meta">· {{ w.work_type }}</span>
-        <span class="meta">
-          ·
-          {{ w.recording_count }}
-          {{
-            w.recording_count === 1
-              ? $t("classical_recording")
-              : $t("classical_recordings_lower")
-          }}
+    <ul v-if="filteredWorks.length" class="composer-works-list">
+      <li
+        v-for="w in filteredWorks"
+        :key="w.item_id"
+        class="composer-work-row classical-play-row"
+      >
+        <RowPlayButton
+          side="start"
+          :label="`${$t('play')} ${w.name}`"
+          @play="playFirstRecording(w.item_id)"
+        />
+        <span class="composer-work-text">
+          <router-link
+            :to="`/classical/works/${w.item_id}`"
+            class="composer-work-link"
+          >
+            {{ w.name }}
+          </router-link>
+          <span v-if="w.catalog_number" class="meta"
+            >· {{ w.catalog_number }}</span
+          >
+          <span v-if="w.work_type" class="meta">· {{ w.work_type }}</span>
+          <span class="meta">
+            ·
+            {{ w.recording_count }}
+            {{
+              w.recording_count === 1
+                ? $t("classical_recording")
+                : $t("classical_recordings_lower")
+            }}
+          </span>
         </span>
+        <RowPlayButton
+          side="end"
+          :label="`${$t('play')} ${w.name}`"
+          @play="playFirstRecording(w.item_id)"
+        />
       </li>
     </ul>
+    <p v-else-if="works.length" class="composer-works-empty">
+      {{ $t("classical_no_works_match") }}
+    </p>
     <p v-else class="composer-works-empty">
       {{ $t("classical_no_works_for_composer") }}
     </p>
@@ -61,10 +88,15 @@ import {
   getComposerWorks,
   getOtherTracks,
 } from "@/services/classical";
+import { normalizeForFilter } from "@/helpers/utils";
+import { useArtistPageMenu } from "@/views/classical/listing";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
-import { ref, watch } from "vue";
+import { playFirstRecording } from "@/views/classical/playback";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ComposerDetail" });
@@ -80,15 +112,27 @@ interface WorkRow {
   catalog_number: string;
   work_type?: WorkType | null;
   recording_count: number;
+  // title and catalog numbers, folded for the works filter
+  haystack: string;
 }
 
 const artistItem = ref<Artist | undefined>();
+
+useArtistPageMenu(artistItem, router);
+
 const works = ref<WorkRow[]>([]);
 const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
+const worksFilter = ref("");
+
+const filteredWorks = computed(() => {
+  const q = normalizeForFilter(worksFilter.value.trim());
+  return q ? works.value.filter((w) => w.haystack.includes(q)) : works.value;
+});
 
 const load = async (id: string) => {
   loading.value = true;
+  worksFilter.value = "";
   try {
     const [artist, list, tracks] = await Promise.all([
       getClassicalArtist(id),
@@ -105,6 +149,9 @@ const load = async (id: string) => {
         catalog_number: work.catalog_numbers[0] ?? "",
         work_type: work.work_type,
         recording_count,
+        haystack: normalizeForFilter(
+          [work.name, ...work.catalog_numbers].join(" "),
+        ),
       }))
       .sort((a, b) => {
         const ac = a.catalog_number;
@@ -152,6 +199,15 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
   display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Title and details keep a shared baseline, centred against the play slot. */
+.composer-work-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.4rem;
@@ -161,14 +217,14 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   border-bottom: 0;
 }
 
+.composer-work-row:hover {
+  background: var(--muted, rgba(255, 255, 255, 0.04));
+}
+
 .composer-work-link {
   font-weight: 600;
   color: inherit;
   text-decoration: none;
-}
-
-.composer-work-link:hover {
-  text-decoration: underline;
 }
 
 .meta {

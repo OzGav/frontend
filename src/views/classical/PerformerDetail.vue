@@ -9,18 +9,27 @@
     />
     <Toolbar
       :title="$t('works_performed')"
-      :count="works.length"
+      :count="filteredWorks.length"
       color="transparent"
-    />
+    >
+      <template v-if="works.length" #append>
+        <WorksFilterInput v-model="worksFilter" />
+      </template>
+    </Toolbar>
     <v-divider />
 
-    <ul v-if="works.length" class="performer-works-list">
+    <ul v-if="filteredWorks.length" class="performer-works-list">
       <li
-        v-for="w in works"
+        v-for="w in filteredWorks"
         :key="w.work.item_id"
-        class="performer-work-row"
+        class="performer-work-row classical-play-row"
         @contextmenu.prevent="onMenuWork(w, $event)"
       >
+        <RowPlayButton
+          side="start"
+          :label="`${$t('play')} ${w.work.name}`"
+          @play="onPlayWork(w.work.item_id)"
+        />
         <router-link :to="workLink(w.work.item_id)" class="performer-work-link">
           <span class="performer-work-composer">
             {{ w.work.composers[0]?.name }}
@@ -40,14 +49,22 @@
               : $t("classical_recordings_lower")
           }}
         </span>
+        <RowPlayButton
+          side="end"
+          :label="`${$t('play')} ${w.work.name}`"
+          @play="onPlayWork(w.work.item_id)"
+        />
         <ClassicalRowActions
           :favorite="allLiked(workTracks(w.work.item_id))"
+          :show-play="false"
           @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
-          @play="onPlayWork(w.work.item_id)"
           @menu="(e: Event) => onMenuWork(w, e)"
         />
       </li>
     </ul>
+    <p v-else-if="works.length" class="performer-works-empty">
+      {{ $t("classical_no_works_match") }}
+    </p>
     <p v-else class="performer-works-empty">
       {{ $t("classical_no_works_for_performer") }}
     </p>
@@ -69,6 +86,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import Toolbar from "@/components/Toolbar.vue";
+import { normalizeForFilter } from "@/helpers/utils";
 import api from "@/plugins/api";
 import type {
   Artist,
@@ -83,11 +101,14 @@ import {
   getWorkRecordings,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import { useArtistPageMenu } from "@/views/classical/listing";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformerDetail" });
@@ -97,11 +118,37 @@ const props = defineProps<{ id: string }>();
 const router = useRouter();
 
 const artistItem = ref<Artist | undefined>();
+
+useArtistPageMenu(artistItem, router);
+
 const works = ref<ClassicalWorkEntry[]>([]);
+const worksFilter = ref("");
 // This performer's recordings of each work, by work id.
 const recordingsByWork = ref<Record<string, Recording[]>>({});
 const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
+
+// Title, catalog numbers and composer of each work, folded for the filter.
+const searchableWorks = computed(() =>
+  works.value.map((entry) => ({
+    entry,
+    haystack: normalizeForFilter(
+      [
+        entry.work.name,
+        ...entry.work.catalog_numbers,
+        ...entry.work.composers.map((c) => c.name),
+      ].join(" "),
+    ),
+  })),
+);
+
+const filteredWorks = computed(() => {
+  const q = normalizeForFilter(worksFilter.value.trim());
+  if (!q) return works.value;
+  return searchableWorks.value
+    .filter((s) => s.haystack.includes(q))
+    .map((s) => s.entry);
+});
 
 // Open the Work detail page with this performer pre-applied as the
 // contextual filter so the recordings list defaults to ones they appear on.
@@ -138,6 +185,7 @@ const onMenuWork = (w: ClassicalWorkEntry, evt: Event) => {
 
 const load = async (id: string) => {
   loading.value = true;
+  worksFilter.value = "";
   try {
     const [artist, entries, tracks] = await Promise.all([
       getClassicalArtist(id),
@@ -205,6 +253,10 @@ watch(
   border-bottom: 0;
 }
 
+.performer-work-row:hover {
+  background: var(--muted, rgba(255, 255, 255, 0.04));
+}
+
 .performer-work-link {
   display: flex;
   flex-direction: column;
@@ -212,10 +264,6 @@ watch(
   text-decoration: none;
   flex: 1;
   min-width: 0;
-}
-
-.performer-work-link:hover .performer-work-title {
-  text-decoration: underline;
 }
 
 .performer-work-composer {

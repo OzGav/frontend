@@ -81,7 +81,7 @@ const activeTab = computed<ClassicalTab>(() => {
 // Detail routes render their own full-bleed banner (ClassicalHero); drop the
 // inner padding so the banner reaches the edges.
 const fullBleedContent = computed(() =>
-  route.matched.some((r) => r.meta?.hideTabs === true),
+  route.matched.some((r) => r.meta?.fullBleed === true),
 );
 
 // reka-ui's Tabs only emits update:modelValue on a value change, so clicking
@@ -164,8 +164,6 @@ const goToTab = (tab: ClassicalTab) => {
 }
 
 .classical-tab-icon {
-  width: 1.05rem;
-  height: 1.05rem;
   flex-shrink: 0;
 }
 

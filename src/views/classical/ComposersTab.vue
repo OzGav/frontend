@@ -31,8 +31,8 @@
         >
           <div class="composer-thumb">
             <img
-              v-if="cardImage(c.artist)"
-              :src="cardImage(c.artist)"
+              v-if="cardImage(c)"
+              :src="cardImage(c)"
               :alt="c.artist.name"
               loading="lazy"
             />

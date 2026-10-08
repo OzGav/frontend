@@ -197,7 +197,6 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 
 .composer-work-row {
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -213,12 +212,12 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   gap: 0.4rem;
 }
 
-.composer-work-row:last-child {
-  border-bottom: 0;
-}
-
 .composer-work-row:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.04));
+  /* matches the hover overlay of the standard list rows */
+  background: rgba(
+    var(--v-theme-on-surface),
+    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
+  );
 }
 
 .composer-work-link {

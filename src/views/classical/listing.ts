@@ -101,6 +101,8 @@ export interface ClassicalSortOption {
   key: string;
   // translation key of the option's label
   label: string;
+  // offered only while this returns true, e.g. while the data it sorts on exists
+  available?: () => boolean;
 }
 
 export interface ClassicalListingOptions {
@@ -125,10 +127,19 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const prefs = getItemsListingPreferences(PREFS_PATH, options.itemtype).value;
   const sortKeys = options.sorts.map((s) => s.key);
 
-  const sortBy = ref(
+  const chosenSort = ref(
     prefs.sortBy && sortKeys.includes(prefs.sortBy)
       ? prefs.sortBy
       : sortKeys[0],
+  );
+  const availableSorts = computed(() =>
+    options.sorts.filter((s) => s.available?.() ?? true),
+  );
+  // An unavailable choice stays saved and applies again once it is offered.
+  const sortBy = computed(() =>
+    availableSorts.value.some((s) => s.key === chosenSort.value)
+      ? chosenSort.value
+      : availableSorts.value[0].key,
   );
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
@@ -210,13 +221,13 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     list.push({
       label: "tooltip.sort_options",
       icon: ArrowUpDown,
-      disabled: options.sorts.length <= 1 || loading.value,
+      disabled: availableSorts.value.length <= 1 || loading.value,
       overflowAllowed: true,
-      subItems: options.sorts.map((s) => ({
+      subItems: availableSorts.value.map((s) => ({
         label: s.label,
         selected: sortBy.value === s.key,
         action: () => {
-          sortBy.value = s.key;
+          chosenSort.value = s.key;
           save("sortBy", s.key);
         },
       })),

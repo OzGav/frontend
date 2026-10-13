@@ -135,6 +135,7 @@ import {
   getWork,
   getWorkRecordings,
 } from "@/services/classical";
+import { useBackFilter } from "@/views/classical/backFilter";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
@@ -304,6 +305,27 @@ const resetFilter = () => {
   performerArtistId.value = null;
 };
 
+const restoreFilter = useBackFilter(
+  () => ({
+    query: query.value,
+    committed: committed.value,
+    committedKind: committedKind.value,
+    committedTerm: committedTerm.value,
+    performerArtistId: performerArtistId.value,
+    yearFrom: yearFrom.value,
+    yearTo: yearTo.value,
+  }),
+  (saved) => {
+    query.value = saved.query;
+    committed.value = saved.committed;
+    committedKind.value = saved.committedKind;
+    committedTerm.value = saved.committedTerm;
+    performerArtistId.value = saved.performerArtistId;
+    yearFrom.value = saved.yearFrom;
+    yearTo.value = saved.yearTo;
+  },
+);
+
 const load = async (id: string) => {
   // the previous work must not stay actionable under the new route
   work.value = undefined;
@@ -311,6 +333,7 @@ const load = async (id: string) => {
   recordings.value = [];
   loading.value = true;
   resetFilter();
+  restoreFilter();
   try {
     const [w, recs] = await Promise.all([getWork(id), getWorkRecordings(id)]);
     const composerId = w.composers[0]?.item_id;

@@ -78,16 +78,19 @@ import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import {
   navigateOnRowClick,
   useClassicalListing,
+  useClassicalPreferences,
 } from "@/views/classical/listing";
 import { recordingCountLabel } from "@/views/classical/labels";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorksTab" });
+
+const ITEMTYPE = "works";
 
 const { t } = useI18n();
 
@@ -105,7 +108,11 @@ interface WorkRow {
 }
 
 const works = ref<WorkRow[]>([]);
-const search = ref("");
+
+const { preferences, save } = useClassicalPreferences(ITEMTYPE);
+
+const search = ref(preferences.search ?? "");
+watch(search, (value) => save("search", value));
 
 // Placeholder years, so the boxes advertise the span the library actually covers.
 const composedBounds = computed(() =>
@@ -120,7 +127,7 @@ const hasComposedYears = computed(
 const router = useRouter();
 
 const { loading, reload } = useClassicalListing({
-  itemtype: "works",
+  itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_WORKS,
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
   labels: { [SortField.YEAR]: "classical_sort_year" },
@@ -149,6 +156,10 @@ const { loading, reload } = useClassicalListing({
 });
 
 const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
+yearFrom.value = preferences.yearFrom ?? "";
+yearTo.value = preferences.yearTo ?? "";
+watch(yearFrom, (value) => save("yearFrom", value));
+watch(yearTo, (value) => save("yearTo", value));
 
 const searchPlaceholder = computed(() =>
   t("classical_filter_works_placeholder"),
@@ -159,7 +170,10 @@ onMounted(reload);
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(search.value.trim());
   return works.value.filter(
-    (w) => (!q || w.haystack.includes(q)) && matchesYear(w.year_composed),
+    (w) =>
+      (!q || w.haystack.includes(q)) &&
+      // kept years must not narrow the list while the boxes are hidden
+      (!hasComposedYears.value || matchesYear(w.year_composed)),
   );
 });
 </script>

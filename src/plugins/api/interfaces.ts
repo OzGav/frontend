@@ -1212,8 +1212,13 @@ export interface Work extends MediaItem {
   composers: Array<ItemMapping | Artist>;
   catalog_numbers: string[];
   work_type?: WorkType | null;
+  // on a part, the work it belongs to
   parent_work?: ItemMapping | null;
-  arrangement_of: ItemMapping[];
+  // the next three are only filled on music/works/get
+  arrangement_of: Array<Work | ItemMapping>;
+  arrangements?: Array<Work | ItemMapping>;
+  // e.g. the arias of an opera
+  parts?: Array<Work | ItemMapping>;
   composition_year?: number | null;
   language?: string | null;
   musical_key?: string | null;
@@ -1223,6 +1228,8 @@ export interface Work extends MediaItem {
 export interface Recording {
   key: string;
   work: ItemMapping;
+  // the work `work` is part of, if any
+  parent_work?: ItemMapping | null;
   // movements in movement order
   tracks: Track[];
   // performing credits, the composer excluded
@@ -1257,6 +1264,8 @@ export interface ClassicalWorkEntry {
   work: Work;
   // scoped to the performer when the list is filtered by one
   recording_count: number;
+  // names of all the work's parts, for filtering
+  part_names?: string[];
 }
 
 export interface Playlist extends MediaItem {

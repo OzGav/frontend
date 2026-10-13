@@ -2,10 +2,15 @@ import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { showPlayMenuForMediaItem } from "@/layouts/default/ItemContextMenu.vue";
 import { handlePlayBtnClick } from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
-import { PlaybackState, type Track } from "@/plugins/api/interfaces";
+import {
+  PlaybackState,
+  type Recording,
+  type Track,
+  type Work,
+} from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
-import { getWorkRecordings } from "@/services/classical";
+import { getWork, getWorkRecordings } from "@/services/classical";
 import { toast } from "vue-sonner";
 
 /**
@@ -26,16 +31,33 @@ export function playTracks(tracks: Track[], evt?: Event): void {
   showPlayMenuForMediaItem(tracks, undefined, x, y).catch(onPlayError);
 }
 
-/** Play the first recording of a work in the server's order, if it has one. */
-export async function playFirstRecording(
-  workId: string,
-  evt?: Event,
-): Promise<void> {
-  const recordings = await getWorkRecordings(workId).catch((err) => {
-    onPlayError(err);
-    return [];
-  });
-  if (recordings[0]) playTracks(recordings[0].tracks, evt);
+/**
+ * Play a work: its first recording in the server's order. A work with parts,
+ * such as an opera, without a recording of its own plays the first recording
+ * of each part, in the work's order.
+ */
+export async function playWork(workId: string, evt?: Event): Promise<void> {
+  let work: Work;
+  let recordings: Recording[];
+  try {
+    [work, recordings] = await Promise.all([
+      getWork(workId),
+      getWorkRecordings(workId),
+    ]);
+  } catch (err) {
+    onPlayError(err as Error);
+    return;
+  }
+  const own = recordings.find((r) => r.work.item_id === workId);
+  const picked = own
+    ? [own]
+    : (work.parts ?? []).flatMap(
+        (part) => recordings.find((r) => r.work.item_id === part.item_id) ?? [],
+      );
+  playTracks(
+    picked.flatMap((r) => r.tracks),
+    evt,
+  );
 }
 
 /** Whether the active player is playing this track, decided as the standard rows do. */

@@ -28,7 +28,7 @@ import type { Router } from "vue-router";
 
 export interface ClassicalMenuContext {
   router: Router;
-  work: Work;
+  work: Work | ItemMapping;
   composer?: ItemMapping | Artist;
 }
 

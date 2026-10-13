@@ -81,8 +81,7 @@
     </ClassicalSection>
 
     <OtherTracksSection
-      v-if="!loading"
-      :tracks="otherTracks"
+      :artist-id="id"
       @play-track="onPlayOtherTrack"
       @menu-track="onMenuOtherTrack"
     />
@@ -102,7 +101,6 @@ import type {
 } from "@/plugins/api/interfaces";
 import {
   getClassicalArtist,
-  getOtherTracks,
   getPerformerRecordings,
   getPerformerWorks,
 } from "@/services/classical";
@@ -141,7 +139,6 @@ useArtistPageUpdates(artistItem);
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");
 const recordings = ref<Recording[]>([]);
-const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
 
 useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
@@ -219,23 +216,19 @@ const load = async (id: string) => {
   artistItem.value = undefined;
   works.value = [];
   recordings.value = [];
-  otherTracks.value = [];
   loading.value = true;
   worksFilter.value = "";
   try {
-    const [artist, entries, performed, tracks] = await Promise.all([
+    const [artist, entries, performed] = await Promise.all([
       getClassicalArtist(id),
       getPerformerWorks(id),
       // without them the rows show no play, heart or menu
       getPerformerRecordings(id).catch(() => []),
-      // without them the page still shows, minus its Other tracks
-      getOtherTracks(id, false).catch(() => []),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
     works.value = entries;
     recordings.value = performed;
-    otherTracks.value = tracks;
     artistItem.value = artist;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does

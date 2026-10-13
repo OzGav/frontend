@@ -54,8 +54,8 @@
     </ClassicalSection>
 
     <OtherTracksSection
-      v-if="!loading"
-      :tracks="otherTracks"
+      :artist-id="id"
+      as-composer
       @play-track="onPlayOtherTrack"
       @menu-track="onMenuOtherTrack"
     />
@@ -66,11 +66,7 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
-import {
-  getClassicalArtist,
-  getComposerWorks,
-  getOtherTracks,
-} from "@/services/classical";
+import { getClassicalArtist, getComposerWorks } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import {
   navigateOnRowClick,
@@ -114,7 +110,6 @@ const artistItem = ref<Artist | undefined>();
 useArtistPageUpdates(artistItem);
 
 const works = ref<WorkRow[]>([]);
-const otherTracks = ref<Track[]>([]);
 const loading = ref(true);
 const worksFilter = ref("");
 
@@ -129,15 +124,12 @@ const load = async (id: string) => {
   // the previous composer must not stay actionable under the new route
   artistItem.value = undefined;
   works.value = [];
-  otherTracks.value = [];
   loading.value = true;
   worksFilter.value = "";
   try {
-    const [artist, list, tracks] = await Promise.all([
+    const [artist, list] = await Promise.all([
       getClassicalArtist(id),
       getComposerWorks(id),
-      // without them the page still shows, minus its Other tracks
-      getOtherTracks(id, true).catch(() => []),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
@@ -161,7 +153,6 @@ const load = async (id: string) => {
         if (!bc) return -1;
         return ac.localeCompare(bc, undefined, { numeric: true });
       });
-    otherTracks.value = tracks;
     artistItem.value = artist;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does

@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
-import type { ClassicalComposer } from "@/plugins/api/interfaces";
+import { ListingType, type ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
 import ClassicalArtistGrid, {
   type ClassicalArtistGridItem,
@@ -56,16 +56,12 @@ useOwnFavorites(() => composers.value.map((row) => row.artist));
 
 const search = ref("");
 
-const { sortBy, viewMode, favoritesOnly, gridSize, loading, reload } =
+const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: "composers",
-    sorts: [
-      { key: "sort_name", label: "sort.sort_name" },
-      { key: "name", label: "sort.name" },
-      { key: "works", label: "classical_sort_works" },
-    ],
-    load: async () => {
-      composers.value = await getComposers();
+    listing: ListingType.CLASSICAL_COMPOSERS,
+    load: async (sort) => {
+      composers.value = await getComposers(sort);
     },
     views: true,
   });
@@ -75,8 +71,6 @@ const searchPlaceholder = computed(() =>
 );
 
 onMounted(reload);
-
-const collator = new Intl.Collator(undefined, { numeric: true });
 
 // Built once per load, so filtering and redrawing reuse the folded name and
 // image urls.
@@ -99,27 +93,12 @@ const rows = computed(() =>
 
 const gridItems = computed<ClassicalArtistGridItem[]>(() => {
   const q = normalizeForFilter(search.value.trim());
-  const sortName = (c: ClassicalComposer) =>
-    c.artist.sort_name || c.artist.name;
   return rows.value
     .filter(
       (r) =>
         (!favoritesOnly.value || r.composer.artist.favorite === true) &&
         (!q || r.haystack.includes(q)),
     )
-    .sort((ra, rb) => {
-      const a = ra.composer;
-      const b = rb.composer;
-      if (sortBy.value === "works") {
-        const byCount = b.work_count - a.work_count;
-        if (byCount !== 0) return byCount;
-        return collator.compare(sortName(a), sortName(b));
-      }
-      if (sortBy.value === "sort_name") {
-        return collator.compare(sortName(a), sortName(b));
-      }
-      return collator.compare(a.artist.name, b.artist.name);
-    })
     .map((r) => r.item);
 });
 </script>

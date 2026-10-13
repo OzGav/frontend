@@ -17,6 +17,9 @@ export interface ItemsListingPreferences {
   hideFullyPlayedFilter?: boolean;
   albumType?: string[];
   providerFilter?: string[];
+  periodFilter?: string[];
+  yearFrom?: string;
+  yearTo?: string;
   expand?: boolean;
   search?: string;
   collapseCollections?: boolean;

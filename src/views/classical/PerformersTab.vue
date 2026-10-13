@@ -61,13 +61,18 @@ import {
 } from "@/views/classical/images";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { useClassicalListing } from "@/views/classical/listing";
+import {
+  useClassicalListing,
+  useClassicalPreferences,
+} from "@/views/classical/listing";
 import { Users } from "@lucide/vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformersTab" });
+
+const ITEMTYPE = "performers";
 
 const { t } = useI18n();
 
@@ -99,12 +104,15 @@ const performers = ref<ClassicalPerformer[]>([]);
 
 useOwnFavorites(() => performers.value.map((row) => row.artist));
 
-const search = ref("");
+const { preferences, save } = useClassicalPreferences(ITEMTYPE);
+
+const search = ref(preferences.search ?? "");
+watch(search, (value) => save("search", value));
 
 // The full list is fetched once; the role chips filter it client-side.
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
-    itemtype: "performers",
+    itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_PERFORMERS,
     load: async (sort) => {
       performers.value = await getPerformers(sort);

@@ -20,6 +20,7 @@ import {
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import type { ClassicalSort } from "@/services/classical";
+import { useBackScroll } from "@/views/classical/backScroll";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import {
   ArrowDown,
@@ -129,8 +130,8 @@ export interface ClassicalListingOptions extends Omit<
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode, cover size and the tab's own
  * filters. The settings are kept per user like those of the other library
- * listings, and the menu shows in the Classical view's toolbar while the tab
- * is open.
+ * listings, the menu shows in the Classical view's toolbar while the tab is
+ * open, and going back to the tab returns it to where it was scrolled.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
   const { preferences: prefs, save } = useClassicalPreferences(
@@ -144,6 +145,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
   // the tabs load on mount, so they start out loading
   const loading = ref(true);
+  useBackScroll(() => loading.value);
 
   const reload = async () => {
     loading.value = true;

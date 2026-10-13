@@ -1,7 +1,10 @@
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import { useUserPreferences } from "@/composables/userPreferences";
+import {
+  useUserPreferences,
+  type ItemsListingPreferences,
+} from "@/composables/userPreferences";
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { keepOwnFavorite } from "@/helpers/favorites";
 import { normalizeGridSize } from "@/helpers/grid_size";
@@ -116,18 +119,22 @@ export interface ClassicalListingOptions extends Omit<
   load: (sort: ClassicalSort) => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
+  // the tab's own filters, shown after the favourites filter; read as the
+  // menu is built, so their state must exist before this is called
+  filters?: () => ToolBarMenuItem[];
 }
 
 /**
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
- * optionally, the favourites filter, view mode and cover size. The settings
- * are kept per user like those of the other library listings, and the menu
- * shows in the Classical view's toolbar while the tab is open.
+ * optionally, the favourites filter, view mode, cover size and the tab's own
+ * filters. The settings are kept per user like those of the other library
+ * listings, and the menu shows in the Classical view's toolbar while the tab
+ * is open.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
-  const { getItemsListingPreferences, setItemsListingPreference } =
-    useUserPreferences();
-  const prefs = getItemsListingPreferences(PREFS_PATH, options.itemtype).value;
+  const { preferences: prefs, save } = useClassicalPreferences(
+    options.itemtype,
+  );
   const sort = useClassicalSort({ ...options, onChange: () => reload() });
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
@@ -136,11 +143,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
   // the tabs load on mount, so they start out loading
   const loading = ref(true);
-
-  const save = (
-    key: "viewMode" | "favoriteFilter" | "gridSize",
-    value: string | boolean | number,
-  ) => setItemsListingPreference(PREFS_PATH, options.itemtype, key, value);
 
   const reload = async () => {
     loading.value = true;
@@ -201,6 +203,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
         },
       });
     }
+    if (options.filters) list.push(...options.filters());
     list.push({
       label: "tooltip.refresh",
       icon: RefreshCw,
@@ -219,10 +222,27 @@ export function useClassicalListing(options: ClassicalListingOptions) {
 
   useClassicalMenu(
     () => items.value,
-    () => favoritesOnly.value,
+    () => items.value.some((item) => item.active),
   );
 
   return { viewMode, favoritesOnly, gridSize, loading, reload };
+}
+
+/**
+ * The listing settings kept for a classical tab, as they were when the tab
+ * opened, and a way to save one.
+ */
+export function useClassicalPreferences(itemtype: string) {
+  const { getItemsListingPreferences, setItemsListingPreference } =
+    useUserPreferences();
+  const save = <K extends keyof ItemsListingPreferences>(
+    key: K,
+    value: ItemsListingPreferences[K],
+  ) => setItemsListingPreference(PREFS_PATH, itemtype, key, value);
+  return {
+    preferences: getItemsListingPreferences(PREFS_PATH, itemtype).value,
+    save,
+  };
 }
 
 /**

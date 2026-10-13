@@ -26,7 +26,8 @@
 <script setup lang="ts">
 import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
-import type { ClassicalComposer } from "@/plugins/api/interfaces";
+import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import { Period, type ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
 import ClassicalArtistGrid, {
   type ClassicalArtistGridItem,
@@ -39,11 +40,14 @@ import {
   squareImage,
   WIDE_IMAGE_SIZE,
 } from "@/views/classical/images";
-import { workCountLabel } from "@/views/classical/labels";
+import { periodLabel, workCountLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { useClassicalListing } from "@/views/classical/listing";
-import { Feather } from "@lucide/vue";
-import { computed, onMounted, ref } from "vue";
+import {
+  useClassicalListing,
+  useClassicalPreferences,
+} from "@/views/classical/listing";
+import { Feather, Hourglass } from "@lucide/vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "ComposersTab" });
@@ -54,17 +58,60 @@ const composers = ref<ClassicalComposer[]>([]);
 
 useOwnFavorites(() => composers.value.map((row) => row.artist));
 
-const search = ref("");
+const ITEMTYPE = "composers";
+
+const { preferences, save } = useClassicalPreferences(ITEMTYPE);
+
+const search = ref(preferences.search ?? "");
+watch(search, (value) => save("search", value));
+
+const PERIODS = Object.values(Period);
+
+const periodFilter = ref<Period[]>(
+  (preferences.periodFilter ?? []).filter((p): p is Period =>
+    PERIODS.includes(p as Period),
+  ),
+);
+
+// The periods of the listed composers, in time order. A chosen period stays
+// listed so it can be cleared even when no composer has it any more.
+const periodFilterItem = computed<ToolBarMenuItem>(() => {
+  const present = new Set(composers.value.map((c) => c.artist.period));
+  const offered = PERIODS.filter(
+    (p) => present.has(p) || periodFilter.value.includes(p),
+  );
+  return {
+    label: "classical_filter_period",
+    icon: Hourglass,
+    hide: !offered.length,
+    active: periodFilter.value.length > 0,
+    closeOnContentClick: false,
+    overflowAllowed: true,
+    subItems: offered.map((period) => ({
+      label: `classical_period.${period}`,
+      selected: periodFilter.value.includes(period),
+      action: () => togglePeriod(period),
+    })),
+  };
+});
 
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
-    itemtype: "composers",
+    itemtype: ITEMTYPE,
     listing: "classical_composers",
     load: async (sort) => {
       composers.value = await getComposers(sort);
     },
     views: true,
+    filters: () => [periodFilterItem.value],
   });
+
+function togglePeriod(period: Period) {
+  periodFilter.value = periodFilter.value.includes(period)
+    ? periodFilter.value.filter((p) => p !== period)
+    : [...periodFilter.value, period];
+  save("periodFilter", periodFilter.value);
+}
 
 const searchPlaceholder = computed(() =>
   t("classical_filter_composers_placeholder"),
@@ -86,7 +133,14 @@ const rows = computed(() =>
       wideImage: cardImage(c, WIDE_IMAGE_SIZE),
       squareImage: squareImage(c, SQUARE_IMAGE_SIZE),
       listImage: squareImage(c, LIST_IMAGE_SIZE),
-      lines: [workCountLabel(c.work_count)],
+      lines: [
+        [
+          c.artist.period && periodLabel(c.artist.period),
+          workCountLabel(c.work_count),
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      ],
     } satisfies ClassicalArtistGridItem,
   })),
 );
@@ -97,6 +151,8 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() => {
     .filter(
       (r) =>
         (!favoritesOnly.value || r.composer.artist.favorite === true) &&
+        (!periodFilter.value.length ||
+          periodFilter.value.some((p) => p === r.composer.artist.period)) &&
         (!q || r.haystack.includes(q)),
     )
     .map((r) => r.item);

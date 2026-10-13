@@ -110,6 +110,7 @@ import {
   useArtistPageUpdates,
 } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import { useBackFilter } from "@/views/classical/backFilter";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
@@ -138,6 +139,10 @@ useArtistPageUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");
+const restoreWorksFilter = useBackFilter(
+  () => worksFilter.value,
+  (saved) => (worksFilter.value = saved),
+);
 const recordings = ref<Recording[]>([]);
 const loading = ref(true);
 
@@ -222,6 +227,7 @@ const load = async (id: string) => {
   recordings.value = [];
   loading.value = true;
   worksFilter.value = "";
+  restoreWorksFilter();
   try {
     const [artist, entries, performed] = await Promise.all([
       getClassicalArtist(id),

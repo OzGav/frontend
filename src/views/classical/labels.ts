@@ -1,4 +1,4 @@
-import type { ArtistRole, WorkType } from "@/plugins/api/interfaces";
+import type { ArtistRole, Period, WorkType } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 
 /** The display name of a classical credit role, e.g. Conductor. */
@@ -9,6 +9,11 @@ export function roleLabel(role: ArtistRole): string {
 /** The display name of a work type, e.g. Song cycle. */
 export function workTypeLabel(type: WorkType): string {
   return $t(`classical_work_type.${type}`);
+}
+
+/** The display name of a composer's period, e.g. Baroque. */
+export function periodLabel(period: Period): string {
+  return $t(`classical_period.${period}`);
 }
 
 /** A recording count with its noun, e.g. 3 recordings. */

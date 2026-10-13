@@ -140,6 +140,7 @@ import {
   getWorkRecordings,
 } from "@/services/classical";
 import { useBackFilter } from "@/views/classical/backFilter";
+import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
@@ -172,6 +173,7 @@ const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
 const recordings = ref<Recording[]>([]);
 const loading = ref(true);
+useBackScroll(() => loading.value);
 
 useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
 

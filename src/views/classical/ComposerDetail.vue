@@ -1,6 +1,10 @@
 <template>
   <section>
-    <ClassicalHero :item="artistItem" section="composers" show-favorite />
+    <ClassicalHero :item="artistItem" section="composers" show-favorite>
+      <template v-if="artistItem?.period" #meta>
+        {{ periodLabel(artistItem.period) }}
+      </template>
+    </ClassicalHero>
     <DetailTextRow
       v-if="artistItem?.metadata.description"
       :text="artistItem.metadata.description"
@@ -73,6 +77,7 @@ import {
   useArtistPageUpdates,
 } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import { useBackFilter } from "@/views/classical/backFilter";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
@@ -80,6 +85,7 @@ import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
+  periodLabel,
   recordingCountLabel,
   workCountLabel,
   workTypeLabel,
@@ -112,6 +118,10 @@ useArtistPageUpdates(artistItem);
 const works = ref<WorkRow[]>([]);
 const loading = ref(true);
 const worksFilter = ref("");
+const restoreWorksFilter = useBackFilter(
+  () => worksFilter.value,
+  (saved) => (worksFilter.value = saved),
+);
 
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(worksFilter.value.trim());
@@ -126,6 +136,7 @@ const load = async (id: string) => {
   works.value = [];
   loading.value = true;
   worksFilter.value = "";
+  restoreWorksFilter();
   try {
     const [artist, list] = await Promise.all([
       getClassicalArtist(id),

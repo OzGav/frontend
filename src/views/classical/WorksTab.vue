@@ -36,7 +36,7 @@
         <RowPlayButton
           side="start"
           :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playFirstRecording(w.item_id, e)"
+          @play="(e: Event) => playWork(w.item_id, e)"
         />
         <div class="work-link">
           <router-link
@@ -58,7 +58,7 @@
         <RowPlayButton
           side="end"
           :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playFirstRecording(w.item_id, e)"
+          @play="(e: Event) => playWork(w.item_id, e)"
         />
       </li>
     </ul>
@@ -80,7 +80,7 @@ import {
   useClassicalListing,
 } from "@/views/classical/listing";
 import { recordingCountLabel } from "@/views/classical/labels";
-import { playFirstRecording } from "@/views/classical/playback";
+import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { computed, onMounted, ref } from "vue";
@@ -100,7 +100,7 @@ interface WorkRow {
   catalog_number: string;
   year_composed?: number | null;
   recordings_label: string;
-  // composer, title and catalog number folded for the filter
+  // composer, title, catalog number and part names folded for the filter
   haystack: string;
 }
 
@@ -125,22 +125,26 @@ const { loading, reload } = useClassicalListing({
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
   labels: { [SortField.YEAR]: "classical_sort_year" },
   load: async (sort) => {
-    works.value = (await getWorks(sort)).map(({ work, recording_count }) => {
-      const composer = work.composers[0]?.name ?? "";
-      const catalogNumber = work.catalog_numbers[0] ?? "";
-      return {
-        item_id: work.item_id,
-        name: work.name,
-        composer,
-        composer_id: work.composers[0]?.item_id,
-        catalog_number: catalogNumber,
-        year_composed: work.composition_year,
-        recordings_label: recordingCountLabel(recording_count),
-        haystack: normalizeForFilter(
-          `${composer} ${work.name} ${catalogNumber}`,
-        ),
-      };
-    });
+    works.value = (await getWorks(sort)).map(
+      ({ work, recording_count, part_names }) => {
+        const composer = work.composers[0]?.name ?? "";
+        const catalogNumber = work.catalog_numbers[0] ?? "";
+        return {
+          item_id: work.item_id,
+          name: work.name,
+          composer,
+          composer_id: work.composers[0]?.item_id,
+          catalog_number: catalogNumber,
+          year_composed: work.composition_year,
+          recordings_label: recordingCountLabel(recording_count),
+          haystack: normalizeForFilter(
+            [composer, work.name, catalogNumber, ...(part_names ?? [])].join(
+              " ",
+            ),
+          ),
+        };
+      },
+    );
   },
 });
 

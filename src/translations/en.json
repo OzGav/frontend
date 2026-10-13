@@ -1176,6 +1176,8 @@
     "classical_role.other": "Other performers",
     "classical_no_recordings_match": "No recordings match this filter.",
     "classical_arrangement_of": "Arrangement of",
+    "classical_arranged_as": "Arranged as",
+    "classical_part_of": "Part of",
     "classical_filter_detail_works_placeholder": "Filter works",
     "classical_filter_works_placeholder": "Filter by composer, title, or catalog number",
     "classical_filter_composers_placeholder": "Filter by composer name",

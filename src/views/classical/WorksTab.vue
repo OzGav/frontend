@@ -39,14 +39,17 @@
           @play="(e: Event) => playWork(w.item_id, e)"
         />
         <div class="work-link">
-          <router-link
-            v-if="w.composer_id"
-            :to="`/classical/composers/${w.composer_id}`"
-            class="work-composer work-composer-link"
-          >
-            {{ w.composer }}
-          </router-link>
-          <span v-else class="work-composer">{{ w.composer }}</span>
+          <span class="work-composer">
+            <router-link
+              v-if="w.composer_id"
+              :to="`/classical/composers/${w.composer_id}`"
+              class="work-composer-link"
+            >
+              {{ w.composer }}
+            </router-link>
+            <template v-else>{{ w.composer }}</template>
+            <template v-if="w.period_label"> · {{ w.period_label }}</template>
+          </span>
           <router-link :to="`/classical/works/${w.item_id}`" class="work-title">
             {{ w.name }}
           </router-link>
@@ -70,7 +73,7 @@
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
-import { SortField } from "@/plugins/api/interfaces";
+import { SortField, type Period } from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
@@ -80,7 +83,8 @@ import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { recordingCountLabel } from "@/views/classical/labels";
+import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
+import { usePeriodFilter } from "@/views/classical/periodFilter";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
@@ -100,6 +104,8 @@ interface WorkRow {
   name: string;
   composer: string;
   composer_id?: string;
+  period?: Period | null;
+  period_label: string;
   catalog_number: string;
   year_composed?: number | null;
   recordings_label: string;
@@ -126,14 +132,19 @@ const hasComposedYears = computed(
 
 const router = useRouter();
 
+const periodFilter = usePeriodFilter(ITEMTYPE, () =>
+  works.value.map((w) => w.period),
+);
+
 const { loading, reload } = useClassicalListing({
   itemtype: ITEMTYPE,
   listing: "classical_works",
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
   labels: { [SortField.YEAR]: "classical_sort_year" },
+  filters: () => [periodFilter.menuItem.value],
   load: async (sort) => {
     works.value = (await getWorks(sort)).map(
-      ({ work, recording_count, part_names }) => {
+      ({ work, recording_count, part_names, period }) => {
         const composer = work.composers[0]?.name ?? "";
         const catalogNumber = work.catalog_numbers[0] ?? "";
         return {
@@ -141,6 +152,8 @@ const { loading, reload } = useClassicalListing({
           name: work.name,
           composer,
           composer_id: work.composers[0]?.item_id,
+          period,
+          period_label: period ? periodLabel(period) : "",
           catalog_number: catalogNumber,
           year_composed: work.composition_year,
           recordings_label: recordingCountLabel(recording_count),
@@ -172,6 +185,7 @@ const filteredWorks = computed(() => {
   return works.value.filter(
     (w) =>
       (!q || w.haystack.includes(q)) &&
+      periodFilter.matches(w.period) &&
       // kept years must not narrow the list while the boxes are hidden
       (!hasComposedYears.value || matchesYear(w.year_composed)),
   );
@@ -248,8 +262,7 @@ const filteredWorks = computed(() => {
 
 /* Only the name is the link, so the underline marks just what is clicked. */
 .work-composer-link {
-  align-self: flex-start;
-  max-width: 100%;
+  color: inherit;
   text-decoration: none;
 }
 

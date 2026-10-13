@@ -26,8 +26,7 @@
 <script setup lang="ts">
 import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
-import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { Period, type ClassicalComposer } from "@/plugins/api/interfaces";
+import type { ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
 import ClassicalArtistGrid, {
   type ClassicalArtistGridItem,
@@ -46,7 +45,8 @@ import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { Feather, Hourglass } from "@lucide/vue";
+import { usePeriodFilter } from "@/views/classical/periodFilter";
+import { Feather } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
@@ -65,35 +65,9 @@ const { preferences, save } = useClassicalPreferences(ITEMTYPE);
 const search = ref(preferences.search ?? "");
 watch(search, (value) => save("search", value));
 
-const PERIODS = Object.values(Period);
-
-const periodFilter = ref<Period[]>(
-  (preferences.periodFilter ?? []).filter((p): p is Period =>
-    PERIODS.includes(p as Period),
-  ),
+const periodFilter = usePeriodFilter(ITEMTYPE, () =>
+  composers.value.map((c) => c.artist.period),
 );
-
-// The periods of the listed composers, in time order. A chosen period stays
-// listed so it can be cleared even when no composer has it any more.
-const periodFilterItem = computed<ToolBarMenuItem>(() => {
-  const present = new Set(composers.value.map((c) => c.artist.period));
-  const offered = PERIODS.filter(
-    (p) => present.has(p) || periodFilter.value.includes(p),
-  );
-  return {
-    label: "classical_filter_period",
-    icon: Hourglass,
-    hide: !offered.length,
-    active: periodFilter.value.length > 0,
-    closeOnContentClick: false,
-    overflowAllowed: true,
-    subItems: offered.map((period) => ({
-      label: `classical_period.${period}`,
-      selected: periodFilter.value.includes(period),
-      action: () => togglePeriod(period),
-    })),
-  };
-});
 
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
@@ -103,15 +77,8 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       composers.value = await getComposers(sort);
     },
     views: true,
-    filters: () => [periodFilterItem.value],
+    filters: () => [periodFilter.menuItem.value],
   });
-
-function togglePeriod(period: Period) {
-  periodFilter.value = periodFilter.value.includes(period)
-    ? periodFilter.value.filter((p) => p !== period)
-    : [...periodFilter.value, period];
-  save("periodFilter", periodFilter.value);
-}
 
 const searchPlaceholder = computed(() =>
   t("classical_filter_composers_placeholder"),
@@ -151,8 +118,7 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() => {
     .filter(
       (r) =>
         (!favoritesOnly.value || r.composer.artist.favorite === true) &&
-        (!periodFilter.value.length ||
-          periodFilter.value.some((p) => p === r.composer.artist.period)) &&
+        periodFilter.matches(r.composer.artist.period) &&
         (!q || r.haystack.includes(q)),
     )
     .map((r) => r.item);

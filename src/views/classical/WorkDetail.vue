@@ -13,6 +13,10 @@
             >
               {{ composerMapping.name }}
             </router-link>
+            <template v-if="composer?.period">
+              <span class="work-meta-sep">·</span
+              >{{ periodLabel(composer.period) }}
+            </template>
             <template v-if="work.catalog_numbers[0]">
               <span class="work-meta-sep">·</span>{{ work.catalog_numbers[0] }}
             </template>
@@ -143,7 +147,11 @@ import RecordingsFilter from "@/views/classical/components/RecordingsFilter.vue"
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { recordingCountLabel, workTypeLabel } from "@/views/classical/labels";
+import {
+  periodLabel,
+  recordingCountLabel,
+  workTypeLabel,
+} from "@/views/classical/labels";
 import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
 import { playTracks } from "@/views/classical/playback";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";

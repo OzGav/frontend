@@ -1306,6 +1306,8 @@ export interface ClassicalWorkEntry {
   recording_count: number;
   // names of all the work's parts, for filtering
   part_names?: string[];
+  // the period of the work's first composer
+  period?: Period | null;
 }
 
 export interface Playlist extends MediaItem {

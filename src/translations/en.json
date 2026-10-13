@@ -1250,6 +1250,16 @@
         "ballet": "Ballet",
         "other": "Other"
     },
+    "classical_period": {
+        "medieval": "Medieval",
+        "renaissance": "Renaissance",
+        "baroque": "Baroque",
+        "classical": "Classical",
+        "romantic": "Romantic",
+        "modern": "Modern",
+        "contemporary": "Contemporary"
+    },
+    "classical_filter_period": "Filter by period",
     "item_fully_played": "This item has been fully played",
     "item_in_progress": "This item has been partially played",
     "duration_in_seconds": "{0} seconds",

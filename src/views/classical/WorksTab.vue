@@ -70,6 +70,7 @@
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
+import { SortField } from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
@@ -98,7 +99,6 @@ interface WorkRow {
   composer_id?: string;
   catalog_number: string;
   year_composed?: number | null;
-  recording_count: number;
   recordings_label: string;
   // composer, title and catalog number folded for the filter
   haystack: string;
@@ -119,20 +119,13 @@ const hasComposedYears = computed(
 
 const router = useRouter();
 
-const { sortBy, loading, reload } = useClassicalListing({
+const { loading, reload } = useClassicalListing({
   itemtype: "works",
-  sorts: [
-    { key: "composer", label: "classical_sort_composer" },
-    { key: "title", label: "classical_sort_title" },
-    {
-      key: "year",
-      label: "classical_sort_year",
-      available: () => hasComposedYears.value,
-    },
-    { key: "recordings", label: "classical_sort_recordings" },
-  ],
-  load: async () => {
-    works.value = (await getWorks()).map(({ work, recording_count }) => {
+  listing: "classical_works",
+  exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
+  labels: { [SortField.YEAR]: "classical_sort_year" },
+  load: async (sort) => {
+    works.value = (await getWorks(sort)).map(({ work, recording_count }) => {
       const composer = work.composers[0]?.name ?? "";
       const catalogNumber = work.catalog_numbers[0] ?? "";
       return {
@@ -142,7 +135,6 @@ const { sortBy, loading, reload } = useClassicalListing({
         composer_id: work.composers[0]?.item_id,
         catalog_number: catalogNumber,
         year_composed: work.composition_year,
-        recording_count,
         recordings_label: recordingCountLabel(recording_count),
         haystack: normalizeForFilter(
           `${composer} ${work.name} ${catalogNumber}`,
@@ -160,42 +152,11 @@ const searchPlaceholder = computed(() =>
 
 onMounted(reload);
 
-const collator = new Intl.Collator(undefined, { numeric: true });
-
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(search.value.trim());
-  const filtered = works.value.filter(
+  return works.value.filter(
     (w) => (!q || w.haystack.includes(q)) && matchesYear(w.year_composed),
   );
-  const sorted = [...filtered];
-  sorted.sort((a, b) => {
-    switch (sortBy.value) {
-      case "title":
-        return collator.compare(a.name, b.name);
-      case "year": {
-        // works without a year sort last
-        const ay = a.year_composed ?? Infinity;
-        const by = b.year_composed ?? Infinity;
-        return ay === by ? 0 : ay < by ? -1 : 1;
-      }
-      case "recordings":
-        return b.recording_count - a.recording_count;
-      case "composer":
-      default: {
-        const byComposer = collator.compare(a.composer, b.composer);
-        if (byComposer !== 0) return byComposer;
-        // Within a composer, secondary sort by catalog number so works appear
-        // in canonical Op./BWV/K. order. Empty catalogs sort last.
-        const ac = a.catalog_number || "";
-        const bc = b.catalog_number || "";
-        if (!ac && !bc) return 0;
-        if (!ac) return 1;
-        if (!bc) return -1;
-        return collator.compare(ac, bc);
-      }
-    }
-  });
-  return sorted;
 });
 </script>
 

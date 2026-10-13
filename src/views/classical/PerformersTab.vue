@@ -98,15 +98,12 @@ useOwnFavorites(() => performers.value.map((row) => row.artist));
 const search = ref("");
 
 // The full list is fetched once; the role chips filter it client-side.
-const { sortBy, viewMode, favoritesOnly, gridSize, loading, reload } =
+const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: "performers",
-    sorts: [
-      { key: "name", label: "sort.name" },
-      { key: "recordings", label: "classical_sort_recordings" },
-    ],
-    load: async () => {
-      performers.value = await getPerformers();
+    listing: "classical_performers",
+    load: async (sort) => {
+      performers.value = await getPerformers(sort);
     },
     views: true,
   });
@@ -119,8 +116,6 @@ const activeRole = computed<ArtistRole | null>(() => {
   if (!props.role) return null;
   return chips.find((c) => c.value === props.role)?.value ?? null;
 });
-
-const collator = new Intl.Collator(undefined, { numeric: true });
 
 // Built once per load, so filtering and redrawing reuse the folded name and
 // image urls.
@@ -152,15 +147,6 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() => {
         (!favoritesOnly.value || r.performer.artist.favorite === true) &&
         (!q || r.haystack.includes(q)),
     )
-    .sort((ra, rb) => {
-      const a = ra.performer;
-      const b = rb.performer;
-      if (sortBy.value === "recordings") {
-        const byCount = b.recording_count - a.recording_count;
-        if (byCount !== 0) return byCount;
-      }
-      return collator.compare(a.artist.name, b.artist.name);
-    })
     .map((r) => r.item);
 });
 

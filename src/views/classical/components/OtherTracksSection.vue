@@ -14,7 +14,7 @@
     </template>
     <ul class="other-tracks-list">
       <li
-        v-for="t in sortedTracks"
+        v-for="t in tracks"
         :key="t.item_id"
         v-hold="(e: TouchEvent) => onHold(e, t)"
         class="other-track-row classical-play-row"
@@ -66,6 +66,7 @@ import {
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import type { Track } from "@/plugins/api/interfaces";
+import { getOtherTracks } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
@@ -73,13 +74,14 @@ import { useOwnFavorites } from "@/views/classical/favorites";
 import { isRowControlClick, useClassicalSort } from "@/views/classical/listing";
 import { openMenu } from "@/views/classical/menu";
 import { isTrackPlaying } from "@/views/classical/playback";
-import { ArrowUpDown } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 defineOptions({ name: "OtherTracksSection" });
 
 const props = defineProps<{
-  tracks: Track[];
+  artistId: string;
+  // the artist's tracks as composer, otherwise as performer
+  asComposer?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -87,35 +89,47 @@ const emit = defineEmits<{
   (e: "menu-track", track: Track, evt: Event): void;
 }>();
 
-useOwnFavorites(() => props.tracks);
+const tracks = ref<Track[]>([]);
+
+useOwnFavorites(() => tracks.value);
 
 const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event, track: Track) => emit("menu-track", track, evt),
 );
 
-const SORT_OPTIONS = [
-  { key: "name", label: "sort.name" },
-  { key: "year", label: "sort.year_desc" },
-  { key: "date_added", label: "sort.timestamp_added_desc" },
-] as const;
-
-const { sortBy: sortKey, setSort } = useClassicalSort(
-  "other_tracks",
-  SORT_OPTIONS.map((o) => o.key),
-);
+const { ready, sort, menuItem } = useClassicalSort({
+  itemtype: "other_tracks",
+  listing: "classical_other_tracks",
+  onChange: () => load(),
+});
 
 // The sort entry the standard listings show in their toolbar menu.
-const menuItems = computed<ContextMenuItem[]>(() => [
-  {
-    label: "tooltip.sort_options",
-    icon: ArrowUpDown,
-    subItems: SORT_OPTIONS.map((option) => ({
-      label: option.label,
-      selected: sortKey.value === option.key,
-      action: () => setSort(option.key),
-    })),
+const menuItems = computed<ContextMenuItem[]>(() => [menuItem.value]);
+
+let loadCount = 0;
+
+const load = async () => {
+  const count = ++loadCount;
+  await ready;
+  // without them the page still shows, minus its Other tracks
+  const list = await getOtherTracks(
+    props.artistId,
+    props.asComposer,
+    sort.value,
+  ).catch(() => []);
+  // a newer load has taken over the section
+  if (count !== loadCount) return;
+  tracks.value = list;
+};
+
+watch(
+  () => props.artistId,
+  () => {
+    tracks.value = [];
+    load();
   },
-]);
+  { immediate: true },
+);
 
 // A click on the row itself does what a click on any track row does.
 const onRowClick = (track: Track, evt: MouseEvent) => {
@@ -123,28 +137,6 @@ const onRowClick = (track: Track, evt: MouseEvent) => {
   const { x, y } = getEventPosition(evt);
   handleMediaItemClick(track, x, y);
 };
-
-const collator = new Intl.Collator(undefined, { numeric: true });
-
-const sortedTracks = computed(() => {
-  const list = [...props.tracks];
-  switch (sortKey.value) {
-    case "year":
-      return list.sort((a, b) => {
-        const ay = a.album?.year ?? -Infinity;
-        const by = b.album?.year ?? -Infinity;
-        return by - ay || collator.compare(a.name, b.name);
-      });
-    case "date_added":
-      // ISO timestamps order correctly as plain strings
-      return list.sort((a, b) =>
-        (b.date_added ?? "").localeCompare(a.date_added ?? ""),
-      );
-    case "name":
-    default:
-      return list.sort((a, b) => collator.compare(a.name, b.name));
-  }
-});
 </script>
 
 <style scoped>

@@ -1,17 +1,25 @@
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import { useLibrarySorting } from "@/composables/useLibrarySorting";
 import { useUserPreferences } from "@/composables/userPreferences";
+import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { keepOwnFavorite } from "@/helpers/favorites";
 import { normalizeGridSize } from "@/helpers/grid_size";
 import api from "@/plugins/api";
 import {
   EventType,
+  SortDirection,
   type Artist,
   type EventMessage,
+  type SortField,
+  type SortOptionInfo,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
+import type { ClassicalSort } from "@/services/classical";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   Heart,
   LayoutGrid,
@@ -82,20 +90,30 @@ export function navigateOnRowClick(
 
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";
 
-export interface ClassicalSortOption {
-  key: string;
-  // translation key of the option's label
-  label: string;
-  // offered only while this returns true, e.g. while the data it sorts on exists
-  available?: () => boolean;
+/** The classical lists the server offers sort choices for. */
+export type ClassicalListingType =
+  | "classical_composers"
+  | "classical_performers"
+  | "classical_works"
+  | "classical_other_tracks";
+
+export interface ClassicalSortOptions {
+  // name the choice is stored under
+  itemtype: string;
+  listing: ClassicalListingType;
+  // called after the user picks another sort
+  onChange: () => void;
+  // fields left out of the menu, e.g. while the data they sort on is missing
+  exclude?: () => SortField[];
+  // translation keys replacing the server's labels, e.g. a more specific year
+  labels?: Partial<Record<SortField, string>>;
 }
 
-export interface ClassicalListingOptions {
-  // name the tab's settings are stored under
-  itemtype: string;
-  // the first option is the default
-  sorts: ClassicalSortOption[];
-  load: () => Promise<void>;
+export interface ClassicalListingOptions extends Omit<
+  ClassicalSortOptions,
+  "onChange"
+> {
+  load: (sort: ClassicalSort) => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
 }
@@ -110,19 +128,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const { getItemsListingPreferences, setItemsListingPreference } =
     useUserPreferences();
   const prefs = getItemsListingPreferences(PREFS_PATH, options.itemtype).value;
-  const { sortBy: chosenSort, setSort } = useClassicalSort(
-    options.itemtype,
-    options.sorts.map((s) => s.key),
-  );
-  const availableSorts = computed(() =>
-    options.sorts.filter((s) => s.available?.() ?? true),
-  );
-  // An unavailable choice stays saved and applies again once it is offered.
-  const sortBy = computed(() =>
-    availableSorts.value.some((s) => s.key === chosenSort.value)
-      ? chosenSort.value
-      : availableSorts.value[0].key,
-  );
+  const sort = useClassicalSort({ ...options, onChange: () => reload() });
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
   );
@@ -139,7 +145,8 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const reload = async () => {
     loading.value = true;
     try {
-      await options.load();
+      await sort.ready;
+      await options.load(sort.sort.value);
     } finally {
       loading.value = false;
     }
@@ -202,15 +209,9 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       action: reload,
     });
     list.push({
-      label: "tooltip.sort_options",
-      icon: ArrowUpDown,
-      disabled: availableSorts.value.length <= 1 || loading.value,
+      ...sort.menuItem.value,
+      disabled: sort.menuItem.value.disabled || loading.value,
       overflowAllowed: true,
-      subItems: availableSorts.value.map((s) => ({
-        label: s.label,
-        selected: sortBy.value === s.key,
-        action: () => setSort(s.key),
-      })),
     });
     if (options.views) list.push(viewModeItem());
     return list;
@@ -221,23 +222,88 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     () => favoritesOnly.value,
   );
 
-  return { sortBy, viewMode, favoritesOnly, gridSize, loading, reload };
+  return { viewMode, favoritesOnly, gridSize, loading, reload };
 }
 
 /**
- * A sort choice kept per user under the given name, like the other library
- * listings keep theirs. The first key is the default.
+ * The sort of a classical list, chosen from the choices the server offers for
+ * it and kept per user like the other library listings keep theirs.
+ *
+ * Returns `ready`, settled once the choices are known; `sort`, the arguments
+ * to fetch the list with; and `menuItem`, the sort entry for the list's menu.
  */
-export function useClassicalSort(itemtype: string, keys: readonly string[]) {
+export function useClassicalSort(options: ClassicalSortOptions) {
   const { getItemsListingPreferences, setItemsListingPreference } =
     useUserPreferences();
-  const stored = getItemsListingPreferences(PREFS_PATH, itemtype).value.sortBy;
-  const sortBy = ref(stored && keys.includes(stored) ? stored : keys[0]);
-  const setSort = (key: string) => {
-    sortBy.value = key;
-    setItemsListingPreference(PREFS_PATH, itemtype, "sortBy", key);
+  const sortOptions = ref<SortOptionInfo[]>([]);
+  const sortBy = ref(
+    getItemsListingPreferences(PREFS_PATH, options.itemtype).value.sortBy ?? "",
+  );
+  const sorting = useLibrarySorting(sortOptions, sortBy);
+
+  // Without the choices (an older server) the list keeps the server default.
+  const ready = api
+    .getSortOptions(options.listing)
+    .then((list) => {
+      sortOptions.value = list;
+      sortBy.value = sorting.normalizeSortBy(sortBy.value);
+    })
+    .catch(() => undefined);
+
+  const selectedOption = computed(() =>
+    sortOptions.value.find((o) => o.field === sorting.current.value.field),
+  );
+
+  const sort = computed<ClassicalSort>(() =>
+    selectedOption.value
+      ? {
+          sort_field: selectedOption.value.field,
+          sort_direction: selectedOption.value.supports_direction
+            ? sorting.current.value.direction
+            : undefined,
+        }
+      : {},
+  );
+
+  const setSort = (value: string | undefined) => {
+    if (!value || value === sortBy.value) return;
+    sortBy.value = value;
+    setItemsListingPreference(PREFS_PATH, options.itemtype, "sortBy", value);
+    options.onChange();
   };
-  return { sortBy, setSort };
+
+  const directionItem = (direction: SortDirection): ContextMenuItem => ({
+    label:
+      direction === SortDirection.ASC ? "sort.ascending" : "sort.descending",
+    icon: direction === SortDirection.ASC ? ArrowUp : ArrowDown,
+    selected: sorting.current.value.direction === direction,
+    action: () => setSort(sorting.sortByDirection(direction)),
+  });
+
+  const menuItem = computed<ContextMenuItem>(() => {
+    const excluded = options.exclude?.() ?? [];
+    const offered = sortOptions.value.filter(
+      (o) => !excluded.includes(o.field),
+    );
+    const subItems: ContextMenuItem[] = offered.map((o) => ({
+      label: options.labels?.[o.field] ?? `sort.${o.label_key ?? o.field}`,
+      selected: o.field === selectedOption.value?.field,
+      action: () => setSort(sorting.sortByOption(o)),
+    }));
+    if (selectedOption.value?.supports_direction)
+      subItems.push(
+        directionItem(SortDirection.ASC),
+        directionItem(SortDirection.DESC),
+      );
+    return {
+      label: "tooltip.sort_options",
+      icon: ArrowUpDown,
+      disabled: !offered.length,
+      subItems,
+    };
+  });
+
+  return { ready, sort, menuItem };
 }
 
 /**

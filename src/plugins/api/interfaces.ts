@@ -234,6 +234,9 @@ export enum SortField {
   PROVIDER = "provider",
   FAVORITE_TIMESTAMP = "favorite_timestamp",
   ORIGINAL = "original",
+  COMPOSER = "composer",
+  RECORDING_COUNT = "recording_count",
+  WORK_COUNT = "work_count",
 }
 
 export enum SortDirection {

@@ -27,7 +27,7 @@
           <RowPlayButton
             side="start"
             :label="`${$t('play')} ${w.name}`"
-            @play="(e: Event) => playFirstRecording(w.item_id, e)"
+            @play="(e: Event) => playWork(w.item_id, e)"
           />
           <span class="composer-work-text">
             <router-link :to="workLink(w.item_id)" class="composer-work-link">
@@ -46,7 +46,7 @@
           <RowPlayButton
             side="end"
             :label="`${$t('play')} ${w.name}`"
-            @play="(e: Event) => playFirstRecording(w.item_id, e)"
+            @play="(e: Event) => playWork(w.item_id, e)"
           />
         </li>
       </ul>
@@ -84,7 +84,7 @@ import {
   workCountLabel,
   workTypeLabel,
 } from "@/views/classical/labels";
-import { playFirstRecording, playTracks } from "@/views/classical/playback";
+import { playWork, playTracks } from "@/views/classical/playback";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -101,7 +101,7 @@ interface WorkRow {
   catalog_number: string;
   work_type?: WorkType | null;
   recording_count: number;
-  // title and catalog numbers, folded for the works filter
+  // title, catalog numbers and part names, folded for the works filter
   haystack: string;
 }
 
@@ -135,14 +135,14 @@ const load = async (id: string) => {
     if (id !== props.id) return;
     // Sort by catalog number so Op./BWV/K. order is preserved; empty catalogs last.
     works.value = list
-      .map(({ work, recording_count }) => ({
+      .map(({ work, recording_count, part_names }) => ({
         item_id: work.item_id,
         name: work.name,
         catalog_number: work.catalog_numbers[0] ?? "",
         work_type: work.work_type,
         recording_count,
         haystack: normalizeForFilter(
-          [work.name, ...work.catalog_numbers].join(" "),
+          [work.name, ...work.catalog_numbers, ...(part_names ?? [])].join(" "),
         ),
       }))
       .sort((a, b) => {

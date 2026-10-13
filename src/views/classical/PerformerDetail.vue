@@ -144,9 +144,11 @@ const loading = ref(true);
 useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
 
 // This performer's recordings of each work, and all their tracks, by work id.
+// A part's recordings count towards its parent, the row the works list shows.
 const recordingsByWork = computed(() => {
   const byWork: Record<string, Recording[]> = {};
-  for (const r of recordings.value) (byWork[r.work.item_id] ??= []).push(r);
+  for (const r of recordings.value)
+    (byWork[(r.parent_work ?? r.work).item_id] ??= []).push(r);
   return byWork;
 });
 const tracksByWork = computed(() => {
@@ -156,7 +158,8 @@ const tracksByWork = computed(() => {
   return byWork;
 });
 
-// Title, catalog numbers and composer of each work, folded for the filter.
+// Title, catalog numbers, composer and part names of each work, folded for the
+// filter.
 const searchableWorks = computed(() =>
   works.value.map((entry) => ({
     entry,
@@ -165,6 +168,7 @@ const searchableWorks = computed(() =>
         entry.work.name,
         ...entry.work.catalog_numbers,
         ...entry.work.composers.map((c) => c.name),
+        ...(entry.part_names ?? []),
       ].join(" "),
     ),
   })),

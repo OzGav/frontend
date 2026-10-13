@@ -25,6 +25,15 @@
             </template>
           </span>
         </div>
+        <div v-if="work.parent_work" class="work-meta-text work-part-of">
+          {{ $t("classical_part_of") }}
+          <router-link
+            :to="`/classical/works/${work.parent_work.item_id}`"
+            class="work-parent-link"
+          >
+            {{ work.parent_work.name }}
+          </router-link>
+        </div>
       </template>
     </ClassicalHero>
     <DetailTextRow
@@ -67,15 +76,28 @@
         <ListViewSkeleton v-for="n in 4" :key="n" />
       </div>
       <div v-else-if="displayedRecordings.length" class="recordings-list">
-        <WorkRecordingCard
-          v-for="r in displayedRecordings"
-          :key="r.key"
-          :recording="r"
-          @play-recording="playRecording"
-          @play-movement="playMovement"
-          @menu-recording="onMenuRecording"
-          @menu-movement="onMenuMovement"
-        />
+        <template v-for="g in recordingGroups" :key="g.work.item_id">
+          <h3 v-if="g.work.item_id !== work?.item_id" class="part-heading">
+            <router-link
+              :to="`/classical/works/${g.work.item_id}`"
+              class="part-title"
+            >
+              {{ g.work.name }}
+            </router-link>
+            <span v-if="g.composer" class="part-composer">
+              · {{ g.composer }}
+            </span>
+          </h3>
+          <WorkRecordingCard
+            v-for="r in g.recordings"
+            :key="r.key"
+            :recording="r"
+            @play-recording="playRecording"
+            @play-movement="playMovement"
+            @menu-recording="onMenuRecording"
+            @menu-movement="onMenuMovement"
+          />
+        </template>
       </div>
       <ClassicalEmpty
         v-else-if="!committed"
@@ -83,15 +105,12 @@
       />
     </ClassicalSection>
 
-    <ClassicalSection
-      v-if="work?.arrangement_of?.length"
-      :title="$t('related_works')"
-    >
+    <ClassicalSection v-if="relatedWorks.length" :title="$t('related_works')">
       <ul class="related-list">
-        <li v-for="r in work.arrangement_of" :key="r.item_id">
-          {{ $t("classical_arrangement_of") }}
-          <router-link :to="`/classical/works/${r.item_id}`">
-            {{ r.name }}
+        <li v-for="r in relatedWorks" :key="`${r.label}-${r.work.item_id}`">
+          {{ $t(r.label) }}
+          <router-link :to="`/classical/works/${r.work.item_id}`">
+            {{ r.work.name }}
           </router-link>
         </li>
       </ul>
@@ -106,6 +125,7 @@ import { normalizeForFilter } from "@/helpers/utils";
 import {
   ImageType,
   type Artist,
+  type ItemMapping,
   type Recording,
   type Track,
   type Work,
@@ -184,6 +204,8 @@ const performerName = computed(() => {
 // case-insensitive, diacritic-blind substring matching.
 const recordingHaystack = (r: Recording): string => {
   const parts: string[] = [];
+  // on a work with parts, the part's name, shown above its recordings
+  if (r.work.item_id !== work.value?.item_id) parts.push(r.work.name);
   for (const c of r.credits) parts.push(c.artist.name);
   for (const a of r.albums) parts.push(a.name);
   if (r.year != null) parts.push(String(r.year));
@@ -222,6 +244,46 @@ const matchedRecordings = computed(() => {
 const displayedRecordings = computed(() =>
   matchedRecordings.value.filter((r) => matchesYear(r.year)),
 );
+
+// The shown recordings by the work they are of: the page's own work first,
+// then, on a work with parts such as an opera, each part in the work's order.
+// A part's composer is named only where it differs from the work's.
+const recordingGroups = computed(() => {
+  const w = work.value;
+  if (!w) return [];
+  const groups = new Map<
+    string,
+    { work: Work | ItemMapping; recordings: Recording[] }
+  >();
+  for (const part of [w, ...(w.parts ?? [])])
+    groups.set(part.item_id, { work: part, recordings: [] });
+  for (const r of displayedRecordings.value) {
+    // a part the work does not list still shows, last
+    if (!groups.has(r.work.item_id))
+      groups.set(r.work.item_id, { work: r.work, recordings: [] });
+    groups.get(r.work.item_id)!.recordings.push(r);
+  }
+  return [...groups.values()]
+    .filter((g) => g.recordings.length)
+    .map((g) => {
+      const c = "composers" in g.work ? g.work.composers[0] : undefined;
+      const composer =
+        c && c.item_id !== composerMapping.value?.item_id ? c.name : undefined;
+      return { ...g, composer };
+    });
+});
+
+// Works this one is arranged from, then works arranged from it.
+const relatedWorks = computed(() => [
+  ...(work.value?.arrangement_of ?? []).map((w) => ({
+    label: "classical_arrangement_of",
+    work: w,
+  })),
+  ...(work.value?.arrangements ?? []).map((w) => ({
+    label: "classical_arranged_as",
+    work: w,
+  })),
+]);
 
 // Skip the composer's logo so the hero shows the work title.
 const heroItem = computed<Work | undefined>(() => {
@@ -330,20 +392,26 @@ const playMovement = (m: Track, evt: Event) => {
   playTracks([m], evt);
 };
 
-const menuContext = () => ({
-  router,
-  work: work.value!,
-  composer: composerMapping.value,
-});
+// On a work with parts, the menu leads to the recording's part and its composer.
+const menuContext = (r: Recording) => {
+  const part = work.value?.parts?.find((p) => p.item_id === r.work.item_id);
+  return {
+    router,
+    work: r.work,
+    composer:
+      (part && "composers" in part ? part.composers[0] : undefined) ??
+      composerMapping.value,
+  };
+};
 
 const onMenuRecording = (r: Recording, evt: Event) => {
   if (!work.value) return;
-  openRecordingMenu([r], menuContext(), evt);
+  openRecordingMenu([r], menuContext(r), evt);
 };
 
 const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
   if (!work.value) return;
-  openMovementMenu(m, r, menuContext(), evt);
+  openMovementMenu(m, r, menuContext(r), evt);
 };
 </script>
 
@@ -395,6 +463,41 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
 .recordings-list {
   display: flex;
   flex-direction: column;
+}
+
+.part-heading {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.part-heading:first-child {
+  margin-top: 0;
+}
+
+.part-title {
+  color: inherit;
+  text-decoration: none;
+}
+
+.part-title:hover {
+  text-decoration: underline;
+}
+
+.part-composer {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* lines up with the text after the icon on the line above */
+.work-part-of {
+  padding-left: 24px;
+}
+
+.work-parent-link {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
 }
 
 .related-list {

@@ -232,6 +232,10 @@ export enum ListingType {
   GENRE_TRACKS = "genre_tracks",
   GENRE_ALBUMS = "genre_albums",
   BROWSE = "browse",
+  CLASSICAL_COMPOSERS = "classical_composers",
+  CLASSICAL_PERFORMERS = "classical_performers",
+  CLASSICAL_WORKS = "classical_works",
+  CLASSICAL_OTHER_TRACKS = "classical_other_tracks",
 }
 
 export enum SortField {
@@ -253,6 +257,9 @@ export enum SortField {
   FAVORITE_TIMESTAMP = "favorite_timestamp",
   ORIGINAL = "original",
   RELEASE_DATE = "release_date",
+  COMPOSER = "composer",
+  RECORDING_COUNT = "recording_count",
+  WORK_COUNT = "work_count",
 }
 
 export enum SortDirection {

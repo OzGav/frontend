@@ -1,5 +1,6 @@
 // Service layer for the Classical view, over the server's classical commands.
-// Lists are fetched whole; the views filter and sort them client-side.
+// Lists are fetched whole in the server's sort order; the views filter them
+// client-side.
 
 import api from "@/plugins/api";
 import type {
@@ -9,9 +10,17 @@ import type {
   ClassicalPerformer,
   ClassicalWorkEntry,
   Recording,
+  SortDirection,
+  SortField,
   Track,
   Work,
 } from "@/plugins/api/interfaces";
+
+/** The sort a classical list is fetched in; left out, the server default. */
+export interface ClassicalSort {
+  sort_field?: SortField;
+  sort_direction?: SortDirection;
+}
 
 /**
  * Whether the library holds any classical tracks the user can see. False
@@ -62,8 +71,10 @@ export async function getClassicalRoles(artistId: string): Promise<{
   }
 }
 
-export function getComposers(): Promise<ClassicalComposer[]> {
-  return api.sendCommand("music/classical/composers", { limit: 0 });
+export function getComposers(
+  sort: ClassicalSort = {},
+): Promise<ClassicalComposer[]> {
+  return api.sendCommand("music/classical/composers", { ...sort, limit: 0 });
 }
 
 export function getComposerWorks(
@@ -75,8 +86,10 @@ export function getComposerWorks(
   });
 }
 
-export function getWorks(): Promise<ClassicalWorkEntry[]> {
-  return api.sendCommand("music/classical/works", { limit: 0 });
+export function getWorks(
+  sort: ClassicalSort = {},
+): Promise<ClassicalWorkEntry[]> {
+  return api.sendCommand("music/classical/works", { ...sort, limit: 0 });
 }
 
 export function getWork(id: string): Promise<Work> {
@@ -117,9 +130,14 @@ export function getPerformerRecordings(
  * only those holding that role among their roles.
  */
 export function getPerformers(
+  sort: ClassicalSort = {},
   role?: ArtistRole,
 ): Promise<ClassicalPerformer[]> {
-  return api.sendCommand("music/classical/performers", { role, limit: 0 });
+  return api.sendCommand("music/classical/performers", {
+    ...sort,
+    role,
+    limit: 0,
+  });
 }
 
 /**
@@ -141,8 +159,10 @@ export function getPerformerWorks(
 export function getOtherTracks(
   artistId: string,
   asComposer: boolean,
+  sort: ClassicalSort = {},
 ): Promise<Track[]> {
   return api.sendCommand("music/classical/other_tracks", {
+    ...sort,
     artist_id: artistId,
     as_composer: asComposer,
     limit: 0,

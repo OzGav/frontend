@@ -1162,6 +1162,15 @@ export enum WorkType {
   QUARTET = "quartet",
   OVERTURE = "overture",
   BALLET = "ballet",
+  ARIA = "aria",
+  MOTET = "motet",
+  MADRIGAL = "madrigal",
+  PARTITA = "partita",
+  SYMPHONIC_POEM = "symphonic_poem",
+  ETUDE = "etude",
+  OPERETTA = "operetta",
+  ZARZUELA = "zarzuela",
+  INCIDENTAL_MUSIC = "incidental_music",
   OTHER = "other",
 }
 

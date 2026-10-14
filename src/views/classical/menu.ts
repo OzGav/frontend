@@ -21,9 +21,12 @@ import {
 } from "@/plugins/api/interfaces";
 import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { eventbus } from "@/plugins/eventbus";
-import { Feather, Info, Music3, Users } from "@lucide/vue";
-import { PERFORMER_ROLES } from "@/views/classical/credits";
-import { roleLabel } from "@/views/classical/labels";
+import { Info } from "@lucide/vue";
+import {
+  gotoComposer,
+  gotoWork,
+  performerSubMenu,
+} from "@/views/classical/trackMenuEntries";
 import type { Router } from "vue-router";
 
 export interface ClassicalMenuContext {
@@ -86,7 +89,9 @@ export async function openOtherTrackMenu(
   const credits = track.credits ?? [];
   const composer = credits.find((c) => c.role === ArtistRole.COMPOSER)?.artist;
   const playItems = await getPlaybackContextMenuItems([track]);
-  const standardItems = await getContextMenuItems([track]);
+  const standardItems = await getContextMenuItems([track], undefined, {
+    withoutClassicalEntries: true,
+  });
 
   const filtered = standardItems.filter((item) => item.label !== "goto_artist");
 
@@ -161,7 +166,9 @@ async function buildMenuItems({
   includeMoreInfo,
 }: BuildArgs): Promise<ContextMenuItem[]> {
   const playItems = await getPlaybackContextMenuItems(tracks);
-  const standardItems = await getContextMenuItems(tracks);
+  const standardItems = await getContextMenuItems(tracks, undefined, {
+    withoutClassicalEntries: true,
+  });
 
   // Go to artist gives way to the Go to performer submenu, and the recording
   // menu leaves out Remove from library and Show info.
@@ -175,7 +182,7 @@ async function buildMenuItems({
 
   const classicalEntries: ContextMenuItem[] = [
     gotoComposer(ctx.composer, ctx.router),
-    gotoWork(ctx),
+    gotoWork(ctx.work, ctx.router),
     performerSubMenu(credits, ctx.router),
   ].filter((x): x is ContextMenuItem => x !== null);
   spliceAfterAlbum(filtered, classicalEntries);
@@ -207,108 +214,4 @@ function emit(
     posY: y,
     showPlayMenuHeader,
   });
-}
-
-function gotoComposer(
-  composer: { item_id: string; name: string } | undefined,
-  router: Router,
-): ContextMenuItem | null {
-  if (!composer) return null;
-  return {
-    label: "classical_goto_composer",
-    labelArgs: [composer.name],
-    icon: Feather,
-    action: () => router.push(`/classical/composers/${composer.item_id}`),
-  };
-}
-
-function gotoWork(ctx: ClassicalMenuContext): ContextMenuItem {
-  return {
-    label: "classical_goto_work",
-    labelArgs: [ctx.work.name],
-    icon: Music3,
-    action: () => ctx.router.push(`/classical/works/${ctx.work.item_id}`),
-  };
-}
-
-function performerSubMenu(
-  credits: Credit[],
-  router: Router,
-): ContextMenuItem | null {
-  const grouped = aggregateCredits(credits);
-  if (grouped.length === 0) return null;
-  return {
-    label: "classical_goto_performer",
-    labelArgs: [],
-    icon: Users,
-    subItems: grouped.map((g) =>
-      performerSubmenuEntry(g.artistId, g.name, g.qualifier, router),
-    ),
-  };
-}
-
-// Submenu entry, a name plus a role or instrument qualifier in parens. Shown
-// under the parent "Go to performer" item, so the verb is already implied.
-function performerSubmenuEntry(
-  artistId: string,
-  name: string,
-  qualifier: string,
-  router: Router,
-): ContextMenuItem {
-  return {
-    label: qualifier
-      ? "classical_performer_with_qualifier"
-      : "classical_role_label_performer",
-    labelArgs: qualifier ? [name, qualifier] : [name],
-    icon: Users,
-    action: () => router.push(`/classical/performers/${artistId}`),
-  };
-}
-
-interface AggregatedCredit {
-  artistId: string;
-  name: string;
-  // role(s) + instrument(s) collected from all credits referencing this artist
-  qualifier: string;
-  // priority of the artist's highest-ranked role
-  priority: number;
-}
-
-// Aggregate credits by Artist. A single artist with multiple credits on the
-// same recording (e.g. conductor + harpsichord) collapses to one entry with
-// role/instrument qualifiers combined in parens. Sorted by role priority.
-function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
-  const map = new Map<string, Credit[]>();
-  for (const credit of credits) {
-    if (!PERFORMER_ROLES.includes(credit.role)) continue;
-    const id = credit.artist.item_id;
-    const existing = map.get(id);
-    if (existing) existing.push(credit);
-    else map.set(id, [credit]);
-  }
-
-  const aggregates: AggregatedCredit[] = [];
-  for (const [artistId, entries] of map) {
-    entries.sort((a, b) => rolePriority(a.role) - rolePriority(b.role));
-    const parts = entries.map((e) =>
-      e.instrument ? e.instrument : roleLabel(e.role),
-    );
-    aggregates.push({
-      artistId,
-      name: entries[0].artist.name,
-      qualifier: dedupe(parts).join(", "),
-      priority: rolePriority(entries[0].role),
-    });
-  }
-  aggregates.sort((a, b) => a.priority - b.priority);
-  return aggregates;
-}
-
-function rolePriority(role: ArtistRole): number {
-  const idx = PERFORMER_ROLES.indexOf(role);
-  return idx === -1 ? 99 : idx;
-}
-
-function dedupe<T>(arr: T[]): T[] {
-  return Array.from(new Set(arr));
 }

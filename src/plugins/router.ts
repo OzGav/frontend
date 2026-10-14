@@ -467,12 +467,6 @@ export const routes: RouteRecordRaw[] = [
               import(
                 /* webpackChunkName: "classical" */ "@/views/classical/PerformersTab.vue"
               ),
-            props: (route: {
-              query: Record<
-                string,
-                string | (string | null)[] | null | undefined
-              >;
-            }) => ({ ...route.query }),
           },
           {
             path: "performers/:id",

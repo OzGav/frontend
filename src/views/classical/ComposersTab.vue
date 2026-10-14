@@ -1,15 +1,5 @@
 <template>
   <div class="composers-tab">
-    <div class="composers-controls">
-      <SearchInput
-        v-model="search"
-        clearable
-        class="composers-search"
-        :placeholder="searchPlaceholder"
-        :aria-label="searchPlaceholder"
-      />
-    </div>
-
     <ClassicalArtistGrid
       v-if="gridItems.length || loading"
       :items="gridItems"
@@ -24,7 +14,6 @@
 </template>
 
 <script setup lang="ts">
-import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
 import { ListingType, type ClassicalComposer } from "@/plugins/api/interfaces";
 import { getComposers } from "@/services/classical";
@@ -45,7 +34,7 @@ import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { usePeriodFilter } from "@/views/classical/periodFilter";
+import { usePeriodFilter } from "@/views/classical/menuFilter";
 import { Feather } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -77,12 +66,12 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       composers.value = await getComposers(sort);
     },
     views: true,
+    search: {
+      text: search,
+      placeholder: () => t("classical_filter_composers_placeholder"),
+    },
     filters: () => [periodFilter.menuItem.value],
   });
-
-const searchPlaceholder = computed(() =>
-  t("classical_filter_composers_placeholder"),
-);
 
 onMounted(reload);
 
@@ -130,17 +119,5 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.composers-controls {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.composers-search {
-  flex: 1;
-  min-width: 200px;
 }
 </style>

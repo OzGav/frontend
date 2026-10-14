@@ -550,12 +550,17 @@ export class MusicAssistantApi {
     item_id: string,
     provider_instance_id_or_domain: string,
     album_uri?: string,
+    options?: CommandOptions,
   ): Promise<Track> {
-    return this.sendCommand("music/tracks/get_track", {
-      item_id,
-      provider_instance_id_or_domain,
-      album_uri: album_uri,
-    });
+    return this.sendCommand(
+      "music/tracks/get_track",
+      {
+        item_id,
+        provider_instance_id_or_domain,
+        album_uri: album_uri,
+      },
+      options,
+    );
   }
 
   public getTrackVersions(

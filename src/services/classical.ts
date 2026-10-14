@@ -93,10 +93,7 @@ export function getWorks(
 }
 
 export function getWork(id: string): Promise<Work> {
-  return api.sendCommand("music/works/get", {
-    item_id: id,
-    provider_instance_id_or_domain: "library",
-  });
+  return api.sendCommand("music/classical/work", { item_id: id });
 }
 
 /**

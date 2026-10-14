@@ -1,14 +1,15 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { Period } from "@/plugins/api/interfaces";
+import { Period, WorkType } from "@/plugins/api/interfaces";
 import { useClassicalPreferences } from "@/views/classical/listing";
-import { Hourglass } from "@lucide/vue";
+import { $t } from "@/plugins/i18n";
+import { Hourglass, Shapes } from "@lucide/vue";
 import { computed, shallowRef, type Component } from "vue";
 
 export interface MenuFilterOptions<T extends string> {
   // the tab the choice is stored under
   itemtype: string;
   // the preference the choice is stored as
-  key: "periodFilter" | "roleFilter";
+  key: "periodFilter" | "roleFilter" | "workTypeFilter";
   label: string;
   icon: Component;
   // every value, in the order the menu lists them
@@ -90,5 +91,32 @@ export function usePeriodFilter(
     values: Object.values(Period),
     valueLabel: (period) => `classical_period.${period}`,
     present: periods,
+  });
+}
+
+/** The choice for works without a type in the work type filter. */
+export const UNKNOWN_WORK_TYPE = "unknown";
+
+/**
+ * The work type filter of a classical tab, listing types by name with Other
+ * and Unknown last.
+ *
+ * :param itemtype: The tab the choice is stored under.
+ * :param types: The types of the listed items, UNKNOWN_WORK_TYPE for those
+ *   without one.
+ */
+export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
+  const label = (type: string) => `classical_work_type.${type}`;
+  const byName = Object.values(WorkType)
+    .filter((type) => type !== WorkType.OTHER)
+    .sort((a, b) => $t(label(a)).localeCompare($t(label(b))));
+  return useMenuFilter<string>({
+    itemtype,
+    key: "workTypeFilter",
+    label: "classical_filter_type",
+    icon: Shapes,
+    values: [...byName, WorkType.OTHER, UNKNOWN_WORK_TYPE],
+    valueLabel: label,
+    present: types,
   });
 }

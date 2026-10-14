@@ -67,7 +67,11 @@ import {
   useClassicalPreferences,
 } from "@/views/classical/listing";
 import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
-import { usePeriodFilter } from "@/views/classical/menuFilter";
+import {
+  UNKNOWN_WORK_TYPE,
+  usePeriodFilter,
+  useWorkTypeFilter,
+} from "@/views/classical/menuFilter";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
@@ -90,6 +94,8 @@ interface WorkRow {
   composer_id?: string;
   period?: Period | null;
   period_label: string;
+  // UNKNOWN_WORK_TYPE when the work has no type
+  work_type: string;
   catalog_number: string;
   year_composed?: number | null;
   recordings_label: string;
@@ -118,6 +124,10 @@ const router = useRouter();
 
 const periodFilter = usePeriodFilter(ITEMTYPE, () =>
   works.value.map((w) => w.period),
+);
+
+const workTypeFilter = useWorkTypeFilter(ITEMTYPE, () =>
+  works.value.map((w) => w.work_type),
 );
 
 const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
@@ -159,7 +169,11 @@ const { loading, reload } = useClassicalListing({
     text: search,
     placeholder: () => t("classical_filter_works_placeholder"),
   },
-  filters: () => [periodFilter.menuItem.value, yearFilterItem.value],
+  filters: () => [
+    periodFilter.menuItem.value,
+    workTypeFilter.menuItem.value,
+    yearFilterItem.value,
+  ],
   load: async (sort) => {
     works.value = (await getWorks(sort)).map(
       ({ work, recording_count, part_names, period }) => {
@@ -172,6 +186,7 @@ const { loading, reload } = useClassicalListing({
           composer_id: work.composers[0]?.item_id,
           period,
           period_label: period ? periodLabel(period) : "",
+          work_type: work.work_type ?? UNKNOWN_WORK_TYPE,
           catalog_number: catalogNumber,
           year_composed: work.composition_year,
           recordings_label: recordingCountLabel(recording_count),
@@ -194,6 +209,7 @@ const filteredWorks = computed(() => {
     (w) =>
       (!q || w.haystack.includes(q)) &&
       periodFilter.matches(w.period) &&
+      workTypeFilter.matches(w.work_type) &&
       // kept years must not narrow the list while the boxes are hidden
       (!hasComposedYears.value || matchesYear(w.year_composed)),
   );

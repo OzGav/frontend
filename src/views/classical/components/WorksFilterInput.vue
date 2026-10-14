@@ -1,11 +1,13 @@
 <template>
-  <SearchInput
-    v-model="model"
-    clearable
-    class="works-filter-input"
-    :placeholder="$t('classical_filter_detail_works_placeholder')"
-    :aria-label="$t('classical_filter_detail_works_placeholder')"
-  />
+  <!-- sized here, as the search box itself fills what it is given -->
+  <div class="works-filter-input">
+    <SearchInput
+      v-model="model"
+      clearable
+      :placeholder="$t('classical_filter_detail_works_placeholder')"
+      :aria-label="$t('classical_filter_detail_works_placeholder')"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -17,9 +19,10 @@ const model = defineModel<string>({ required: true });
 </script>
 
 <style scoped>
-/* Compact enough to sit on a section heading line. */
+/* As wide as the Classical toolbar's search box, on a section heading line. */
 .works-filter-input {
-  width: 16rem;
-  max-width: 45vw;
+  flex-shrink: 0;
+  width: var(--classical-search-width);
+  font-size: 0.9375rem;
 }
 </style>

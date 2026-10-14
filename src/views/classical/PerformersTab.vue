@@ -1,28 +1,5 @@
 <template>
   <div class="performers-tab">
-    <div class="performers-controls">
-      <SearchInput
-        v-model="search"
-        clearable
-        class="performers-search"
-        :placeholder="searchPlaceholder"
-        :aria-label="searchPlaceholder"
-      />
-    </div>
-
-    <div class="role-chips">
-      <button
-        v-for="chip in chips"
-        :key="chip.value ?? 'all'"
-        type="button"
-        class="role-chip"
-        :class="{ active: chip.value === activeRole }"
-        @click="setRole(chip.value)"
-      >
-        {{ $t(chip.labelKey) }}
-      </button>
-    </div>
-
     <ClassicalArtistGrid
       v-if="gridItems.length || loading"
       :items="gridItems"
@@ -32,15 +9,11 @@
       :loading="loading"
       :placeholder-icon="Users"
     />
-    <ClassicalEmpty
-      v-else
-      :filtered="!!search.trim() || favoritesOnly || !!activeRole"
-    />
+    <ClassicalEmpty v-else :filtered="performers.length > 0" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { SearchInput } from "@/components/ui/search-input";
 import { normalizeForFilter } from "@/helpers/utils";
 import {
   ArtistRole,
@@ -61,14 +34,14 @@ import {
 } from "@/views/classical/images";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
+import { useMenuFilter } from "@/views/classical/menuFilter";
 import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { Users } from "@lucide/vue";
+import { Drama, Users } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformersTab" });
 
@@ -76,29 +49,16 @@ const ITEMTYPE = "performers";
 
 const { t } = useI18n();
 
-const props = defineProps<{
-  // Pre-selected chip from /classical/performers?role=conductor.
-  role?: string;
-}>();
-
-const router = useRouter();
-
-interface Chip {
-  /** null = "All" (no role filter). */
-  value: ArtistRole | null;
-  labelKey: string;
-}
-
-const chips: Chip[] = [
-  { value: null, labelKey: "classical_role.all" },
-  { value: ArtistRole.CONDUCTOR, labelKey: "classical_role.conductors" },
-  { value: ArtistRole.ORCHESTRA, labelKey: "classical_role.orchestras" },
-  { value: ArtistRole.ENSEMBLE, labelKey: "classical_role.chamber_groups" },
-  { value: ArtistRole.CHOIR, labelKey: "classical_role.choirs" },
-  { value: ArtistRole.SOLOIST, labelKey: "classical_role.soloists" },
+// The roles the filter offers, in menu order, with their names.
+const ROLE_LABELS = {
+  [ArtistRole.CONDUCTOR]: "classical_role.conductors",
+  [ArtistRole.ORCHESTRA]: "classical_role.orchestras",
+  [ArtistRole.ENSEMBLE]: "classical_role.chamber_groups",
+  [ArtistRole.CHOIR]: "classical_role.choirs",
+  [ArtistRole.SOLOIST]: "classical_role.soloists",
   // Catches credits with role=PERFORMER that weren't classified more specifically.
-  { value: ArtistRole.PERFORMER, labelKey: "classical_role.other" },
-];
+  [ArtistRole.PERFORMER]: "classical_role.other",
+} satisfies Partial<Record<ArtistRole, string>>;
 
 const performers = ref<ClassicalPerformer[]>([]);
 
@@ -109,7 +69,17 @@ const { preferences, save } = useClassicalPreferences(ITEMTYPE);
 const search = ref(preferences.search ?? "");
 watch(search, (value) => save("search", value));
 
-// The full list is fetched once; the role chips filter it client-side.
+const roleFilter = useMenuFilter({
+  itemtype: ITEMTYPE,
+  key: "roleFilter",
+  label: "classical_filter_role",
+  icon: Drama,
+  values: Object.keys(ROLE_LABELS) as Array<keyof typeof ROLE_LABELS>,
+  valueLabel: (role) => ROLE_LABELS[role],
+  present: () => performers.value.flatMap((p) => p.roles),
+});
+
+// The full list is fetched once; the menu filters narrow it client-side.
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: ITEMTYPE,
@@ -118,16 +88,12 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       performers.value = await getPerformers(sort);
     },
     views: true,
+    search: {
+      text: search,
+      placeholder: () => t("classical_filter_performers_placeholder"),
+    },
+    filters: () => [roleFilter.menuItem.value],
   });
-
-const searchPlaceholder = computed(() =>
-  t("classical_filter_performers_placeholder"),
-);
-
-const activeRole = computed<ArtistRole | null>(() => {
-  if (!props.role) return null;
-  return chips.find((c) => c.value === props.role)?.value ?? null;
-});
 
 // Built once per load, so filtering and redrawing reuse the folded name and
 // image urls.
@@ -150,24 +116,16 @@ const rows = computed(() =>
 );
 
 const gridItems = computed<ClassicalArtistGridItem[]>(() => {
-  const role = activeRole.value;
   const q = normalizeForFilter(search.value.trim());
   return rows.value
     .filter(
       (r) =>
-        (!role || r.performer.roles.includes(role)) &&
+        roleFilter.matches(r.performer.roles) &&
         (!favoritesOnly.value || r.performer.artist.favorite === true) &&
         (!q || r.haystack.includes(q)),
     )
     .map((r) => r.item);
 });
-
-const setRole = (role: ArtistRole | null) => {
-  router.replace({
-    path: "/classical/performers",
-    query: role ? { role } : {},
-  });
-};
 
 onMounted(reload);
 </script>
@@ -177,48 +135,5 @@ onMounted(reload);
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.performers-controls {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.performers-search {
-  flex: 1;
-  min-width: 200px;
-}
-
-.role-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.role-chip {
-  background: transparent;
-  color: inherit;
-  border: 1px solid var(--border, #444);
-  border-radius: 999px;
-  padding: 0.3rem 0.85rem;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
-}
-
-.role-chip:hover {
-  background: var(--muted, rgba(255, 255, 255, 0.05));
-}
-
-.role-chip.active {
-  background: var(--primary, #4a90e2);
-  border-color: var(--primary, #4a90e2);
-  color: var(--primary-foreground, #fff);
-  font-weight: 600;
 }
 </style>

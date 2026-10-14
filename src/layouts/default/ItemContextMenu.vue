@@ -380,6 +380,7 @@ import {
 import { authManager } from "@/plugins/auth";
 import { $t } from "@/plugins/i18n";
 import { toast } from "vue-sonner";
+import { classicalTrackEntries } from "@/views/classical/trackMenuEntries";
 
 import GenreIcon from "@/components/icons/GenreIcon.vue";
 import {
@@ -576,6 +577,8 @@ export interface ContextMenuOptions {
   // true when the menu is opened from the sidebar shortcuts list,
   // enabling actions that only make sense there (e.g. move up/down).
   shortcutContext?: boolean;
+  // true when the caller adds its own classical entries (the Classical pages)
+  withoutClassicalEntries?: boolean;
 }
 
 export const getContextMenuItems = async function (
@@ -718,6 +721,18 @@ export const getContextMenuItems = async function (
       },
       icon: Disc3,
     });
+  }
+
+  // go to composer, work and performer, for a classical library track
+  if (
+    items.length === 1 &&
+    firstItem.media_type === MediaType.TRACK &&
+    firstItem.provider === "library" &&
+    !options?.withoutClassicalEntries
+  ) {
+    contextMenuItems.push(
+      ...(await classicalTrackEntries(firstItem as Track, router)),
+    );
   }
 
   // go to <type> radio (a dynamic playlist generated from this item as the

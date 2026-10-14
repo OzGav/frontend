@@ -1263,7 +1263,7 @@ export interface Work extends MediaItem {
   work_type?: WorkType | null;
   // on a part, the work it belongs to
   parent_work?: ItemMapping | null;
-  // the next three are only filled on music/works/get
+  // the next three are only filled when one work is fetched
   arrangement_of: Array<Work | ItemMapping>;
   arrangements?: Array<Work | ItemMapping>;
   // e.g. the arias of an opera

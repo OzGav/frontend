@@ -16,6 +16,7 @@ export interface ItemsListingPreferences {
   albumType?: string[];
   providerFilter?: string[];
   periodFilter?: string[];
+  roleFilter?: string[];
   yearFrom?: string;
   yearTo?: string;
   expand?: boolean;

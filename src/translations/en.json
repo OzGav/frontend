@@ -1247,7 +1247,17 @@
         "quartet": "Quartet",
         "overture": "Overture",
         "ballet": "Ballet",
-        "other": "Other"
+        "aria": "Aria",
+        "motet": "Motet",
+        "madrigal": "Madrigal",
+        "partita": "Partita",
+        "symphonic_poem": "Symphonic poem",
+        "etude": "Étude",
+        "operetta": "Operetta",
+        "zarzuela": "Zarzuela",
+        "incidental_music": "Incidental music",
+        "other": "Other",
+        "unknown": "Unknown"
     },
     "classical_period": {
         "medieval": "Medieval",
@@ -1260,6 +1270,7 @@
     },
     "classical_filter_period": "Filter by period",
     "classical_filter_role": "Filter by role",
+    "classical_filter_type": "Filter by type",
     "classical_filter_year": "Filter by year",
     "item_fully_played": "This item has been fully played",
     "item_in_progress": "This item has been partially played",

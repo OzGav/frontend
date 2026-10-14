@@ -97,26 +97,37 @@ export function usePeriodFilter(
 /** The choice for works without a type in the work type filter. */
 export const UNKNOWN_WORK_TYPE = "unknown";
 
+/** Translation key of a work type filter choice. */
+export const workTypeChoiceLabel = (type: string) =>
+  `classical_work_type.${type}`;
+
 /**
- * The work type filter of a classical tab, listing types by name with Other
- * and Unknown last.
+ * Every work type filter choice, by name with Other and Unknown last.
+ */
+export function workTypeChoices(): string[] {
+  const byName = Object.values(WorkType)
+    .filter((type) => type !== WorkType.OTHER)
+    .sort((a, b) =>
+      $t(workTypeChoiceLabel(a)).localeCompare($t(workTypeChoiceLabel(b))),
+    );
+  return [...byName, WorkType.OTHER, UNKNOWN_WORK_TYPE];
+}
+
+/**
+ * The work type filter of a classical tab.
  *
  * :param itemtype: The tab the choice is stored under.
  * :param types: The types of the listed items, UNKNOWN_WORK_TYPE for those
  *   without one.
  */
 export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
-  const label = (type: string) => `classical_work_type.${type}`;
-  const byName = Object.values(WorkType)
-    .filter((type) => type !== WorkType.OTHER)
-    .sort((a, b) => $t(label(a)).localeCompare($t(label(b))));
   return useMenuFilter<string>({
     itemtype,
     key: "workTypeFilter",
     label: "classical_filter_type",
     icon: Shapes,
-    values: [...byName, WorkType.OTHER, UNKNOWN_WORK_TYPE],
-    valueLabel: label,
+    values: workTypeChoices(),
+    valueLabel: workTypeChoiceLabel,
     present: types,
   });
 }

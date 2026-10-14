@@ -1,22 +1,5 @@
 <template>
   <div class="works-tab">
-    <div class="works-controls">
-      <SearchInput
-        v-model="search"
-        clearable
-        class="works-search"
-        :placeholder="searchPlaceholder"
-        :aria-label="searchPlaceholder"
-      />
-      <YearRangeFilter
-        v-if="hasComposedYears"
-        v-model:from="yearFrom"
-        v-model:to="yearTo"
-        :earliest="composedBounds.earliest"
-        :latest="composedBounds.latest"
-      />
-    </div>
-
     <div v-if="loading && !works.length">
       <ListViewSkeleton v-for="n in 8" :key="n" />
     </div>
@@ -71,24 +54,25 @@
 
 <script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
-import { SearchInput } from "@/components/ui/search-input";
+import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { normalizeForFilter } from "@/helpers/utils";
 import { SortField, type Period } from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
-import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
+import YearRangeMenuRow from "@/views/classical/components/YearRangeMenuRow.vue";
 import {
   navigateOnRowClick,
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
 import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
-import { usePeriodFilter } from "@/views/classical/periodFilter";
+import { usePeriodFilter } from "@/views/classical/menuFilter";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { computed, onMounted, ref, watch } from "vue";
+import { CalendarRange } from "@lucide/vue";
+import { computed, markRaw, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
@@ -136,12 +120,46 @@ const periodFilter = usePeriodFilter(ITEMTYPE, () =>
   works.value.map((w) => w.period),
 );
 
+const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
+yearFrom.value = preferences.yearFrom ?? "";
+yearTo.value = preferences.yearTo ?? "";
+watch(yearFrom, (value) => save("yearFrom", value));
+watch(yearTo, (value) => save("yearTo", value));
+
+const yearFilterItem = computed<ToolBarMenuItem>(() => ({
+  label: "classical_filter_year",
+  icon: CalendarRange,
+  hide: !hasComposedYears.value,
+  active: !!(yearFrom.value || yearTo.value),
+  closeOnContentClick: false,
+  overflowAllowed: true,
+  subItems: [
+    {
+      label: "classical_filter_year",
+      // markRaw, as the menu items land in a reactive array
+      component: markRaw(YearRangeMenuRow),
+      componentProps: {
+        from: yearFrom.value,
+        to: yearTo.value,
+        earliest: composedBounds.value.earliest,
+        latest: composedBounds.value.latest,
+        "onUpdate:from": (value: string) => (yearFrom.value = value),
+        "onUpdate:to": (value: string) => (yearTo.value = value),
+      },
+    },
+  ],
+}));
+
 const { loading, reload } = useClassicalListing({
   itemtype: ITEMTYPE,
   listing: "classical_works",
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
   labels: { [SortField.YEAR]: "classical_sort_year" },
-  filters: () => [periodFilter.menuItem.value],
+  search: {
+    text: search,
+    placeholder: () => t("classical_filter_works_placeholder"),
+  },
+  filters: () => [periodFilter.menuItem.value, yearFilterItem.value],
   load: async (sort) => {
     works.value = (await getWorks(sort)).map(
       ({ work, recording_count, part_names, period }) => {
@@ -168,16 +186,6 @@ const { loading, reload } = useClassicalListing({
   },
 });
 
-const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
-yearFrom.value = preferences.yearFrom ?? "";
-yearTo.value = preferences.yearTo ?? "";
-watch(yearFrom, (value) => save("yearFrom", value));
-watch(yearTo, (value) => save("yearTo", value));
-
-const searchPlaceholder = computed(() =>
-  t("classical_filter_works_placeholder"),
-);
-
 onMounted(reload);
 
 const filteredWorks = computed(() => {
@@ -197,18 +205,6 @@ const filteredWorks = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.works-controls {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.works-search {
-  flex: 1;
-  min-width: 200px;
 }
 
 .work-list {

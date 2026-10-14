@@ -18,6 +18,7 @@ import {
   type SortOptionInfo,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
+import { store } from "@/plugins/store";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
 import { useOwnFavorites } from "@/views/classical/favorites";
@@ -29,11 +30,14 @@ import {
   LayoutGrid,
   LayoutList,
   RefreshCw,
+  Search,
+  X,
 } from "@lucide/vue";
 import {
   computed,
   inject,
   markRaw,
+  nextTick,
   onBeforeUnmount,
   onUnmounted,
   ref,
@@ -49,6 +53,20 @@ export interface ClassicalMenu {
   items: ToolBarMenuItem[];
   // a filter is narrowing the list, shown as a dot on the menu button
   active: boolean;
+  // the page's text filter, opened from its toolbar button
+  search?: ClassicalMenuSearch;
+}
+
+/** A page's text filter, for the Classical view to show in its toolbar. */
+export interface ClassicalMenuSearch {
+  text: string;
+  placeholder: string;
+  open: boolean;
+  setText: (text: string) => void;
+  // clears the filter as it closes it
+  close: () => void;
+  // the template ref for the box, so opening it can focus it
+  bindInput: (input: unknown) => void;
 }
 
 export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
@@ -123,14 +141,17 @@ export interface ClassicalListingOptions extends Omit<
   // the tab's own filters, shown after the favourites filter; read as the
   // menu is built, so their state must exist before this is called
   filters?: () => ToolBarMenuItem[];
+  // adds a text filter, opened from a toolbar button
+  search?: { text: Ref<string>; placeholder: () => string };
 }
 
 /**
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode, cover size and the tab's own
  * filters. The settings are kept per user like those of the other library
- * listings, the menu shows in the Classical view's toolbar while the tab is
- * open, and going back to the tab returns it to where it was scrolled.
+ * listings, the menu and text filter show in the Classical view's toolbar
+ * while the tab is open, and going back to the tab returns it to where it was
+ * scrolled.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
   const { preferences: prefs, save } = useClassicalPreferences(
@@ -154,6 +175,41 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     } finally {
       loading.value = false;
     }
+  };
+
+  // a kept filter opens with the tab, so it shows what narrows the list
+  const searchOpen = ref(!!options.search?.text.value);
+  let searchInput: { focus: () => void } | null = null;
+
+  const toggleSearch = () => {
+    if (searchOpen.value) {
+      closeSearch();
+      return;
+    }
+    searchOpen.value = true;
+    nextTick(() => searchInput?.focus());
+  };
+
+  const closeSearch = () => {
+    if (options.search) options.search.text.value = "";
+    searchOpen.value = false;
+  };
+
+  const searchItem = (): ToolBarMenuItem => {
+    const filtering = !!options.search?.text.value;
+    // on a phone the box opens on its own row with its own close button
+    const closes = searchOpen.value && !store.mobileLayout;
+    return {
+      label: closes
+        ? "close"
+        : filtering
+          ? "tooltip.search_filter_active"
+          : "tooltip.search",
+      icon: closes ? X : Search,
+      active: filtering && !closes,
+      overflowAllowed: false,
+      action: toggleSearch,
+    };
   };
 
   const viewModeItem = (): ToolBarMenuItem => ({
@@ -193,6 +249,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
 
   const items = computed<ToolBarMenuItem[]>(() => {
     const list: ToolBarMenuItem[] = [];
+    if (options.search) list.push(searchItem());
     if (options.views) {
       list.push({
         label: "tooltip.filter_favorites",
@@ -222,10 +279,22 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     return list;
   });
 
-  useClassicalMenu(
-    () => items.value,
-    () => items.value.some((item) => item.active),
-  );
+  useClassicalMenu(() => ({
+    items: items.value,
+    active: items.value.some((item) => item.active),
+    search: options.search && {
+      text: options.search.text.value,
+      placeholder: options.search.placeholder(),
+      open: searchOpen.value,
+      setText: (text: string) => {
+        if (options.search) options.search.text.value = text;
+      },
+      close: closeSearch,
+      bindInput: (input: unknown) => {
+        searchInput = input as { focus: () => void } | null;
+      },
+    },
+  }));
 
   return { viewMode, favoritesOnly, gridSize, loading, reload };
 }
@@ -362,17 +431,13 @@ function isViewMode(value: unknown): value is ClassicalViewMode {
 /**
  * Show a menu in the Classical view's toolbar while the calling page is open.
  *
- * :param items: The menu entries, re-read whenever what they depend on changes.
- * :param active: Whether a filter is narrowing the page, shown as a dot.
+ * :param build: The menu, rebuilt whenever what it depends on changes.
  */
-function useClassicalMenu(
-  items: () => ToolBarMenuItem[],
-  active: () => boolean = () => false,
-) {
+function useClassicalMenu(build: () => ClassicalMenu) {
   const menu = inject(CLASSICAL_MENU_KEY, undefined);
   let ownMenu: ClassicalMenu | undefined;
   watchEffect(() => {
-    ownMenu = { items: items(), active: active() };
+    ownMenu = build();
     if (menu) menu.value = ownMenu;
   });
   // The next page sets its menu before this one unmounts, so only clear our own.

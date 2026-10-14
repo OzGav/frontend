@@ -2,7 +2,10 @@
   <!-- Stable wrapper carries the outer layout margin so neither inner element
        needs a horizontal margin of its own. A margin combined with the
        input's width:100% would push it past the container edge. -->
-  <div class="recordings-filter-root">
+  <div
+    class="recordings-filter-root"
+    :class="{ 'recordings-filter-root--input': !committed }"
+  >
     <!-- Editable state, a free-text filter the user can type into. -->
     <SearchInput
       v-if="!committed"
@@ -11,7 +14,6 @@
       clearable
       :placeholder="$t('classical_filter_recordings_placeholder')"
       :aria-label="$t('classical_filter_recordings_placeholder')"
-      class="recordings-filter-input"
       @update:model-value="(value: string) => emit('update:modelValue', value)"
       @keydown.enter.prevent="$emit('commit')"
     />
@@ -100,8 +102,12 @@ watch(
 </script>
 
 <style scoped>
-.recordings-filter-input {
-  width: 100%;
+/* As wide as the Classical toolbar's search box, on a section heading line;
+   sized here, as the search box itself fills what it is given. */
+.recordings-filter-root--input {
+  flex-shrink: 0;
+  width: var(--classical-search-width);
+  font-size: 0.9375rem;
 }
 
 .filter-banner {

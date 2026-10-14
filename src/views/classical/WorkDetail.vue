@@ -55,27 +55,29 @@
           : undefined
       "
     >
-      <div v-if="recordings.length" class="recordings-controls">
-        <RecordingsFilter
-          v-model="query"
-          :committed="committed"
-          :count="displayedRecordings.length"
-          :performer-name="committedKind === 'performer' ? performerName : ''"
-          :term="committedKind === 'text' ? committedTerm : ''"
-          :generic-no-match="yearRangeActive"
-          class="recordings-filter"
-          @commit="commitFilter"
-          @edit="editFilter"
-          @clear="clearFilter"
-        />
-        <YearRangeFilter
-          v-if="recordedBounds.earliest !== undefined"
-          v-model:from="yearFrom"
-          v-model:to="yearTo"
-          :earliest="recordedBounds.earliest"
-          :latest="recordedBounds.latest"
-        />
-      </div>
+      <template v-if="recordings.length" #append>
+        <div class="recordings-controls">
+          <YearRangeFilter
+            v-if="recordedBounds.earliest !== undefined"
+            v-model:from="yearFrom"
+            v-model:to="yearTo"
+            :earliest="recordedBounds.earliest"
+            :latest="recordedBounds.latest"
+          />
+          <RecordingsFilter
+            v-model="query"
+            :committed="committed"
+            :count="displayedRecordings.length"
+            :performer-name="committedKind === 'performer' ? performerName : ''"
+            :term="committedKind === 'text' ? committedTerm : ''"
+            :generic-no-match="yearRangeActive"
+            class="recordings-filter"
+            @commit="commitFilter"
+            @edit="editFilter"
+            @clear="clearFilter"
+          />
+        </div>
+      </template>
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
       </div>
@@ -480,17 +482,18 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
   opacity: 0.5;
 }
 
+/* on the heading line, wrapping under itself when the line is too narrow */
 .recordings-controls {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 0.5rem;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
 }
 
 .recordings-filter {
-  flex: 1;
-  min-width: 200px;
+  min-width: 0;
 }
 
 .recordings-list {

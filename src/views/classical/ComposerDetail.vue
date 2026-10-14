@@ -1,9 +1,7 @@
 <template>
   <section>
     <ClassicalHero :item="artistItem" section="composers" show-favorite>
-      <template v-if="artistItem?.period" #meta>
-        {{ periodLabel(artistItem.period) }}
-      </template>
+      <template v-if="heroMeta" #meta>{{ heroMeta }}</template>
     </ClassicalHero>
     <DetailTextRow
       v-if="artistItem?.metadata.description"
@@ -16,7 +14,10 @@
       :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
       <template v-if="works.length" #append>
-        <WorksFilterInput v-model="worksFilter" />
+        <div class="works-controls">
+          <WorkTypeFilterButton v-model="typeFilter" :types="workTypes" />
+          <WorksFilterInput v-model="worksFilter" />
+        </div>
       </template>
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
@@ -84,8 +85,11 @@ import ClassicalSection from "@/views/classical/components/ClassicalSection.vue"
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
+import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterButton.vue";
+import { UNKNOWN_WORK_TYPE } from "@/views/classical/menuFilter";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
+  lifeYearsLabel,
   periodLabel,
   recordingCountLabel,
   workCountLabel,
@@ -116,18 +120,41 @@ const artistItem = ref<Artist | undefined>();
 
 useArtistPageUpdates(artistItem);
 
+// e.g. Romantic · 1833–1897
+const heroMeta = computed(() =>
+  [
+    artistItem.value?.period ? periodLabel(artistItem.value.period) : "",
+    lifeYearsLabel(artistItem.value?.metadata.life_span),
+  ]
+    .filter(Boolean)
+    .join(" · "),
+);
+
 const works = ref<WorkRow[]>([]);
 const loading = ref(true);
 useBackScroll(() => loading.value);
 const worksFilter = ref("");
+const typeFilter = ref<string[]>([]);
 const restoreWorksFilter = useBackFilter(
-  () => worksFilter.value,
-  (saved) => (worksFilter.value = saved),
+  () => ({ text: worksFilter.value, types: typeFilter.value }),
+  (saved) => {
+    worksFilter.value = saved.text;
+    typeFilter.value = saved.types;
+  },
+);
+
+const workTypes = computed(() =>
+  works.value.map((w) => w.work_type ?? UNKNOWN_WORK_TYPE),
 );
 
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(worksFilter.value.trim());
-  return q ? works.value.filter((w) => w.haystack.includes(q)) : works.value;
+  return works.value.filter(
+    (w) =>
+      (!q || w.haystack.includes(q)) &&
+      (!typeFilter.value.length ||
+        typeFilter.value.includes(w.work_type ?? UNKNOWN_WORK_TYPE)),
+  );
 });
 
 const workLink = (workId: string) => `/classical/works/${workId}`;
@@ -138,6 +165,7 @@ const load = async (id: string) => {
   works.value = [];
   loading.value = true;
   worksFilter.value = "";
+  typeFilter.value = [];
   restoreWorksFilter();
   try {
     const [artist, list] = await Promise.all([
@@ -196,6 +224,13 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+.works-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .composer-work-row {

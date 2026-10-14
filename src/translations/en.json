@@ -1295,6 +1295,7 @@
     "classical_filter_period": "Filter by period",
     "classical_filter_role": "Filter by role",
     "classical_filter_type": "Filter by type",
+    "classical_type": "Type",
     "classical_filter_year": "Filter by year",
     "item_fully_played": "This item has been fully played",
     "item_in_progress": "This item has been partially played",

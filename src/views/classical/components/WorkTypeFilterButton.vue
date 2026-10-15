@@ -1,5 +1,6 @@
 <template>
-  <DropdownMenu>
+  <!-- a single type would filter nothing -->
+  <DropdownMenu v-if="offered.length > 1 || model.length">
     <DropdownMenuTrigger as-child>
       <Button
         variant="outline"

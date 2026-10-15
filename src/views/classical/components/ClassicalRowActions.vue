@@ -4,7 +4,8 @@
        they don't trigger the row's primary action. -->
   <div class="row-actions">
     <NowPlayingBadge v-if="playing" :show-badge="getBreakpointValue('bp7')" />
-    <span v-if="duration && !$vuetify.display.mobile" class="track-duration">
+    <!-- kept on phones, where it tells a whole act from a single aria -->
+    <span v-if="duration" class="track-duration">
       {{ formatDuration(duration) }}
     </span>
     <ProviderIcon
@@ -109,6 +110,12 @@ defineEmits<{
   margin-right: 12px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 539px) {
+  .track-duration {
+    margin-inline: 4px;
+  }
 }
 
 .favorite-button-wrapper {

@@ -27,8 +27,8 @@
     </template>
 
     <template v-if="item" #aside>
-      <div class="classical-hero__genre">{{ $t("classical") }}</div>
-      <DetailHeroProviders :item="item" />
+      <!-- on phones they would take a line of their own -->
+      <DetailHeroProviders v-if="!isPhone" :item="item" />
     </template>
   </DetailHero>
 </template>
@@ -129,12 +129,6 @@ const logo = computed(() =>
   align-self: stretch;
   min-width: 0;
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
-.classical-hero__genre {
-  min-width: 0;
-  font-size: 14px;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }

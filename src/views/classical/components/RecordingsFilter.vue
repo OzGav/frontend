@@ -110,6 +110,20 @@ watch(
   font-size: 0.9375rem;
 }
 
+/* on phones the controls have a line of their own to fill */
+/* Fills its line on phones, dropping below the year range rather than shrink
+   past use: the banner keeps to one line, the search box to 10rem. */
+@media (max-width: 539px) {
+  .recordings-filter-root {
+    flex: 1 1 auto;
+  }
+
+  .recordings-filter-root--input {
+    flex-basis: 10rem;
+    width: auto;
+  }
+}
+
 .filter-banner {
   display: flex;
   align-items: center;

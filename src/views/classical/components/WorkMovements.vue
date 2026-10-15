@@ -1,13 +1,7 @@
 <template>
   <ClassicalSection :title="$t('classical_movements')">
     <template v-if="fromLibrary" #title-append>
-      <span
-        class="movements-mark"
-        role="img"
-        :title="isTouch ? undefined : $t('classical_movements_from_library')"
-        :aria-label="$t('classical_movements_from_library')"
-        >*</span
-      >
+      <span class="movements-mark" aria-hidden="true">*</span>
     </template>
     <template v-if="model.length" #append>
       <Button variant="ghost" size="sm" @click="model = []">
@@ -15,7 +9,11 @@
       </Button>
     </template>
     <ul class="movement-list">
-      <li v-for="m in shown" :key="m.number">
+      <li
+        v-for="m in shown"
+        :key="m.number"
+        :class="{ 'movement-child': m.parent != null }"
+      >
         <button
           type="button"
           class="movement-toggle"
@@ -40,8 +38,7 @@
     >
       {{ expanded ? $t("show_less") : $t("classical_show_all_movements") }}
     </Button>
-    <!-- touch screens have no hover for the mark's note -->
-    <p v-if="fromLibrary && isTouch" class="movements-note">
+    <p v-if="fromLibrary" class="movements-note">
       * {{ $t("classical_movements_from_library") }}
     </p>
   </ClassicalSection>
@@ -52,7 +49,6 @@ import { Button } from "@/components/ui/button";
 import type { WorkMovement } from "@/plugins/api/interfaces";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import { LONG_MOVEMENT_LIST } from "@/views/classical/labels";
-import { isTouch } from "@/views/classical/touch";
 import { Check } from "@lucide/vue";
 import { computed, ref } from "vue";
 
@@ -71,17 +67,16 @@ const model = defineModel<number[]>({ required: true });
 
 const expanded = ref(false);
 
-// A long list shows only the first few movements with recordings until
-// expanded; a chosen one always shows.
+// A long list shows only its first few movements until expanded; a chosen one
+// always shows, and a shown one brings its parent.
 const folded = computed(() => {
   if (props.movements.length <= LONG_MOVEMENT_LIST) return props.movements;
-  let room = LONG_MOVEMENT_LIST;
-  return props.movements.filter((m) => {
-    if (model.value.includes(m.number)) return true;
-    if (!props.counts[m.number] || !room) return false;
-    room--;
-    return true;
-  });
+  const kept = new Set<number>(model.value);
+  for (const m of props.movements.slice(0, LONG_MOVEMENT_LIST))
+    kept.add(m.number);
+  for (const m of props.movements)
+    if (kept.has(m.number) && m.parent != null) kept.add(m.parent);
+  return props.movements.filter((m) => kept.has(m.number));
 });
 
 const hasHidden = computed(() => folded.value.length < props.movements.length);
@@ -101,11 +96,11 @@ const toggle = (number: number) => {
   margin-left: -8px;
   font-size: 22px;
   font-weight: 700;
-  cursor: help;
 }
 
 .movements-note {
-  margin: 0.25rem 0 0;
+  /* the room added above is taken back from the gap to the next section */
+  margin: 0.75rem 0 -0.75rem;
   font-size: 0.8rem;
   color: var(--muted-foreground, #888);
 }
@@ -121,6 +116,11 @@ const toggle = (number: number) => {
 
 .movement-list > li {
   break-inside: avoid;
+}
+
+/* e.g. an aria under its act */
+.movement-child {
+  padding-left: 1.5rem;
 }
 
 @media (max-width: 768px) {

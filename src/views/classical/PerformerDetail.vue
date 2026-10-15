@@ -11,7 +11,7 @@
       :title="$t('works_performed')"
       :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
-      <template v-if="works.length" #append>
+      <template v-if="works.length" #controls>
         <div class="works-controls">
           <WorkTypeFilterButton v-model="typeFilter" :types="workTypes" />
           <WorksFilterInput v-model="worksFilter" />

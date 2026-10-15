@@ -13,7 +13,7 @@
       :title="$t('works')"
       :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
-      <template v-if="works.length" #append>
+      <template v-if="works.length" #controls>
         <div class="works-controls">
           <WorkTypeFilterButton v-model="typeFilter" :types="workTypes" />
           <WorksFilterInput v-model="worksFilter" />
@@ -34,19 +34,14 @@
             :label="`${$t('play')} ${w.name}`"
             @play="(e: Event) => playWork(w.item_id, e)"
           />
-          <span class="composer-work-text">
+          <!-- on phones the details go on their own line, under the title -->
+          <span class="composer-work-text" :class="{ narrow: mobile }">
             <router-link :to="workLink(w.item_id)" class="composer-work-link">
               {{ w.name }}
             </router-link>
-            <span v-if="w.catalog_number" class="meta"
-              >· {{ w.catalog_number }}</span
-            >
-            <span v-if="w.work_type" class="meta">
-              · {{ workTypeLabel(w.work_type) }}
+            <span class="meta">
+              {{ mobile ? workDetails(w) : `· ${workDetails(w)}` }}
             </span>
-            <span class="meta"
-              >· {{ recordingCountLabel(w.recording_count) }}</span
-            >
           </span>
           <RowPlayButton
             side="end"
@@ -103,12 +98,15 @@ import {
 import { playWork, playTracks } from "@/views/classical/playback";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 defineOptions({ name: "ComposerDetail" });
 
 const props = defineProps<{ id: string }>();
 
 const router = useRouter();
+
+const { mobile } = useDisplay();
 
 // Flattened to the fields the rows show and sort on.
 interface WorkRow {
@@ -166,6 +164,16 @@ const filteredWorks = computed(() => {
 });
 
 const workLink = (workId: string) => `/classical/works/${workId}`;
+
+// e.g. op. 27 no. 2 · Sonata · 3 recordings
+const workDetails = (w: WorkRow) =>
+  [
+    w.catalog_number,
+    w.work_type && workTypeLabel(w.work_type),
+    recordingCountLabel(w.recording_count),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
 const load = async (id: string) => {
   // the previous composer must not stay actionable under the new route
@@ -264,6 +272,11 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.4rem;
+}
+
+.composer-work-text.narrow {
+  flex-direction: column;
+  gap: 0;
 }
 
 .composer-work-row:hover {

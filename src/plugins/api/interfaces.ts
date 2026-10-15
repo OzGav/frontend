@@ -1207,6 +1207,17 @@ export interface Work extends MediaItem {
   composition_year?: number | null;
   language?: string | null;
   musical_key?: string | null;
+  // in number order; empty for works whose parts are works, such as operas
+  movements?: WorkMovement[];
+  // true when the movements are MusicBrainz's, false when read from the tracks
+  movements_from_musicbrainz?: boolean;
+}
+
+export interface WorkMovement {
+  number: number;
+  // e.g. II. Andante con moto
+  name: string;
+  mbid: string | null;
 }
 
 // One performance of a work, grouped by the server from its movement tracks.
@@ -1224,6 +1235,11 @@ export interface Recording {
   albums: ItemMapping[];
   // seconds, sum of the movements
   duration: number;
+  // the numbers of the movements it covers, sorted
+  movement_numbers?: number[];
+  // whether it covers every movement; null unless the work's movements are
+  // MusicBrainz's
+  complete?: boolean | null;
 }
 
 export interface ClassicalComposer {

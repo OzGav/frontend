@@ -12,7 +12,10 @@
       :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
       <template v-if="works.length" #append>
-        <WorksFilterInput v-model="worksFilter" />
+        <div class="works-controls">
+          <WorkTypeFilterButton v-model="typeFilter" :types="workTypes" />
+          <WorksFilterInput v-model="worksFilter" />
+        </div>
       </template>
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
@@ -117,6 +120,8 @@ import ClassicalSection from "@/views/classical/components/ClassicalSection.vue"
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
+import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterButton.vue";
+import { UNKNOWN_WORK_TYPE } from "@/views/classical/menuFilter";
 import {
   allLiked,
   setTracksLiked,
@@ -140,9 +145,13 @@ useArtistPageUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");
+const typeFilter = ref<string[]>([]);
 const restoreWorksFilter = useBackFilter(
-  () => worksFilter.value,
-  (saved) => (worksFilter.value = saved),
+  () => ({ text: worksFilter.value, types: typeFilter.value }),
+  (saved) => {
+    worksFilter.value = saved.text;
+    typeFilter.value = saved.types;
+  },
 );
 const recordings = ref<Recording[]>([]);
 const loading = ref(true);
@@ -181,11 +190,21 @@ const searchableWorks = computed(() =>
   })),
 );
 
+const workTypes = computed(() =>
+  works.value.map((entry) => entry.work.work_type ?? UNKNOWN_WORK_TYPE),
+);
+
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(worksFilter.value.trim());
-  if (!q) return works.value;
   return searchableWorks.value
-    .filter((s) => s.haystack.includes(q))
+    .filter(
+      (s) =>
+        (!q || s.haystack.includes(q)) &&
+        (!typeFilter.value.length ||
+          typeFilter.value.includes(
+            s.entry.work.work_type ?? UNKNOWN_WORK_TYPE,
+          )),
+    )
     .map((s) => s.entry);
 });
 
@@ -229,6 +248,7 @@ const load = async (id: string) => {
   recordings.value = [];
   loading.value = true;
   worksFilter.value = "";
+  typeFilter.value = [];
   restoreWorksFilter();
   try {
     const [artist, entries, performed] = await Promise.all([
@@ -271,6 +291,13 @@ watch(
   padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+.works-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .performer-work-row {

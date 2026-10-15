@@ -46,14 +46,18 @@
       :dialog-title="work.name"
       markdown
     />
+    <WorkMovements
+      v-if="work?.movements?.length"
+      :key="work.item_id"
+      v-model="selectedMovements"
+      :movements="work.movements"
+      :counts="movementCounts"
+      :from-library="!work.movements_from_musicbrainz"
+    />
 
     <ClassicalSection
       :title="$t('recordings')"
-      :meta="
-        recordings.length
-          ? recordingCountLabel(displayedRecordings.length)
-          : undefined
-      "
+      :meta="recordings.length ? recordingCountLabel(shownCount) : undefined"
     >
       <template v-if="recordings.length" #append>
         <div class="recordings-controls">
@@ -81,7 +85,35 @@
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
       </div>
-      <div v-else-if="displayedRecordings.length" class="recordings-list">
+      <div v-else-if="movementGroups.length" class="recordings-list">
+        <template v-for="g in movementGroups" :key="g.movement.number">
+          <div class="movement-heading classical-play-row">
+            <RowPlayButton
+              side="start"
+              :label="`${$t('play')} ${g.movement.name}`"
+              @play="(e: Event) => playGroup(g.rows, e)"
+            />
+            <h3 class="movement-heading-title">{{ g.movement.name }}</h3>
+            <RowPlayButton
+              side="end"
+              :label="`${$t('play')} ${g.movement.name}`"
+              @play="(e: Event) => playGroup(g.rows, e)"
+            />
+          </div>
+          <MovementRecordingRow
+            v-for="row in g.rows"
+            :key="row.recording.key"
+            :recording="row.recording"
+            :tracks="row.tracks"
+            @play="playTracks"
+            @menu="onMenuMovement"
+          />
+        </template>
+      </div>
+      <div
+        v-else-if="!selectedMovements.length && displayedRecordings.length"
+        class="recordings-list"
+      >
         <template v-for="g in recordingGroups" :key="g.work.item_id">
           <h3 v-if="g.work.item_id !== work?.item_id" class="part-heading">
             <router-link
@@ -98,6 +130,7 @@
             v-for="r in g.recordings"
             :key="r.key"
             :recording="r"
+            :movements="work?.movements"
             @play-recording="playRecording"
             @play-movement="playMovement"
             @menu-recording="onMenuRecording"
@@ -146,7 +179,10 @@ import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
+import MovementRecordingRow from "@/views/classical/components/MovementRecordingRow.vue";
 import RecordingsFilter from "@/views/classical/components/RecordingsFilter.vue";
+import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
@@ -258,6 +294,47 @@ const displayedRecordings = computed(() =>
   matchedRecordings.value.filter((r) => matchesYear(r.year)),
 );
 
+// The chosen movements, which replace the recordings list with those
+// movements from each shown recording.
+const selectedMovements = ref<number[]>([]);
+
+// How many shown recordings have each movement, by movement number.
+const movementCounts = computed(() => {
+  const counts: Record<number, number> = {};
+  for (const r of displayedRecordings.value)
+    for (const n of r.movement_numbers ?? []) counts[n] = (counts[n] ?? 0) + 1;
+  return counts;
+});
+
+// Each chosen movement in movement order, with its tracks from each shown
+// recording in the list's order.
+const movementGroups = computed(() =>
+  (work.value?.movements ?? [])
+    .filter((m) => selectedMovements.value.includes(m.number))
+    .map((movement) => ({
+      movement,
+      rows: displayedRecordings.value
+        .map((recording) => ({
+          recording,
+          tracks: recording.tracks.filter(
+            (t) => t.movement_number === movement.number,
+          ),
+        }))
+        .filter((row) => row.tracks.length),
+    }))
+    .filter((g) => g.rows.length),
+);
+
+const shownCount = computed(() =>
+  selectedMovements.value.length
+    ? new Set(
+        movementGroups.value.flatMap((g) =>
+          g.rows.map((row) => row.recording.key),
+        ),
+      ).size
+    : displayedRecordings.value.length,
+);
+
 // The shown recordings by the work they are of: the page's own work first,
 // then, on a work with parts such as an opera, each part in the work's order.
 // A part's composer is named only where it differs from the work's.
@@ -326,6 +403,7 @@ const restoreFilter = useBackFilter(
     performerArtistId: performerArtistId.value,
     yearFrom: yearFrom.value,
     yearTo: yearTo.value,
+    movements: selectedMovements.value,
   }),
   (saved) => {
     query.value = saved.query;
@@ -335,6 +413,7 @@ const restoreFilter = useBackFilter(
     performerArtistId.value = saved.performerArtistId;
     yearFrom.value = saved.yearFrom;
     yearTo.value = saved.yearTo;
+    selectedMovements.value = saved.movements;
   },
 );
 
@@ -345,6 +424,7 @@ const load = async (id: string) => {
   recordings.value = [];
   loading.value = true;
   resetFilter();
+  selectedMovements.value = [];
   restoreFilter();
   try {
     const [w, recs] = await Promise.all([getWork(id), getWorkRecordings(id)]);
@@ -427,6 +507,13 @@ const playMovement = (m: Track, evt: Event) => {
   playTracks([m], evt);
 };
 
+const playGroup = (rows: Array<{ tracks: Track[] }>, evt: Event) => {
+  playTracks(
+    rows.flatMap((row) => row.tracks),
+    evt,
+  );
+};
+
 // On a work with parts, the menu leads to the recording's part and its composer.
 const menuContext = (r: Recording) => {
   const part = work.value?.parts?.find((p) => p.item_id === r.work.item_id);
@@ -499,6 +586,37 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
 .recordings-list {
   display: flex;
   flex-direction: column;
+}
+
+.movement-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  /* lines up with the rows below, whose highlight starts 7px early */
+  padding-left: 7px;
+  margin: 1rem 0 0.25rem -7px;
+}
+
+.movement-heading:first-child {
+  margin-top: 0;
+}
+
+/* in the movements' own italic, as the Movements section lists them */
+.movement-heading-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(
+    --font-classical-serif,
+    "Roboto Serif",
+    ui-serif,
+    Georgia,
+    serif
+  );
+  font-optical-sizing: auto;
+  font-style: italic;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .part-heading {

@@ -1,4 +1,8 @@
-import { ArtistRole, type Credit } from "@/plugins/api/interfaces";
+import {
+  ArtistRole,
+  type Credit,
+  type Recording,
+} from "@/plugins/api/interfaces";
 
 /** Performing roles, in the order credits are ranked for display. */
 export const PERFORMER_ROLES: readonly ArtistRole[] = [
@@ -38,3 +42,37 @@ export function creditedArtists(
   }
   return artists;
 }
+
+/**
+ * A recording's credits as its header shows them: conductors and orchestras
+ * lead, then ensembles, choirs, soloists and other performers. Without a
+ * conductor or orchestra those performers lead instead, each with their
+ * instrument.
+ */
+export function recordingCredits(recording: Recording) {
+  const { credits } = recording;
+  const conductors = creditedArtists(credits, [ArtistRole.CONDUCTOR]);
+  const orchestras = creditedArtists(credits, [ArtistRole.ORCHESTRA]);
+  const performers = creditedArtists(credits, NON_CONDUCTING_ROLES);
+  const leadPerformers =
+    conductors.length || orchestras.length
+      ? []
+      : creditedArtists(credits, NON_CONDUCTING_ROLES, true);
+  return { conductors, orchestras, performers, leadPerformers };
+}
+
+/** The names leading a recording's header, or its work's name without any. */
+export function recordingName(recording: Recording): string {
+  const { conductors, orchestras, leadPerformers } =
+    recordingCredits(recording);
+  return (
+    [...conductors, ...orchestras, ...leadPerformers]
+      .map((a) => a.name)
+      .join(", ") || recording.work.name
+  );
+}
+
+// the performing roles besides conductor and orchestra
+const NON_CONDUCTING_ROLES = PERFORMER_ROLES.filter(
+  (role) => role !== ArtistRole.CONDUCTOR && role !== ArtistRole.ORCHESTRA,
+);

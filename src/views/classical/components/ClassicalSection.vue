@@ -4,6 +4,8 @@
     <div class="classical-section__head">
       <div class="classical-section__titles">
         <h2 class="classical-section__title">{{ title }}</h2>
+        <!-- a note on the title, e.g. a footnote mark -->
+        <slot name="title-append"></slot>
         <span v-if="meta" class="classical-section__meta">{{ meta }}</span>
       </div>
       <slot name="append"></slot>

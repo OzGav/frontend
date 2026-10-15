@@ -6,10 +6,12 @@
         variant="outline"
         size="sm"
         class="work-type-filter"
-        :class="{ 'work-type-filter--active': model.length > 0 }"
         :aria-label="$t('classical_filter_type')"
       >
-        <Shapes />
+        <span class="relative inline-flex">
+          <Shapes />
+          <span v-if="model.length" :class="ACTIVE_DOT_CLASS"></span>
+        </span>
         {{ $t("classical_type") }}
         <ChevronDown />
       </Button>
@@ -30,6 +32,7 @@
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
+import { ACTIVE_DOT_CLASS } from "@/constants";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -71,9 +74,5 @@ const toggle = (type: string) => {
 <style scoped>
 .work-type-filter {
   flex-shrink: 0;
-}
-
-.work-type-filter--active {
-  border-color: var(--primary);
 }
 </style>

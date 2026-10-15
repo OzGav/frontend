@@ -1282,6 +1282,10 @@ export interface WorkMovement {
   // e.g. II. Andante con moto
   name: string;
   mbid: string | null;
+  // the number of the movement it sits under, e.g. an aria's act
+  parent?: number | null;
+  // the part's library work, for movements that are the work's parts
+  work_id?: string | null;
 }
 
 // One performance of a work, grouped by the server from its movement tracks.

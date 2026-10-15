@@ -168,11 +168,7 @@ const favorite = computed(() => allLiked(props.recording.tracks));
 const recordingName = computed(() => nameOf(props.recording));
 
 const coverage = computed(() =>
-  movementCoverageLabel(
-    props.recording.movement_numbers ?? [],
-    props.recording.complete ?? null,
-    props.movements ?? [],
-  ),
+  movementCoverageLabel(props.recording, props.movements ?? []),
 );
 
 // the covered movements' names, on hover

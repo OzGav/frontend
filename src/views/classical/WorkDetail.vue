@@ -56,13 +56,32 @@
     />
 
     <ClassicalSection
+      ref="recordingsSection"
       :title="$t('recordings')"
+      :controls-own-line="committed"
       :meta="recordings.length ? recordingCountLabel(shownCount) : undefined"
     >
-      <template v-if="recordings.length" #append>
-        <div class="recordings-controls">
+      <!-- too narrow for it, the year range sits behind a menu beside the title -->
+      <template
+        v-if="narrowRecordings && recordedBounds.earliest !== undefined"
+        #append
+      >
+        <YearRangeMenuButton
+          v-model:from="yearFrom"
+          v-model:to="yearTo"
+          :earliest="recordedBounds.earliest"
+          :latest="recordedBounds.latest"
+          :active="yearRangeActive"
+        />
+      </template>
+      <template v-if="recordings.length" #controls>
+        <!-- the filter banner leads its own line, the year range at its end -->
+        <div
+          class="recordings-controls"
+          :class="{ 'recordings-controls--banner': committed }"
+        >
           <YearRangeFilter
-            v-if="recordedBounds.earliest !== undefined"
+            v-if="!narrowRecordings && recordedBounds.earliest !== undefined"
             v-model:from="yearFrom"
             v-model:to="yearTo"
             :earliest="recordedBounds.earliest"
@@ -114,14 +133,13 @@
         v-else-if="!selectedMovements.length && displayedRecordings.length"
         class="recordings-list"
       >
-        <template v-for="g in recordingGroups" :key="g.work.item_id">
-          <h3 v-if="g.work.item_id !== work?.item_id" class="part-heading">
-            <router-link
-              :to="`/classical/works/${g.work.item_id}`"
-              class="part-title"
-            >
-              {{ g.work.name }}
+        <template v-for="g in recordingGroups" :key="g.key">
+          <!-- with parts, the work's own recordings get a heading too -->
+          <h3 v-if="g.link || recordingGroups.length > 1" class="part-heading">
+            <router-link v-if="g.link" :to="g.link" class="part-title">
+              {{ g.name }}
             </router-link>
+            <span v-else class="part-title">{{ g.name }}</span>
             <span v-if="g.composer" class="part-composer">
               · {{ g.composer }}
             </span>
@@ -168,7 +186,9 @@ import {
   type Recording,
   type Track,
   type Work,
+  type WorkMovement,
 } from "@/plugins/api/interfaces";
+import { $t } from "@/plugins/i18n";
 import {
   getClassicalArtist,
   getWork,
@@ -185,6 +205,7 @@ import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
+import YearRangeMenuButton from "@/views/classical/components/YearRangeMenuButton.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import {
   periodLabel,
@@ -195,7 +216,8 @@ import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
 import { playTracks } from "@/views/classical/playback";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { Music } from "@lucide/vue";
-import { computed, ref, watch } from "vue";
+import { useElementSize } from "@vueuse/core";
+import { computed, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorkDetail" });
@@ -206,6 +228,16 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+
+// Narrower than this, the year range and the recordings filter, at its
+// widest as the performer banner, cannot share a line.
+const YEAR_RANGE_INLINE_WIDTH = 720;
+
+const recordingsSection = useTemplateRef("recordingsSection");
+const { width: recordingsWidth } = useElementSize(recordingsSection);
+const narrowRecordings = computed(
+  () => recordingsWidth.value < YEAR_RANGE_INLINE_WIDTH,
+);
 
 const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
@@ -298,16 +330,36 @@ const displayedRecordings = computed(() =>
 // movements from each shown recording.
 const selectedMovements = ref<number[]>([]);
 
-// How many shown recordings have each movement, by movement number.
+// Each movement number followed by those of the movements it sits under,
+// e.g. an aria's then its act's.
+const movementLineage = computed(() => {
+  const byNumber = new Map(
+    (work.value?.movements ?? []).map((m) => [m.number, m]),
+  );
+  const lineage = new Map<number, number[]>();
+  for (const m of byNumber.values()) {
+    const chain = [m.number];
+    for (let p = m.parent; p != null; p = byNumber.get(p)?.parent)
+      chain.push(p);
+    lineage.set(m.number, chain);
+  }
+  return lineage;
+});
+
+const lineageOf = (n: number) => movementLineage.value.get(n) ?? [n];
+
+// How many shown recordings have each movement, by movement number; an act
+// counts the recordings of its arias too.
 const movementCounts = computed(() => {
   const counts: Record<number, number> = {};
   for (const r of displayedRecordings.value)
-    for (const n of r.movement_numbers ?? []) counts[n] = (counts[n] ?? 0) + 1;
+    for (const n of new Set((r.movement_numbers ?? []).flatMap(lineageOf)))
+      counts[n] = (counts[n] ?? 0) + 1;
   return counts;
 });
 
 // Each chosen movement in movement order, with its tracks from each shown
-// recording in the list's order.
+// recording in the list's order; an act brings its arias' tracks.
 const movementGroups = computed(() =>
   (work.value?.movements ?? [])
     .filter((m) => selectedMovements.value.includes(m.number))
@@ -317,7 +369,9 @@ const movementGroups = computed(() =>
         .map((recording) => ({
           recording,
           tracks: recording.tracks.filter(
-            (t) => t.movement_number === movement.number,
+            (t) =>
+              t.movement_number != null &&
+              lineageOf(t.movement_number).includes(movement.number),
           ),
         }))
         .filter((row) => row.tracks.length),
@@ -335,32 +389,24 @@ const shownCount = computed(() =>
     : displayedRecordings.value.length,
 );
 
-// The shown recordings by the work they are of: the page's own work first,
-// then, on a work with parts such as an opera, each part in the work's order.
-// A part's composer is named only where it differs from the work's.
-const recordingGroups = computed(() => {
+interface RecordingGroup {
+  key: string;
+  name: string;
+  // the group's own work page, absent for the page's work
+  link?: string;
+  // named only where it differs from the work's composer
+  composer?: string;
+  recordings: Recording[];
+}
+
+// The shown recordings in groups: by the movement list on a work whose
+// movements are its parts, otherwise by the work they are of.
+const recordingGroups = computed<RecordingGroup[]>(() => {
   const w = work.value;
   if (!w) return [];
-  const groups = new Map<
-    string,
-    { work: Work | ItemMapping; recordings: Recording[] }
-  >();
-  for (const part of [w, ...(w.parts ?? [])])
-    groups.set(part.item_id, { work: part, recordings: [] });
-  for (const r of displayedRecordings.value) {
-    // a part the work does not list still shows, last
-    if (!groups.has(r.work.item_id))
-      groups.set(r.work.item_id, { work: r.work, recordings: [] });
-    groups.get(r.work.item_id)!.recordings.push(r);
-  }
-  return [...groups.values()]
-    .filter((g) => g.recordings.length)
-    .map((g) => {
-      const c = "composers" in g.work ? g.work.composers[0] : undefined;
-      const composer =
-        c && c.item_id !== composerMapping.value?.item_id ? c.name : undefined;
-      return { ...g, composer };
-    });
+  return w.movements?.some((m) => m.work_id)
+    ? groupByMovement(w.movements, w.item_id)
+    : groupByPart(w);
 });
 
 // Works this one is arranged from, then works arranged from it.
@@ -535,6 +581,99 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
   if (!work.value) return;
   openMovementMenu(m, r, menuContext(r), evt);
 };
+
+// The page's own work first, then, on a work with parts such as an opera,
+// each part in the work's order.
+function groupByPart(w: Work): RecordingGroup[] {
+  const groups = new Map<
+    string,
+    { work: Work | ItemMapping; recordings: Recording[] }
+  >();
+  for (const part of [w, ...(w.parts ?? [])])
+    groups.set(part.item_id, { work: part, recordings: [] });
+  for (const r of displayedRecordings.value) {
+    // a part of a listed part, e.g. an aria of an act, goes with that part
+    const id =
+      !groups.has(r.work.item_id) &&
+      r.parent_work &&
+      groups.has(r.parent_work.item_id)
+        ? r.parent_work.item_id
+        : r.work.item_id;
+    // a part the work does not list still shows, last
+    if (!groups.has(id)) groups.set(id, { work: r.work, recordings: [] });
+    groups.get(id)!.recordings.push(r);
+  }
+  return [...groups.entries()]
+    .filter(([, g]) => g.recordings.length)
+    .map(([id, g]) => {
+      const c = "composers" in g.work ? g.work.composers[0] : undefined;
+      return {
+        key: id,
+        name: g.work.name,
+        link: id === w.item_id ? undefined : `/classical/works/${id}`,
+        composer:
+          c && c.item_id !== composerMapping.value?.item_id
+            ? c.name
+            : undefined,
+        recordings: g.recordings,
+      };
+    });
+}
+
+// Each recording under the top-level movement it belongs to, e.g. an aria's
+// recording under its act, in movement order. Recordings of the whole work
+// come first and any that fit nowhere last.
+function groupByMovement(
+  movements: WorkMovement[],
+  workId: string,
+): RecordingGroup[] {
+  const byWork = new Map(
+    movements.filter((m) => m.work_id).map((m) => [m.work_id!, m.number]),
+  );
+  const byTop = new Map<number, Array<{ r: Recording; rank: number }>>();
+  const complete: Recording[] = [];
+  const other: Recording[] = [];
+  for (const r of displayedRecordings.value) {
+    const number =
+      byWork.get(r.work.item_id) ??
+      (r.parent_work && byWork.get(r.parent_work.item_id)) ??
+      r.movement_numbers?.[0];
+    if (number != null) {
+      const top = lineageOf(number).at(-1)!;
+      // the whole movement first, then by the first part held
+      const rank = r.movement_numbers?.includes(top)
+        ? 0
+        : (r.movement_numbers?.find((n) => n !== top) ?? number);
+      byTop.set(top, [...(byTop.get(top) ?? []), { r, rank }]);
+    } else if (r.work.item_id === workId) complete.push(r);
+    else other.push(r);
+  }
+  const year = (r: Recording) => r.year ?? Number.MAX_SAFE_INTEGER;
+  const groups: RecordingGroup[] = [
+    {
+      key: "complete",
+      name: $t("classical_complete_recordings"),
+      recordings: complete,
+    },
+    ...movements
+      .filter((m) => byTop.has(m.number))
+      .map((m) => ({
+        key: `movement-${m.number}`,
+        name: m.name,
+        link: m.work_id ? `/classical/works/${m.work_id}` : undefined,
+        recordings: byTop
+          .get(m.number)!
+          .sort((a, b) => a.rank - b.rank || year(a.r) - year(b.r))
+          .map((x) => x.r),
+      })),
+    {
+      key: "other",
+      name: $t("classical_other_recordings"),
+      recordings: other,
+    },
+  ];
+  return groups.filter((g) => g.recordings.length);
+}
 </script>
 
 <style scoped>
@@ -581,6 +720,14 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
 
 .recordings-filter {
   min-width: 0;
+}
+
+.recordings-controls--banner {
+  justify-content: space-between;
+}
+
+.recordings-controls--banner .recordings-filter {
+  order: -1;
 }
 
 .recordings-list {
@@ -634,7 +781,7 @@ const onMenuMovement = (m: Track, r: Recording, evt: Event) => {
   text-decoration: none;
 }
 
-.part-title:hover {
+a.part-title:hover {
   text-decoration: underline;
 }
 

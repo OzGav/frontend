@@ -2,6 +2,7 @@ import type {
   ArtistRole,
   LifeSpan,
   Period,
+  Recording,
   WorkMovement,
   WorkType,
 } from "@/plugins/api/interfaces";
@@ -75,34 +76,45 @@ export function romanNumeral(n: number): string {
 }
 
 /**
- * The movements a recording covers, e.g. Complete, I only, I–II, I, III,
- * Aria only or 3 of 32. Empty when they are unknown.
+ * The movements a recording covers, e.g. Complete, I only, I–II, Aria only,
+ * Includes Aria or 3 of 32. Empty when they are unknown.
  *
- * :param numbers: The covered movement numbers, sorted.
- * :param complete: Whether every movement is covered; null to name the
- *   movements without saying whether that is all of them.
+ * :param recording: The recording, with the movement numbers it covers.
  * :param movements: The work's movements.
  */
 export function movementCoverageLabel(
-  numbers: number[],
-  complete: boolean | null,
+  recording: Recording,
   movements: WorkMovement[],
 ): string {
-  if (complete) return $t("classical_complete");
+  if (recording.complete) return $t("classical_complete");
+  const covered = new Set(recording.movement_numbers);
+  // a part under a covered movement, e.g. an aria of a covered act, adds
+  // nothing to it
+  const numbers = [...covered].filter((n) => {
+    const parent = movements.find((m) => m.number === n)?.parent;
+    return parent == null || !covered.has(parent);
+  });
   if (!numbers.length) return "";
-  const numbered = movements.every((m) => NUMBERED_NAME.test(m.name));
-  let label: string;
-  if (numbers.length === 1)
-    label =
-      (!numbered && movements.find((m) => m.number === numbers[0])?.name) ||
-      romanNumeral(numbers[0]);
-  else if (!numbered || movements.length > LONG_MOVEMENT_LIST)
-    return $t("classical_movements_of", {
-      count: numbers.length,
-      total: movements.length,
-    });
-  else label = romanRanges(numbers);
-  return complete === false && numbers.length === 1
+  const topLevel = movements.filter((m) => m.parent == null);
+  if (numbers.length > 1)
+    return topLevel.every((m) => NUMBERED_NAME.test(m.name)) &&
+      topLevel.length <= LONG_MOVEMENT_LIST
+      ? romanRanges(numbers)
+      : $t("classical_movements_of", {
+          count: numbers.length,
+          total: topLevel.length,
+        });
+  const name = movements.find((m) => m.number === numbers[0])?.name;
+  const label =
+    name && !NUMBERED_NAME.test(name) ? name : romanNumeral(numbers[0]);
+  // tracks matched to no movement mean it holds more than the listed part
+  const trackNumbers = recording.tracks.map((t) => t.movement_number);
+  if (
+    trackNumbers.some((n) => n == null) &&
+    trackNumbers.some((n) => n != null)
+  )
+    return $t("classical_movement_includes", { movement: label });
+  return recording.complete === false
     ? $t("classical_movement_only", { movement: label })
     : label;
 }

@@ -25,4 +25,12 @@ const model = defineModel<string>({ required: true });
   width: var(--classical-search-width);
   font-size: 0.9375rem;
 }
+
+/* on phones the controls have a line of their own to fill */
+@media (max-width: 539px) {
+  .works-filter-input {
+    flex: 1;
+    width: auto;
+  }
+}
 </style>

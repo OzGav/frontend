@@ -6,7 +6,7 @@
     <ul
       v-else-if="filteredWorks.length"
       class="work-list"
-      :class="{ touch: isTouch }"
+      :class="{ touch: isTouch, narrow: mobile }"
     >
       <li
         v-for="w in filteredWorks"
@@ -32,15 +32,30 @@
             </router-link>
             <template v-else>{{ w.composer }}</template>
             <template v-if="w.period_label"> · {{ w.period_label }}</template>
+            <!-- on phones the columns join this line, under the title -->
+            <template v-if="mobile">
+              <template
+                v-for="detail in [
+                  w.catalog_number,
+                  w.year_composed,
+                  w.recordings_label,
+                ].filter(Boolean)"
+                :key="detail"
+              >
+                · {{ detail }}
+              </template>
+            </template>
           </span>
           <router-link :to="`/classical/works/${w.item_id}`" class="work-title">
             {{ w.name }}
           </router-link>
         </div>
         <!-- Rendered even when empty so every row keeps all four columns. -->
-        <span class="work-catalog">{{ w.catalog_number }}</span>
-        <span class="work-year">{{ w.year_composed }}</span>
-        <span class="work-recordings">{{ w.recordings_label }}</span>
+        <template v-if="!mobile">
+          <span class="work-catalog">{{ w.catalog_number }}</span>
+          <span class="work-year">{{ w.year_composed }}</span>
+          <span class="work-recordings">{{ w.recordings_label }}</span>
+        </template>
         <RowPlayButton
           side="end"
           :label="`${$t('play')} ${w.name}`"
@@ -79,10 +94,13 @@ import { CalendarRange } from "@lucide/vue";
 import { computed, markRaw, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 defineOptions({ name: "WorksTab" });
 
 const ITEMTYPE = "works";
+
+const { mobile } = useDisplay();
 
 const { t } = useI18n();
 
@@ -237,6 +255,23 @@ const filteredWorks = computed(() => {
 
 .work-list.touch {
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+}
+
+/* on phones the title takes the width, the columns join the composer line */
+.work-list.narrow {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.work-list.narrow.touch {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.work-list.narrow .work-composer {
+  order: 1;
+}
+
+.work-list.narrow .work-title {
+  white-space: normal;
 }
 
 .work-row {

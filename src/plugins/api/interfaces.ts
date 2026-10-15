@@ -1230,6 +1230,8 @@ export interface ClassicalComposer {
   artist: Artist;
   // the artist's first fanart, which the summary metadata leaves out
   fanart?: MediaItemImage | null;
+  // ISO 3166-1 code of the country the composer is associated with, e.g. PL
+  country?: string | null;
   work_count: number;
   recording_count: number;
 }

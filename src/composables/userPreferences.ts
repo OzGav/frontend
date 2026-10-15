@@ -18,6 +18,7 @@ export interface ItemsListingPreferences {
   periodFilter?: string[];
   roleFilter?: string[];
   workTypeFilter?: string[];
+  countryFilter?: string[];
   yearFrom?: string;
   yearTo?: string;
   expand?: boolean;

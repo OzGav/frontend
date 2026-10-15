@@ -71,7 +71,11 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
-import { getClassicalArtist, getComposerWorks } from "@/services/classical";
+import {
+  getClassicalArtist,
+  getComposer,
+  getComposerWorks,
+} from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import {
   navigateOnRowClick,
@@ -89,6 +93,7 @@ import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterBut
 import { UNKNOWN_WORK_TYPE } from "@/views/classical/menuFilter";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
+  countryLabel,
   lifeYearsLabel,
   periodLabel,
   recordingCountLabel,
@@ -120,11 +125,14 @@ const artistItem = ref<Artist | undefined>();
 
 useArtistPageUpdates(artistItem);
 
-// e.g. Romantic · 1833–1897
+const country = ref<string | null>();
+
+// e.g. Romantic · 1810–1849 · Poland
 const heroMeta = computed(() =>
   [
     artistItem.value?.period ? periodLabel(artistItem.value.period) : "",
     lifeYearsLabel(artistItem.value?.metadata.life_span),
+    country.value ? countryLabel(country.value) : "",
   ]
     .filter(Boolean)
     .join(" · "),
@@ -162,15 +170,18 @@ const workLink = (workId: string) => `/classical/works/${workId}`;
 const load = async (id: string) => {
   // the previous composer must not stay actionable under the new route
   artistItem.value = undefined;
+  country.value = undefined;
   works.value = [];
   loading.value = true;
   worksFilter.value = "";
   typeFilter.value = [];
   restoreWorksFilter();
   try {
-    const [artist, list] = await Promise.all([
+    const [artist, list, composer] = await Promise.all([
       getClassicalArtist(id),
       getComposerWorks(id),
+      // only the header's country needs it
+      getComposer(id).catch(() => undefined),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
@@ -195,6 +206,7 @@ const load = async (id: string) => {
         return ac.localeCompare(bc, undefined, { numeric: true });
       });
     artistItem.value = artist;
+    country.value = composer?.country;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does
     return;

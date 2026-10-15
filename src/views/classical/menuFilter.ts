@@ -1,20 +1,22 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { Period, WorkType } from "@/plugins/api/interfaces";
+import { countryLabel } from "@/views/classical/labels";
 import { useClassicalPreferences } from "@/views/classical/listing";
 import { $t } from "@/plugins/i18n";
-import { Hourglass, Shapes } from "@lucide/vue";
+import { Globe, Hourglass, Shapes } from "@lucide/vue";
 import { computed, shallowRef, type Component } from "vue";
 
 export interface MenuFilterOptions<T extends string> {
   // the tab the choice is stored under
   itemtype: string;
   // the preference the choice is stored as
-  key: "periodFilter" | "roleFilter" | "workTypeFilter";
+  key: "periodFilter" | "roleFilter" | "workTypeFilter" | "countryFilter";
   label: string;
   icon: Component;
-  // every value, in the order the menu lists them
-  values: readonly T[];
-  // translation key of a value's name
+  // every value, in the order the menu lists them, or those of the listed
+  // items when the values are not known up front
+  values: readonly T[] | (() => readonly T[]);
+  // a value's name, or its translation key
   valueLabel: (value: T) => string;
   // the values of the listed items, to offer only those
   present: () => Iterable<string | null | undefined>;
@@ -28,11 +30,14 @@ export interface MenuFilterOptions<T extends string> {
  */
 export function useMenuFilter<T extends string>(options: MenuFilterOptions<T>) {
   const { preferences, save } = useClassicalPreferences(options.itemtype);
-  // replaced whole on each change, so a shallow ref suffices
+  const { values } = options;
+  const saved = (preferences[options.key] ?? []) as T[];
+  // replaced whole on each change, so a shallow ref suffices; values read
+  // from the items cannot be checked before they load
   const selected = shallowRef<T[]>(
-    (preferences[options.key] ?? []).filter((v): v is T =>
-      options.values.includes(v as T),
-    ),
+    typeof values === "function"
+      ? saved
+      : saved.filter((v) => values.includes(v)),
   );
 
   const toggle = (value: T) => {
@@ -43,16 +48,18 @@ export function useMenuFilter<T extends string>(options: MenuFilterOptions<T>) {
   };
 
   // A chosen value stays listed so it can be cleared even when no item has it
-  // any more.
+  // any more. A single value would filter nothing, so the filter hides then.
   const menuItem = computed<ToolBarMenuItem>(() => {
     const present = new Set<string | null | undefined>(options.present());
-    const offered = options.values.filter(
-      (v) => present.has(v) || selected.value.includes(v),
-    );
+    const all = typeof values === "function" ? values() : values;
+    const offered = [
+      ...all.filter((v) => present.has(v) || selected.value.includes(v)),
+      ...selected.value.filter((v) => !all.includes(v)),
+    ];
     return {
       label: options.label,
       icon: options.icon,
-      hide: !offered.length,
+      hide: offered.length < 2 && !selected.value.length,
       active: selected.value.length > 0,
       closeOnContentClick: false,
       overflowAllowed: true,
@@ -129,5 +136,38 @@ export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
     values: workTypeChoices(),
     valueLabel: workTypeChoiceLabel,
     present: types,
+  });
+}
+
+/** The choice for composers without a country in the country filter. */
+export const UNKNOWN_COUNTRY = "unknown";
+
+/** The name, or translation key, of a country filter choice. */
+const countryChoiceLabel = (code: string) =>
+  code === UNKNOWN_COUNTRY ? "classical_country_unknown" : countryLabel(code);
+
+/**
+ * The country filter of a classical tab, listing countries by name with
+ * Unknown last.
+ *
+ * :param itemtype: The tab the choice is stored under.
+ * :param countries: The country codes of the listed items, UNKNOWN_COUNTRY
+ *   for those without one.
+ */
+export function useCountryFilter(itemtype: string, countries: () => string[]) {
+  return useMenuFilter<string>({
+    itemtype,
+    key: "countryFilter",
+    label: "classical_filter_country",
+    icon: Globe,
+    values: () => {
+      const codes = [...new Set(countries())].filter(
+        (c) => c !== UNKNOWN_COUNTRY,
+      );
+      codes.sort((a, b) => countryLabel(a).localeCompare(countryLabel(b)));
+      return [...codes, UNKNOWN_COUNTRY];
+    },
+    valueLabel: countryChoiceLabel,
+    present: countries,
   });
 }

@@ -4,7 +4,7 @@ import type {
   Period,
   WorkType,
 } from "@/plugins/api/interfaces";
-import { $t } from "@/plugins/i18n";
+import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
 
 /** The display name of a classical credit role, e.g. Conductor. */
 export function roleLabel(role: ArtistRole): string {
@@ -19,6 +19,15 @@ export function workTypeLabel(type: WorkType): string {
 /** The display name of a composer's period, e.g. Baroque. */
 export function periodLabel(period: Period): string {
   return $t(`classical_period.${period}`);
+}
+
+/** The name of a country in the user's language, e.g. Poland for PL. */
+export function countryLabel(code: string): string {
+  return (
+    new Intl.DisplayNames([canonicalizeLocale(i18n.global.locale.value)], {
+      type: "region",
+    }).of(code) ?? code
+  );
 }
 
 /** A recording count with its noun, e.g. 3 recordings. */

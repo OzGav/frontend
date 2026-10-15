@@ -23,29 +23,15 @@
         @keydown.space.self.prevent="toggle"
       >
         <ChevronRight class="chevron" :class="{ rotated: expanded }" />
-        <div class="recording-title">
-          <div class="recording-credits">
-            <span v-if="conductors.length" class="conductor">
-              <CreditLinks :artists="conductors" separator=", " />
-            </span>
-            <span v-if="conductors.length && orchestras.length"> / </span>
-            <span v-if="orchestras.length" class="orchestra">
-              <CreditLinks :artists="orchestras" separator=", " />
-            </span>
-            <span v-if="leadPerformers.length" class="performers">
-              <CreditLinks :artists="leadPerformers" separator=", " />
-            </span>
-            <span v-if="recording.year" class="year">
-              ({{ recording.year }})
-            </span>
-          </div>
+        <RecordingCredits :recording="recording">
           <span
-            v-if="performers.length && !leadPerformers.length"
-            class="performer-credits"
+            v-if="coverage"
+            class="coverage"
+            :title="coverageTitle || undefined"
           >
-            <CreditLinks :artists="performers" separator=" · " />
+            · {{ coverage }}
           </span>
-        </div>
+        </RecordingCredits>
       </div>
       <RowPlayButton
         side="end"
@@ -122,17 +108,14 @@ import {
   useHoldToOpenMenu,
 } from "@/composables/useHoldToOpenMenu";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
-import {
-  ArtistRole,
-  type Recording,
-  type Track,
-} from "@/plugins/api/interfaces";
+import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import CreditLinks from "@/views/classical/components/CreditLinks.vue";
+import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { isRowControlClick } from "@/views/classical/listing";
-import { creditedArtists } from "@/views/classical/credits";
+import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
+import { movementCoverageLabel } from "@/views/classical/labels";
 import { isTrackPlaying } from "@/views/classical/playback";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -141,6 +124,8 @@ defineOptions({ name: "WorkRecordingCard" });
 
 const props = defineProps<{
   recording: Recording;
+  // the work's movements, to name those the recording covers
+  movements?: WorkMovement[];
 }>();
 
 const emit = defineEmits<{
@@ -179,41 +164,25 @@ const toggle = () => {
 // renders as unfavourited.
 const favorite = computed(() => allLiked(props.recording.tracks));
 
-const conductors = computed(() =>
-  creditedArtists(props.recording.credits, [ArtistRole.CONDUCTOR]),
+// names the buttons for screen readers
+const recordingName = computed(() => nameOf(props.recording));
+
+const coverage = computed(() =>
+  movementCoverageLabel(
+    props.recording.movement_numbers ?? [],
+    props.recording.complete ?? null,
+    props.movements ?? [],
+  ),
 );
 
-const orchestras = computed(() =>
-  creditedArtists(props.recording.credits, [ArtistRole.ORCHESTRA]),
-);
-
-const PERFORMING_ROLES = [
-  ArtistRole.ENSEMBLE,
-  ArtistRole.CHOIR,
-  ArtistRole.SOLOIST,
-  ArtistRole.PERFORMER,
-];
-
-// Ensembles, choirs, soloists and other performers, below the header line.
-const performers = computed(() =>
-  creditedArtists(props.recording.credits, PERFORMING_ROLES),
-);
-
-// Without a conductor or orchestra the performers lead the header instead,
-// each with their instrument.
-const leadPerformers = computed(() =>
-  conductors.value.length || orchestras.value.length
-    ? []
-    : creditedArtists(props.recording.credits, PERFORMING_ROLES, true),
-);
-
-// The names leading the header, which name its buttons for screen readers.
-const recordingName = computed(
-  () =>
-    [...conductors.value, ...orchestras.value, ...leadPerformers.value]
-      .map((a) => a.name)
-      .join(", ") || props.recording.work.name,
-);
+// the covered movements' names, on hover
+const coverageTitle = computed(() => {
+  const covered = new Set(props.recording.movement_numbers);
+  return (props.movements ?? [])
+    .filter((m) => covered.has(m.number))
+    .map((m) => m.name)
+    .join("\n");
+});
 </script>
 
 <style scoped>
@@ -261,28 +230,9 @@ const recordingName = computed(
   transform: rotate(90deg);
 }
 
-.recording-title {
-  flex: 1;
-  min-width: 0;
-}
-
-.recording-credits {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.year {
+.coverage {
   color: var(--muted-foreground, #888);
   font-weight: 400;
-  margin-left: 0.25rem;
-}
-
-.performer-credits {
-  display: block;
-  font-weight: 400;
-  font-size: 0.85rem;
-  color: var(--muted-foreground, #888);
-  margin-top: 0.1rem;
 }
 
 .recording-card {

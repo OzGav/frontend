@@ -77,6 +77,17 @@ export function getComposers(
   return api.sendCommand("music/classical/composers", { ...sort, limit: 0 });
 }
 
+/** A library artist's Classical composer row, absent when they hold no works. */
+export async function getComposer(
+  artistId: string,
+): Promise<ClassicalComposer | undefined> {
+  const rows = await api.sendCommand<ClassicalComposer[]>(
+    "music/classical/composers",
+    { artist_id: artistId, limit: 1 },
+  );
+  return rows[0];
+}
+
 export function getComposerWorks(
   composerId: string,
 ): Promise<ClassicalWorkEntry[]> {

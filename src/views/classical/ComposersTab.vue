@@ -34,7 +34,11 @@ import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { usePeriodFilter } from "@/views/classical/menuFilter";
+import {
+  UNKNOWN_COUNTRY,
+  useCountryFilter,
+  usePeriodFilter,
+} from "@/views/classical/menuFilter";
 import { Feather } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -58,6 +62,10 @@ const periodFilter = usePeriodFilter(ITEMTYPE, () =>
   composers.value.map((c) => c.artist.period),
 );
 
+const countryFilter = useCountryFilter(ITEMTYPE, () =>
+  composers.value.map((c) => c.country ?? UNKNOWN_COUNTRY),
+);
+
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: ITEMTYPE,
@@ -70,7 +78,7 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       text: search,
       placeholder: () => t("classical_filter_composers_placeholder"),
     },
-    filters: () => [periodFilter.menuItem.value],
+    filters: () => [periodFilter.menuItem.value, countryFilter.menuItem.value],
   });
 
 onMounted(reload);
@@ -108,6 +116,7 @@ const gridItems = computed<ClassicalArtistGridItem[]>(() => {
       (r) =>
         (!favoritesOnly.value || r.composer.artist.favorite === true) &&
         periodFilter.matches(r.composer.artist.period) &&
+        countryFilter.matches(r.composer.country ?? UNKNOWN_COUNTRY) &&
         (!q || r.haystack.includes(q)),
     )
     .map((r) => r.item);

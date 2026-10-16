@@ -1254,6 +1254,8 @@
     "classical_filter_country": "Filter by country",
     "classical_country_unknown": "Unknown",
     "classical_movements": "Movements",
+    "classical_with_performers": "with {names}",
+    "classical_with_performers_more": "with {names} +{count}",
     "classical_complete": "Complete",
     "classical_complete_recordings": "Complete recordings",
     "classical_other_recordings": "Other recordings",

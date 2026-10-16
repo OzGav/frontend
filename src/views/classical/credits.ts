@@ -72,7 +72,42 @@ export function recordingName(recording: Recording): string {
   );
 }
 
+/**
+ * The names of everyone performing on some recordings besides one artist,
+ * without repeats: orchestras and ensembles, conductors, soloists, choirs,
+ * then other performers.
+ *
+ * :param recordings: The recordings, e.g. a performer's of one work.
+ * :param artistId: The artist to leave out.
+ */
+export function coPerformerNames(
+  recordings: Recording[],
+  artistId: string,
+): string[] {
+  const credits = recordings
+    .flatMap((r) => r.credits)
+    .filter((c) => c.artist.item_id !== artistId && c.role in CO_PERFORMER_RANK)
+    .sort(
+      (a, b) =>
+        CO_PERFORMER_RANK[a.role]! - CO_PERFORMER_RANK[b.role]! ||
+        a.position - b.position,
+    );
+  return [
+    ...new Map(credits.map((c) => [c.artist.item_id, c.artist.name])).values(),
+  ];
+}
+
 // the performing roles besides conductor and orchestra
 const NON_CONDUCTING_ROLES = PERFORMER_ROLES.filter(
   (role) => role !== ArtistRole.CONDUCTOR && role !== ArtistRole.ORCHESTRA,
 );
+
+// the order co-performers are named in
+const CO_PERFORMER_RANK: Partial<Record<ArtistRole, number>> = {
+  [ArtistRole.ORCHESTRA]: 0,
+  [ArtistRole.ENSEMBLE]: 0,
+  [ArtistRole.CONDUCTOR]: 1,
+  [ArtistRole.SOLOIST]: 2,
+  [ArtistRole.CHOIR]: 3,
+  [ArtistRole.PERFORMER]: 4,
+};

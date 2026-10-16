@@ -34,13 +34,13 @@
             :label="`${$t('play')} ${w.name}`"
             @play="(e: Event) => playWork(w.item_id, e)"
           />
-          <!-- on phones the details go on their own line, under the title -->
-          <span class="composer-work-text" :class="{ narrow: mobile }">
+          <!-- the details on their own line, under the title -->
+          <span class="composer-work-text">
             <router-link :to="workLink(w.item_id)" class="composer-work-link">
               {{ w.name }}
             </router-link>
             <span class="meta">
-              {{ mobile ? workDetails(w) : `· ${workDetails(w)}` }}
+              {{ workDetails(w) }}
             </span>
           </span>
           <RowPlayButton
@@ -98,15 +98,12 @@ import {
 import { playWork, playTracks } from "@/views/classical/playback";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useDisplay } from "vuetify";
 
 defineOptions({ name: "ComposerDetail" });
 
 const props = defineProps<{ id: string }>();
 
 const router = useRouter();
-
-const { mobile } = useDisplay();
 
 // Flattened to the fields the rows show and sort on.
 interface WorkRow {
@@ -269,14 +266,7 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4rem;
-}
-
-.composer-work-text.narrow {
   flex-direction: column;
-  gap: 0;
 }
 
 .composer-work-row:hover {

@@ -57,6 +57,12 @@
                 [{{ w.work.catalog_numbers[0] }}]
               </span>
             </router-link>
+            <span
+              v-if="coPerformers[w.work.item_id]?.length"
+              class="performer-work-composer"
+            >
+              {{ coPerformersLabel(coPerformers[w.work.item_id]) }}
+            </span>
           </div>
           <span class="meta-recordings">
             {{ recordingCountLabel(w.recording_count) }}
@@ -122,6 +128,7 @@ import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterButton.vue";
 import { UNKNOWN_WORK_TYPE } from "@/views/classical/menuFilter";
+import { coPerformerNames } from "@/views/classical/credits";
 import {
   allLiked,
   setTracksLiked,
@@ -130,6 +137,7 @@ import {
 import { recordingCountLabel, workCountLabel } from "@/views/classical/labels";
 import { playTracks } from "@/views/classical/playback";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
+import { $t } from "@/plugins/i18n";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -138,6 +146,9 @@ defineOptions({ name: "PerformerDetail" });
 const props = defineProps<{ id: string }>();
 
 const router = useRouter();
+
+// co-performers named on a work row before the rest are counted
+const CO_PERFORMERS_SHOWN = 3;
 
 const artistItem = ref<Artist | undefined>();
 
@@ -174,8 +185,25 @@ const tracksByWork = computed(() => {
   return byWork;
 });
 
-// Title, catalog numbers, composer and part names of each work, folded for the
-// filter.
+// Everyone else on this performer's recordings of each work, by work id.
+const coPerformers = computed(() => {
+  const byWork: Record<string, string[]> = {};
+  for (const [workId, list] of Object.entries(recordingsByWork.value))
+    byWork[workId] = coPerformerNames(list, props.id);
+  return byWork;
+});
+
+// e.g. with Wiener Philharmoniker, Mirella Freni, Luciano Pavarotti +2
+const coPerformersLabel = (names: string[]) =>
+  names.length > CO_PERFORMERS_SHOWN
+    ? $t("classical_with_performers_more", {
+        names: names.slice(0, CO_PERFORMERS_SHOWN).join(", "),
+        count: names.length - CO_PERFORMERS_SHOWN,
+      })
+    : $t("classical_with_performers", { names: names.join(", ") });
+
+// Title, catalog numbers, composer, part names and co-performers of each work,
+// folded for the filter.
 const searchableWorks = computed(() =>
   works.value.map((entry) => ({
     entry,
@@ -185,6 +213,7 @@ const searchableWorks = computed(() =>
         ...entry.work.catalog_numbers,
         ...entry.work.composers.map((c) => c.name),
         ...(entry.part_names ?? []),
+        ...(coPerformers.value[entry.work.item_id] ?? []),
       ].join(" "),
     ),
   })),

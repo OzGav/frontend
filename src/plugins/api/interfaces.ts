@@ -1268,6 +1268,9 @@ export interface Recording {
   // whether it covers every movement; null unless the work's movements are
   // MusicBrainz's
   complete?: boolean | null;
+  // the movements of its part it holds, e.g. the arias of an act, when it
+  // holds only some; numbered in the part's own movement list
+  part_movements?: WorkMovement[];
 }
 
 export interface ClassicalComposer {

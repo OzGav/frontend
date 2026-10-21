@@ -6,7 +6,7 @@ import api from "@/plugins/api";
 import { ArtistRole, type Credit, type Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
 import { PERFORMER_ROLES } from "@/views/classical/credits";
-import { roleLabel } from "@/views/classical/labels";
+import { instrumentLabel, roleLabel } from "@/views/classical/labels";
 import type { Router } from "vue-router";
 
 /**
@@ -126,8 +126,8 @@ function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
   const aggregates: AggregatedCredit[] = [];
   for (const [artistId, entries] of map) {
     entries.sort((a, b) => rolePriority(a.role) - rolePriority(b.role));
-    const parts = entries.map((e) =>
-      e.instrument ? e.instrument : roleLabel(e.role),
+    const parts = entries.map(
+      (e) => instrumentLabel(e.instrument) || roleLabel(e.role),
     );
     aggregates.push({
       artistId,

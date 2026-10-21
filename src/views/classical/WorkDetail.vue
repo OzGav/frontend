@@ -13,19 +13,9 @@
             >
               {{ composerMapping.name }}
             </router-link>
-            <template v-if="composer?.period">
-              <span class="work-meta-sep">·</span
-              >{{ periodLabel(composer.period) }}
-            </template>
-            <template v-if="work.catalog_numbers[0]">
-              <span class="work-meta-sep">·</span>{{ work.catalog_numbers[0] }}
-            </template>
-            <template v-if="work.work_type">
-              <span class="work-meta-sep">·</span
-              >{{ workTypeLabel(work.work_type) }}
-            </template>
-            <template v-if="work.composition_year">
-              <span class="work-meta-sep">·</span>{{ work.composition_year }}
+            <template v-for="(detail, i) in workDetails" :key="i">
+              <span v-if="composerMapping || i" class="work-meta-sep">·</span
+              >{{ detail }}
             </template>
           </span>
         </div>
@@ -181,6 +171,7 @@ import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { normalizeForFilter } from "@/helpers/utils";
 import {
   ImageType,
+  WorkType,
   type Artist,
   type ItemMapping,
   type Recording,
@@ -270,6 +261,18 @@ const recordedBounds = computed(() =>
 );
 
 const composerMapping = computed(() => work.value?.composers[0]);
+
+// e.g. Romantic · Op. 18 · Concerto · 1901; a type of Other says nothing
+const workDetails = computed(() => {
+  const w = work.value;
+  if (!w) return [];
+  return [
+    composer.value?.period && periodLabel(composer.value.period),
+    w.catalog_numbers[0],
+    w.work_type && w.work_type !== WorkType.OTHER && workTypeLabel(w.work_type),
+    w.composition_year && String(w.composition_year),
+  ].filter((d): d is string => !!d);
+});
 
 const performerName = computed(() => {
   const id = performerArtistId.value;

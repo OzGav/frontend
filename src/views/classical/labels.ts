@@ -13,6 +13,14 @@ export function roleLabel(role: ArtistRole): string {
   return $t(`classical_artist_role.${role}`);
 }
 
+/**
+ * A credit's instrument as shown, with a voice named alone, e.g. tenor for
+ * "tenor vocals". Empty for plain vocals.
+ */
+export function instrumentLabel(instrument: string | null | undefined): string {
+  return (instrument ?? "").replace(/\s*\bvocals$/i, "").trim();
+}
+
 /** The display name of a work type, e.g. Song cycle. */
 export function workTypeLabel(type: WorkType): string {
   return $t(`classical_work_type.${type}`);
@@ -76,7 +84,7 @@ export function romanNumeral(n: number): string {
 }
 
 /**
- * The movements a recording covers, e.g. Complete, I only, I–II, Aria only,
+ * The movements a recording covers, e.g. Complete, I, I–II, Act I: Aria,
  * Includes Aria or 3 of 32. Empty when they are unknown.
  *
  * :param recording: The recording, with the movement numbers it covers.
@@ -107,6 +115,13 @@ export function movementCoverageLabel(
   const name = movements.find((m) => m.number === numbers[0])?.name;
   const label =
     name && !NUMBERED_NAME.test(name) ? name : romanNumeral(numbers[0]);
+  if (recording.part_movements?.length)
+    return $t("classical_movement_parts", {
+      movement: label,
+      parts: recording.part_movements
+        .map((m) => shortMovementName(m.name))
+        .join(", "),
+    });
   // tracks matched to no movement mean it holds more than the listed part
   const trackNumbers = recording.tracks.map((t) => t.movement_number);
   if (
@@ -114,9 +129,7 @@ export function movementCoverageLabel(
     trackNumbers.some((n) => n != null)
   )
     return $t("classical_movement_includes", { movement: label });
-  return recording.complete === false
-    ? $t("classical_movement_only", { movement: label })
-    : label;
+  return label;
 }
 
 /** Movement lists longer than this are summarised and folded. */
@@ -140,4 +153,16 @@ function romanRanges(numbers: number[]): string {
         : `${romanNumeral(first)}–${romanNumeral(last)}`,
     )
     .join(", ");
+}
+
+// a quoted part of a name, e.g. “Che gelida manina!” or « Salut ! »
+const QUOTED = /“([^”]+)”|«\s*([^»]+?)\s*»|"([^"]+)"/g;
+
+// the quoted part of a movement name when it has exactly one, e.g.
+// Che gelida manina! for no. 6. “Che gelida manina!” (Rodolfo)
+function shortMovementName(name: string): string {
+  const quoted = [...name.matchAll(QUOTED)];
+  return quoted.length === 1
+    ? quoted[0].slice(1).find((part) => part !== undefined)!
+    : name;
 }

@@ -100,6 +100,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import { normalizeForFilter } from "@/helpers/utils";
 import type {
@@ -114,10 +115,7 @@ import {
   getPerformerWorks,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import {
-  navigateOnRowClick,
-  useArtistPageUpdates,
-} from "@/views/classical/listing";
+import { navigateOnRowClick } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import { useBackFilter } from "@/views/classical/backFilter";
 import { useBackScroll } from "@/views/classical/backScroll";
@@ -152,7 +150,7 @@ const CO_PERFORMERS_SHOWN = 3;
 
 const artistItem = ref<Artist | undefined>();
 
-useArtistPageUpdates(artistItem);
+useDetailItemUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");

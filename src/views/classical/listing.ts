@@ -6,14 +6,10 @@ import {
   type ItemsListingPreferences,
 } from "@/composables/userPreferences";
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
-import { keepOwnFavorite } from "@/helpers/favorites";
 import { normalizeGridSize } from "@/helpers/grid_size";
 import api from "@/plugins/api";
 import {
-  EventType,
   SortDirection,
-  type Artist,
-  type EventMessage,
   type ListingType,
   type SortField,
   type SortOptionInfo,
@@ -22,7 +18,6 @@ import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
-import { useOwnFavorites } from "@/views/classical/favorites";
 import {
   ArrowDown,
   ArrowUp,
@@ -39,7 +34,6 @@ import {
   inject,
   markRaw,
   nextTick,
-  onBeforeUnmount,
   onUnmounted,
   ref,
   toRaw,
@@ -72,23 +66,6 @@ export interface ClassicalMenuSearch {
 
 export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
   Symbol("classicalMenu");
-
-/**
- * Keep a composer or performer page's artist in step with the server, so like
- * changes, refreshes and metadata updates show on the page as they happen.
- */
-export function useArtistPageUpdates(artist: Ref<Artist | undefined>) {
-  useOwnFavorites(() => (artist.value ? [artist.value] : []));
-  const unsubscribe = api.subscribe(
-    EventType.MEDIA_ITEM_UPDATED,
-    (evt: EventMessage) => {
-      const updated = evt.data as Artist;
-      if (artist.value && updated.uri === artist.value.uri)
-        artist.value = keepOwnFavorite(updated, artist.value);
-    },
-  );
-  onBeforeUnmount(unsubscribe);
-}
 
 /**
  * Whether a click inside a list row landed on one of the row's own links or

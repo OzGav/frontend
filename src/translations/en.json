@@ -1303,7 +1303,7 @@
     "classical_complete": "Complete",
     "classical_complete_recordings": "Complete recordings",
     "classical_other_recordings": "Other recordings",
-    "classical_movement_only": "{movement} only",
+    "classical_movement_parts": "{movement}: {parts}",
     "classical_movement_includes": "Includes {movement}",
     "classical_movements_of": "{count} of {total}",
     "classical_movements_from_library": "From your library, may be incomplete",

@@ -65,6 +65,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
 import {
   getClassicalArtist,
@@ -72,10 +73,7 @@ import {
   getComposerWorks,
 } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
-import {
-  navigateOnRowClick,
-  useArtistPageUpdates,
-} from "@/views/classical/listing";
+import { navigateOnRowClick } from "@/views/classical/listing";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import { useBackFilter } from "@/views/classical/backFilter";
 import { useBackScroll } from "@/views/classical/backScroll";
@@ -118,7 +116,7 @@ interface WorkRow {
 
 const artistItem = ref<Artist | undefined>();
 
-useArtistPageUpdates(artistItem);
+useDetailItemUpdates(artistItem);
 
 const country = ref<string | null>();
 

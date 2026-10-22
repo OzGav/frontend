@@ -1,3 +1,4 @@
+import { normalizeForFilter } from "@/helpers/utils";
 import type {
   ArtistRole,
   LifeSpan,
@@ -14,11 +15,17 @@ export function roleLabel(role: ArtistRole): string {
 }
 
 /**
- * A credit's instrument as shown, with a voice named alone, e.g. tenor for
- * "tenor vocals". Empty for plain vocals.
+ * A credit's instrument as shown after the performer's name, with a voice
+ * named alone, e.g. tenor for "tenor vocals". Empty for plain vocals and when
+ * the name already says it, e.g. string quartet for Brodsky Quartet.
  */
-export function instrumentLabel(instrument: string | null | undefined): string {
-  return (instrument ?? "").replace(/\s*\bvocals$/i, "").trim();
+export function instrumentLabel(
+  instrument: string | null | undefined,
+  name: string,
+): string {
+  const label = (instrument ?? "").replace(/\s*\bvocals$/i, "").trim();
+  const lastWord = words(label).at(-1);
+  return lastWord && words(name).includes(lastWord) ? "" : label;
 }
 
 /** The display name of a work type, e.g. Song cycle. */
@@ -165,4 +172,11 @@ function shortMovementName(name: string): string {
   return quoted.length === 1
     ? quoted[0].slice(1).find((part) => part !== undefined)!
     : name;
+}
+
+// the words of a name, folded for comparing, e.g. ["brodsky", "quartet"]
+function words(text: string): string[] {
+  return normalizeForFilter(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
 }

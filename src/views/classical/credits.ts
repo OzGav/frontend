@@ -36,7 +36,8 @@ export function creditedArtists(
   for (const c of credits) {
     if (!roles.includes(c.role)) continue;
     const instrument =
-      (withInstruments && instrumentLabel(c.instrument)) || undefined;
+      (withInstruments && instrumentLabel(c.instrument, c.artist.name)) ||
+      undefined;
     const key = `${c.artist.item_id}|${instrument ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);

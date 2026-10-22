@@ -40,8 +40,11 @@
       v-if="work?.movements?.length"
       :key="work.item_id"
       v-model="selectedMovements"
+      v-model:selected-arias="selectedArias"
       :movements="work.movements"
       :counts="movementCounts"
+      :arias="arias"
+      :aria-counts="ariaCounts"
       :from-library="!work.movements_from_musicbrainz"
     />
 
@@ -95,17 +98,17 @@
         <ListViewSkeleton v-for="n in 4" :key="n" />
       </div>
       <div v-else-if="movementGroups.length" class="recordings-list">
-        <template v-for="g in movementGroups" :key="g.movement.number">
+        <template v-for="g in movementGroups" :key="g.key">
           <div class="movement-heading classical-play-row">
             <RowPlayButton
               side="start"
-              :label="`${$t('play')} ${g.movement.name}`"
+              :label="`${$t('play')} ${g.name}`"
               @play="(e: Event) => playGroup(g.rows, e)"
             />
-            <h3 class="movement-heading-title">{{ g.movement.name }}</h3>
+            <h3 class="movement-heading-title">{{ g.name }}</h3>
             <RowPlayButton
               side="end"
-              :label="`${$t('play')} ${g.movement.name}`"
+              :label="`${$t('play')} ${g.name}`"
               @play="(e: Event) => playGroup(g.rows, e)"
             />
           </div>
@@ -120,7 +123,11 @@
         </template>
       </div>
       <div
-        v-else-if="!selectedMovements.length && displayedRecordings.length"
+        v-else-if="
+          !selectedMovements.length &&
+          !selectedArias.length &&
+          displayedRecordings.length
+        "
         class="recordings-list"
       >
         <template v-for="g in recordingGroups" :key="g.key">
@@ -197,6 +204,7 @@ import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import YearRangeMenuButton from "@/views/classical/components/YearRangeMenuButton.vue";
+import { useActArias } from "@/views/classical/actArias";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import {
   periodLabel,
@@ -361,29 +369,59 @@ const movementCounts = computed(() => {
   return counts;
 });
 
-// Each chosen movement in movement order, with its tracks from each shown
-// recording in the list's order; an act brings its arias' tracks.
+// The chosen arias of an opera's acts, by key.
+const selectedArias = ref<string[]>([]);
+
+const { arias, ariaCounts, ariaRows } = useActArias(
+  work,
+  recordings,
+  displayedRecordings,
+);
+
+// Each shown recording with its tracks of a movement; an act brings its arias'
+// tracks.
+const movementRows = (number: number) =>
+  displayedRecordings.value
+    .map((recording) => ({
+      recording,
+      tracks: recording.tracks.filter(
+        (t) =>
+          t.movement_number != null &&
+          lineageOf(t.movement_number).includes(number),
+      ),
+    }))
+    .filter((row) => row.tracks.length);
+
+// Each chosen movement in movement order, followed by its chosen arias, with
+// their tracks from each shown recording in the list's order.
 const movementGroups = computed(() =>
   (work.value?.movements ?? [])
-    .filter((m) => selectedMovements.value.includes(m.number))
-    .map((movement) => ({
-      movement,
-      rows: displayedRecordings.value
-        .map((recording) => ({
-          recording,
-          tracks: recording.tracks.filter(
-            (t) =>
-              t.movement_number != null &&
-              lineageOf(t.movement_number).includes(movement.number),
-          ),
-        }))
-        .filter((row) => row.tracks.length),
-    }))
+    .flatMap((movement) => [
+      ...(selectedMovements.value.includes(movement.number)
+        ? [
+            {
+              key: `movement-${movement.number}`,
+              name: movement.name,
+              rows: movementRows(movement.number),
+            },
+          ]
+        : []),
+      ...arias.value
+        .filter(
+          (a) =>
+            a.act === movement.number && selectedArias.value.includes(a.key),
+        )
+        .map((a) => ({
+          key: `aria-${a.key}`,
+          name: a.name,
+          rows: ariaRows(a),
+        })),
+    ])
     .filter((g) => g.rows.length),
 );
 
 const shownCount = computed(() =>
-  selectedMovements.value.length
+  selectedMovements.value.length || selectedArias.value.length
     ? new Set(
         movementGroups.value.flatMap((g) =>
           g.rows.map((row) => row.recording.key),
@@ -453,6 +491,7 @@ const restoreFilter = useBackFilter(
     yearFrom: yearFrom.value,
     yearTo: yearTo.value,
     movements: selectedMovements.value,
+    arias: selectedArias.value,
   }),
   (saved) => {
     query.value = saved.query;
@@ -463,6 +502,7 @@ const restoreFilter = useBackFilter(
     yearFrom.value = saved.yearFrom;
     yearTo.value = saved.yearTo;
     selectedMovements.value = saved.movements;
+    selectedArias.value = saved.arias;
   },
 );
 
@@ -474,6 +514,7 @@ const load = async (id: string) => {
   loading.value = true;
   resetFilter();
   selectedMovements.value = [];
+  selectedArias.value = [];
   restoreFilter();
   try {
     const [w, recs] = await Promise.all([getWork(id), getWorkRecordings(id)]);

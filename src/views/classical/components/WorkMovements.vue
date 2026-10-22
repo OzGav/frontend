@@ -3,31 +3,34 @@
     <template v-if="fromLibrary" #title-append>
       <span class="movements-mark" aria-hidden="true">*</span>
     </template>
-    <template v-if="model.length" #append>
-      <Button variant="ghost" size="sm" @click="model = []">
+    <template v-if="model.length || selectedArias.length" #append>
+      <Button variant="ghost" size="sm" @click="clear">
         {{ $t("clear") }}
       </Button>
     </template>
     <ul class="movement-list">
-      <li
-        v-for="m in shown"
-        :key="m.number"
-        :class="{ 'movement-child': m.parent != null }"
-      >
-        <button
-          type="button"
-          class="movement-toggle"
-          :class="{ selected: model.includes(m.number) }"
-          :aria-pressed="model.includes(m.number)"
-          :disabled="!counts[m.number] && !model.includes(m.number)"
-          @click="toggle(m.number)"
+      <!-- a movement and its arias share a column -->
+      <li v-for="group in groups" :key="group[0].key">
+        <div
+          v-for="row in group"
+          :key="row.key"
+          :class="{ 'movement-child': row.child }"
         >
-          <span class="movement-check">
-            <Check v-if="model.includes(m.number)" :size="16" />
-          </span>
-          <span class="movement-name">{{ m.name }}</span>
-          <span class="movement-count">({{ counts[m.number] ?? 0 }})</span>
-        </button>
+          <button
+            type="button"
+            class="movement-toggle"
+            :class="{ selected: row.selected }"
+            :aria-pressed="row.selected"
+            :disabled="!row.count && !row.selected"
+            @click="row.toggle"
+          >
+            <span class="movement-check">
+              <Check v-if="row.selected" :size="16" />
+            </span>
+            <span class="movement-name">{{ row.name }}</span>
+            <span class="movement-count">({{ row.count }})</span>
+          </button>
+        </div>
       </li>
     </ul>
     <Button
@@ -47,6 +50,7 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import type { WorkMovement } from "@/plugins/api/interfaces";
+import type { ActAria } from "@/views/classical/actArias";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import { LONG_MOVEMENT_LIST } from "@/views/classical/labels";
 import { Check } from "@lucide/vue";
@@ -60,10 +64,18 @@ const props = defineProps<{
   counts: Record<number, number>;
   // the list was built from the library's tracks, so may miss movements
   fromLibrary?: boolean;
+  // the arias recordings hold, listed under their act
+  arias?: ActAria[];
+  // the number of shown recordings with each aria, by its key
+  ariaCounts?: Record<string, number>;
 }>();
 
 // the chosen movement numbers; empty shows the recordings list
 const model = defineModel<number[]>({ required: true });
+// the keys of the chosen arias
+const selectedArias = defineModel<string[]>("selectedArias", {
+  default: () => [],
+});
 
 const expanded = ref(false);
 
@@ -83,11 +95,41 @@ const hasHidden = computed(() => folded.value.length < props.movements.length);
 
 const shown = computed(() => (expanded.value ? props.movements : folded.value));
 
-const toggle = (number: number) => {
-  model.value = model.value.includes(number)
-    ? model.value.filter((n) => n !== number)
-    : [...model.value, number];
+// each shown movement followed by its arias
+const groups = computed(() =>
+  shown.value.map((m) => [
+    {
+      key: `movement-${m.number}`,
+      name: m.name,
+      child: m.parent != null,
+      count: props.counts[m.number] ?? 0,
+      selected: model.value.includes(m.number),
+      toggle: () => (model.value = toggled(model.value, m.number)),
+    },
+    ...(props.arias ?? [])
+      .filter((a) => a.act === m.number)
+      .map((a) => ({
+        key: `aria-${a.key}`,
+        name: a.name,
+        child: true,
+        count: props.ariaCounts?.[a.key] ?? 0,
+        selected: selectedArias.value.includes(a.key),
+        toggle: () =>
+          (selectedArias.value = toggled(selectedArias.value, a.key)),
+      })),
+  ]),
+);
+
+const clear = () => {
+  model.value = [];
+  selectedArias.value = [];
 };
+
+function toggled<T>(list: T[], value: T): T[] {
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value];
+}
 </script>
 
 <style scoped>

@@ -139,6 +139,17 @@ export function movementCoverageLabel(
   return label;
 }
 
+/**
+ * A movement's name shortened to its quoted part when it has exactly one, e.g.
+ * Che gelida manina! for no. 6. “Che gelida manina!” (Rodolfo).
+ */
+export function shortMovementName(name: string): string {
+  const quoted = [...name.matchAll(QUOTED)];
+  return quoted.length === 1
+    ? quoted[0].slice(1).find((part) => part !== undefined)!
+    : name;
+}
+
 /** Movement lists longer than this are summarised and folded. */
 export const LONG_MOVEMENT_LIST = 8;
 
@@ -164,15 +175,6 @@ function romanRanges(numbers: number[]): string {
 
 // a quoted part of a name, e.g. “Che gelida manina!” or « Salut ! »
 const QUOTED = /“([^”]+)”|«\s*([^»]+?)\s*»|"([^"]+)"/g;
-
-// the quoted part of a movement name when it has exactly one, e.g.
-// Che gelida manina! for no. 6. “Che gelida manina!” (Rodolfo)
-function shortMovementName(name: string): string {
-  const quoted = [...name.matchAll(QUOTED)];
-  return quoted.length === 1
-    ? quoted[0].slice(1).find((part) => part !== undefined)!
-    : name;
-}
 
 // the words of a name, folded for comparing, e.g. ["brodsky", "quartet"]
 function words(text: string): string[] {

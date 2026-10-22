@@ -127,7 +127,7 @@ function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
   for (const [artistId, entries] of map) {
     entries.sort((a, b) => rolePriority(a.role) - rolePriority(b.role));
     const parts = entries.map(
-      (e) => instrumentLabel(e.instrument) || roleLabel(e.role),
+      (e) => instrumentLabel(e.instrument, e.artist.name) || roleLabel(e.role),
     );
     aggregates.push({
       artistId,

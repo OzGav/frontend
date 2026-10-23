@@ -146,6 +146,7 @@
             :key="r.key"
             :recording="r"
             :movements="work?.movements"
+            :heading="g.movement"
             @play-recording="playRecording"
             @play-movement="playMovement"
             @menu-recording="onMenuRecording"
@@ -437,6 +438,8 @@ interface RecordingGroup {
   link?: string;
   // named only where it differs from the work's composer
   composer?: string;
+  // the movement the group is of, by number
+  movement?: number;
   recordings: Recording[];
 }
 
@@ -705,6 +708,7 @@ function groupByMovement(
         key: `movement-${m.number}`,
         name: m.name,
         link: m.work_id ? `/classical/works/${m.work_id}` : undefined,
+        movement: m.number,
         recordings: byTop
           .get(m.number)!
           .sort((a, b) => a.rank - b.rank || year(a.r) - year(b.r))

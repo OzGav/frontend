@@ -171,7 +171,13 @@ export function useActArias(
     Object.fromEntries(arias.value.map((a) => [a.key, ariaRows(a).length])),
   );
 
-  return { arias, ariaCounts, ariaRows };
+  /** The own numbers of the act a recording is of, once fetched. */
+  const actMovementsOf = (recording: Recording) => {
+    const act = actNumbers.value.get(recording.work.item_id);
+    return act != null ? actMovements.value.get(act) : undefined;
+  };
+
+  return { arias, ariaCounts, ariaRows, actMovementsOf };
 }
 
 function holdsWork(track: Track, mbid: string | null): boolean {

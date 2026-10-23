@@ -1274,6 +1274,15 @@ export interface Recording {
   part_movements?: WorkMovement[];
 }
 
+// What the server still has to look up on MusicBrainz for the classical view
+export interface ClassicalLinkProgress {
+  albums: number;
+  // tracks whose recording is still to be read
+  recordings: number;
+  works: number;
+  composers: number;
+}
+
 export interface ClassicalComposer {
   artist: Artist;
   // the artist's first fanart, which the summary metadata leaves out

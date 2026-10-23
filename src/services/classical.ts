@@ -7,6 +7,7 @@ import type {
   Artist,
   ArtistRole,
   ClassicalComposer,
+  ClassicalLinkProgress,
   ClassicalPerformer,
   ClassicalWorkEntry,
   Recording,
@@ -15,6 +16,18 @@ import type {
   Track,
   Work,
 } from "@/plugins/api/interfaces";
+
+/**
+ * How much of the classical library the server still has to look up on
+ * MusicBrainz. Fails quietly, leaving the caller to treat it as unknown.
+ */
+export function getLinkProgress(): Promise<ClassicalLinkProgress> {
+  return api.sendCommand(
+    "music/classical/link_progress",
+    {},
+    { suppressGlobalError: true },
+  );
+}
 
 /** The sort a classical list is fetched in; left out, the server default. */
 export interface ClassicalSort {

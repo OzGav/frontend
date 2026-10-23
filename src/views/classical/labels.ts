@@ -1,6 +1,7 @@
 import { normalizeForFilter } from "@/helpers/utils";
 import type {
   ArtistRole,
+  ClassicalLinkProgress,
   LifeSpan,
   Period,
   Recording,
@@ -50,6 +51,32 @@ export function countryLabel(code: string): string {
 /** A recording count with its noun, e.g. 3 recordings. */
 export function recordingCountLabel(count: number): string {
   return $t("classical_n_recordings", count, { named: { count } });
+}
+
+/**
+ * The note on what is still being linked with MusicBrainz, naming albums and
+ * works, or else tracks and composers. Empty when nothing is left.
+ */
+export function linkProgressLabel(progress: ClassicalLinkProgress): string {
+  const counted = (key: string, count: number) =>
+    count > 0 ? [$t(key, count, { named: { count } })] : [];
+  const main = [
+    ...counted("classical_n_albums", progress.albums),
+    ...counted("classical_n_works", progress.works),
+  ];
+  const items = main.length
+    ? main
+    : [
+        ...counted("classical_n_tracks", progress.recordings),
+        ...counted("classical_n_composers", progress.composers),
+      ];
+  if (!items.length) return "";
+  return $t("classical_link_progress", {
+    items:
+      items.length > 1
+        ? $t("classical_two_items", { first: items[0], second: items[1] })
+        : items[0],
+  });
 }
 
 /** A work count with its noun, e.g. 12 works. */

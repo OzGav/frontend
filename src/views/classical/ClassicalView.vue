@@ -89,6 +89,7 @@
       class="classical-tab-content"
       :class="{ 'full-bleed': fullBleedContent }"
     >
+      <LinkProgressAlert v-if="!fullBleedContent" />
       <router-view />
     </div>
   </section>
@@ -106,6 +107,7 @@ import {
   useClassicalTabNavigation,
   type ClassicalTab,
 } from "@/views/classical/tabs";
+import LinkProgressAlert from "@/views/classical/components/LinkProgressAlert.vue";
 import {
   CLASSICAL_MENU_KEY,
   type ClassicalMenu,

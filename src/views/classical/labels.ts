@@ -185,14 +185,20 @@ export function trackLabel(
 }
 
 /**
- * A movement's name shortened to its quoted part when it has exactly one, e.g.
- * Che gelida manina! for no. 6. “Che gelida manina!” (Rodolfo).
+ * A movement's name shortened to its quoted parts, keeping the score's number
+ * in front and an excerpt marked, e.g. XXXIX. Erbarme dich, mein Gott for
+ * XXXIX. Aria (Alto) "Erbarme dich, mein Gott", or LX. Sehet, Jesus hat die
+ * Hand – Wohin? for a name quoting two. A name without quotes stays whole.
  */
 export function shortMovementName(name: string): string {
   const quoted = [...name.matchAll(QUOTED)];
-  return quoted.length === 1
-    ? quoted[0].slice(1).find((part) => part !== undefined)!
-    : name;
+  if (!quoted.length) return name;
+  const words = quoted
+    .map((q) => q.slice(1).find((part) => part !== undefined)!)
+    .join(" – ");
+  const number = name.match(SCORE_NUMBER)?.[1];
+  const short = number ? `${number}. ${words}` : words;
+  return EXCERPT.test(name) ? `${short} (excerpt)` : short;
 }
 
 /** Movement lists longer than this are folded. */
@@ -202,6 +208,14 @@ export const LONG_MOVEMENT_LIST = 8;
 function heldCount(count: number, total: number): string {
   return $t("classical_movements_of", { count, total });
 }
+
+// the score's number leading a name, e.g. XXXIX., IVa., 36a. or no. 6:; the
+// "." or ":" keeps a word such as Il from passing for one
+const SCORE_NUMBER =
+  /^((?:[IVXLCDM]+|\d+)[a-z]?|(?:no\.|No\.|Nr\.|N°)\s*\d+[a-z]?)[.:]/;
+
+// a name marked as an excerpt at its end
+const EXCERPT = /\s\(excerpt\)$/i;
 
 // a quoted part of a name, e.g. “Che gelida manina!” or « Salut ! »
 const QUOTED = /“([^”]+)”|«\s*([^»]+?)\s*»|"([^"]+)"/g;

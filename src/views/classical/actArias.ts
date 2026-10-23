@@ -3,8 +3,9 @@ import {
   type Recording,
   type Track,
   type Work,
+  type WorkMovement,
 } from "@/plugins/api/interfaces";
-import { getWorkRecordings } from "@/services/classical";
+import { getWork, getWorkRecordings } from "@/services/classical";
 import { shortMovementName } from "@/views/classical/labels";
 import { computed, ref, watch, type Ref } from "vue";
 
@@ -28,8 +29,9 @@ export interface AriaRow {
  * The arias of an opera's acts that its recordings hold, and each recording's
  * tracks of them. A work without acts has none.
  *
- * Which track is which aria comes from the acts' own recordings, fetched once
- * the opera's recordings are in.
+ * The arias come from the acts' own lists of numbers, and which track is which
+ * aria from the acts' own recordings, both fetched once the opera's
+ * recordings are in.
  *
  * :param work: The opera.
  * :param recordings: All recordings of the opera.
@@ -50,46 +52,88 @@ export function useActArias(
       ),
   );
 
-  const arias = computed<ActAria[]>(() => {
-    const byKey = new Map<string, ActAria>();
+  // the act's work id by its number on the opera
+  const actWorkIds = computed(
+    () => new Map([...actNumbers.value].map(([id, act]) => [act, id])),
+  );
+
+  // the numbers the recordings hold of each act they hold part of, by act
+  // number; null for an act a recording holds whole
+  const heldNumbers = computed(() => {
+    const held = new Map<number, Set<number> | null>();
     for (const r of recordings.value) {
-      const act = actNumbers.value.get(r.work.item_id);
-      if (act == null) continue;
-      for (const m of r.part_movements ?? []) {
-        const key = `${act}-${m.number}`;
-        if (!byKey.has(key))
-          byKey.set(key, {
-            key,
+      if (r.part_movements?.length) {
+        const act = actNumbers.value.get(r.work.item_id);
+        const numbers = act != null ? held.get(act) : null;
+        if (act == null || numbers === null) continue;
+        held.set(
+          act,
+          new Set([
+            ...(numbers ?? []),
+            ...r.part_movements.map((m) => m.number),
+          ]),
+        );
+      } else {
+        for (const n of r.movement_numbers ?? [])
+          if (actWorkIds.value.has(n)) held.set(n, null);
+      }
+    }
+    return held;
+  });
+
+  // each act's own list of numbers and recordings, by its number and work id
+  const actMovements = ref(new Map<number, WorkMovement[]>());
+  const actRecordings = ref(new Map<string, Recording[]>());
+  let loadId = 0;
+  watch(
+    () =>
+      [...heldNumbers.value.keys()].map((act) => actWorkIds.value.get(act)!),
+    async (workIds) => {
+      const id = ++loadId;
+      actMovements.value = new Map();
+      actRecordings.value = new Map();
+      const movements = await Promise.all(
+        workIds.map((workId) =>
+          getWork(workId)
+            .then((w) => w.movements ?? [])
+            .catch(() => []),
+        ),
+      );
+      // only acts with numbers of their own have arias to play, so a
+      // symphony's movements need no recordings
+      const withNumbers = workIds.filter((_, i) => movements[i].length);
+      const ownRecordings = await Promise.all(
+        withNumbers.map((workId) => getWorkRecordings(workId).catch(() => [])),
+      );
+      // a newer opera has taken over the page
+      if (id !== loadId) return;
+      actMovements.value = new Map(
+        workIds.map((workId, i) => [
+          actNumbers.value.get(workId)!,
+          movements[i],
+        ]),
+      );
+      actRecordings.value = new Map(
+        withNumbers.map((workId, i) => [workId, ownRecordings[i]]),
+      );
+    },
+  );
+
+  const arias = computed<ActAria[]>(() =>
+    [...heldNumbers.value]
+      .flatMap(([act, numbers]) =>
+        (actMovements.value.get(act) ?? [])
+          .filter((m) => numbers === null || numbers.has(m.number))
+          .map((m) => ({
+            key: `${act}-${m.number}`,
             act,
             number: m.number,
             name: shortMovementName(m.name),
             mbid: m.mbid,
-          });
-      }
-    }
-    return [...byKey.values()].sort(
-      (a, b) => a.act - b.act || a.number - b.number,
-    );
-  });
-
-  // each act's own recordings, by the act's work id
-  const actRecordings = ref(new Map<string, Recording[]>());
-  let loadId = 0;
-  watch(arias, async (list) => {
-    const id = ++loadId;
-    actRecordings.value = new Map();
-    const actIds = [...actNumbers.value]
-      .filter(([, act]) => list.some((a) => a.act === act))
-      .map(([workId]) => workId);
-    const entries = await Promise.all(
-      actIds.map(async (workId) => {
-        const recs = await getWorkRecordings(workId).catch(() => []);
-        return [workId, recs] as const;
-      }),
-    );
-    // a newer opera has taken over the page
-    if (id === loadId) actRecordings.value = new Map(entries);
-  });
+          })),
+      )
+      .sort((a, b) => a.act - b.act || a.number - b.number),
+  );
 
   // the act's own recording of a track, by the track's id
   const actRecordingByTrack = computed(() => {

@@ -98,9 +98,10 @@ export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
 
 /**
  * What a recording holds, as its row names it: an act or other part it holds
- * whole by its name, nothing for the whole work, else a count such as 3 of 22.
- * A recording of some of an act's numbers names the act first, e.g. Act III:
- * 1 of 9.
+ * whole as complete, e.g. Act I (Complete), nothing for the whole work, else a
+ * count such as 3 of 22.
+ * A recording of some of an act's numbers names the act first, e.g. Act III
+ * (1 of 9).
  *
  * :param recording: The recording, with the movements it covers.
  * :param movements: The work's movements.
@@ -134,7 +135,8 @@ export function movementCoverageLabel(
           parts: heldCount(parts.length, actMovements.length),
         })
       : single.name;
-  if (single?.work_id) return single.name;
+  if (single?.work_id)
+    return $t("classical_movement_complete", { movement: single.name });
   return heldCount(
     numbers.length,
     movements.filter((m) => m.parent == null).length,

@@ -94,39 +94,19 @@ export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
   return `${born}–${lifeSpan?.end?.slice(0, 4) ?? ""}`;
 }
 
-/** A number as a Roman numeral, e.g. IV for 4. */
-export function romanNumeral(n: number): string {
-  const numerals: Array<[number, string]> = [
-    [1000, "M"],
-    [900, "CM"],
-    [500, "D"],
-    [400, "CD"],
-    [100, "C"],
-    [90, "XC"],
-    [50, "L"],
-    [40, "XL"],
-    [10, "X"],
-    [9, "IX"],
-    [5, "V"],
-    [4, "IV"],
-    [1, "I"],
-  ];
-  let out = "";
-  for (const [value, numeral] of numerals)
-    for (; n >= value; n -= value) out += numeral;
-  return out;
-}
-
 /**
- * The movements a recording covers, e.g. Complete, I, I–II, Act I: Aria,
- * Includes Aria or 3 of 32. Empty when they are unknown.
+ * The movements a recording covers, e.g. Complete, I, I–II, Includes Aria or
+ * 3 of 32. Under a heading naming the one movement it covers, its track count
+ * instead, e.g. 6 tracks. Empty when they are unknown.
  *
  * :param recording: The recording, with the movement numbers it covers.
  * :param movements: The work's movements.
+ * :param heading: The number of the movement the recording is listed under.
  */
 export function movementCoverageLabel(
   recording: Recording,
   movements: WorkMovement[],
+  heading?: number,
 ): string {
   if (recording.complete) return $t("classical_complete");
   const covered = new Set(recording.movement_numbers);
@@ -137,25 +117,25 @@ export function movementCoverageLabel(
     return parent == null || !covered.has(parent);
   });
   if (!numbers.length) return "";
+  if (numbers.length === 1 && numbers[0] === heading)
+    return $t("classical_n_tracks", recording.tracks.length, {
+      named: { count: recording.tracks.length },
+    });
+  // the number the score gives a movement, as its name leads with it
+  const ownNumber = (n: number) =>
+    movements.find((m) => m.number === n)?.name.match(NUMBERED_NAME)?.[1];
   const topLevel = movements.filter((m) => m.parent == null);
   if (numbers.length > 1)
     return topLevel.every((m) => NUMBERED_NAME.test(m.name)) &&
       topLevel.length <= LONG_MOVEMENT_LIST
-      ? romanRanges(numbers)
+      ? numberRanges(numbers, (n) => ownNumber(n) ?? "")
       : $t("classical_movements_of", {
           count: numbers.length,
           total: topLevel.length,
         });
   const name = movements.find((m) => m.number === numbers[0])?.name;
-  const label =
-    name && !NUMBERED_NAME.test(name) ? name : romanNumeral(numbers[0]);
-  if (recording.part_movements?.length)
-    return $t("classical_movement_parts", {
-      movement: label,
-      parts: recording.part_movements
-        .map((m) => shortMovementName(m.name))
-        .join(", "),
-    });
+  const label = (name && ownNumber(numbers[0])) ?? name;
+  if (!label) return "";
   // tracks matched to no movement mean it holds more than the listed part
   const trackNumbers = recording.tracks.map((t) => t.movement_number);
   if (
@@ -183,8 +163,12 @@ export const LONG_MOVEMENT_LIST = 8;
 // a name led by its number, e.g. "II. Andante" or "2. Andante"
 const NUMBERED_NAME = /^([IVXLCDM]+|\d+)\./;
 
-// sorted numbers as Roman numeral runs, e.g. 1, 2, 3, 5 as I–III, V
-function romanRanges(numbers: number[]): string {
+// sorted movement numbers as runs of the numbers their names give, e.g.
+// 1, 2, 3, 5 as I–III, V
+function numberRanges(
+  numbers: number[],
+  ownNumber: (n: number) => string,
+): string {
   const runs: Array<[number, number]> = [];
   for (const n of numbers) {
     const last = runs.at(-1);
@@ -194,8 +178,8 @@ function romanRanges(numbers: number[]): string {
   return runs
     .map(([first, last]) =>
       first === last
-        ? romanNumeral(first)
-        : `${romanNumeral(first)}–${romanNumeral(last)}`,
+        ? ownNumber(first)
+        : `${ownNumber(first)}–${ownNumber(last)}`,
     )
     .join(", ");
 }

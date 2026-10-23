@@ -126,6 +126,8 @@ const props = defineProps<{
   recording: Recording;
   // the work's movements, to name those the recording covers
   movements?: WorkMovement[];
+  // the number of the movement it is listed under, which its label leaves out
+  heading?: number;
 }>();
 
 const emit = defineEmits<{
@@ -168,7 +170,7 @@ const favorite = computed(() => allLiked(props.recording.tracks));
 const recordingName = computed(() => nameOf(props.recording));
 
 const coverage = computed(() =>
-  movementCoverageLabel(props.recording, props.movements ?? []),
+  movementCoverageLabel(props.recording, props.movements ?? [], props.heading),
 );
 
 // the covered movements' names, on hover

@@ -1,4 +1,9 @@
-import type { Recording, Track, Work } from "@/plugins/api/interfaces";
+import {
+  ExternalID,
+  type Recording,
+  type Track,
+  type Work,
+} from "@/plugins/api/interfaces";
 import { getWorkRecordings } from "@/services/classical";
 import { shortMovementName } from "@/views/classical/labels";
 import { computed, ref, watch, type Ref } from "vue";
@@ -10,6 +15,7 @@ export interface ActAria {
   act: number;
   number: number;
   name: string;
+  mbid: string | null;
 }
 
 /** A recording with its tracks of one aria. */
@@ -57,6 +63,7 @@ export function useActArias(
             act,
             number: m.number,
             name: shortMovementName(m.name),
+            mbid: m.mbid,
           });
       }
     }
@@ -95,15 +102,21 @@ export function useActArias(
   /** The shown recordings holding an aria, each with its tracks of it. */
   const ariaRows = (aria: ActAria): AriaRow[] =>
     shown.value.flatMap((recording) => {
+      // aria numbers restart in every act, and one recording may span acts
       const actRecording = recording.tracks
         .map((t) => actRecordingByTrack.value.get(t.item_id))
-        .find(Boolean);
+        .find((r) => r && actNumbers.value.get(r.work.item_id) === aria.act);
       if (!actRecording) return [];
+      // a track holding several numbers is numbered as only one of them, but
+      // carries the MusicBrainz work id of each
       const tracks = actRecording.tracks.filter(
         (t) => t.movement_number === aria.number,
       );
-      if (tracks.length) return [{ recording, tracks }];
-      // the aria sits inside a longer track, so the whole recording plays
+      const holding = tracks.length
+        ? tracks
+        : actRecording.tracks.filter((t) => holdsWork(t, aria.mbid));
+      if (holding.length) return [{ recording, tracks: holding }];
+      // where the aria is cannot be told, so the whole recording plays
       return actRecording.movement_numbers?.includes(aria.number)
         ? [{ recording, tracks: actRecording.tracks }]
         : [];
@@ -115,4 +128,13 @@ export function useActArias(
   );
 
   return { arias, ariaCounts, ariaRows };
+}
+
+function holdsWork(track: Track, mbid: string | null): boolean {
+  return (
+    mbid != null &&
+    track.external_ids.some(
+      ([type, id]) => type === ExternalID.MB_WORK && id === mbid,
+    )
+  );
 }

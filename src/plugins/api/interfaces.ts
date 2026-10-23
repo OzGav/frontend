@@ -323,6 +323,7 @@ export enum ExternalID {
   MB_RELEASEGROUP = "musicbrainz_releasegroupid", // MusicBrainz ReleaseGroupID
   MB_TRACK = "musicbrainz_trackid", // MusicBrainz Track ID
   MB_RECORDING = "musicbrainz_recordingid", // MusicBrainz Recording ID
+  MB_WORK = "musicbrainz_workid", // MusicBrainz Work ID
   ISRC = "isrc", // used to identify unique recordings
   BARCODE = "barcode", // EAN-13 barcode for identifying albums
   ACOUSTID = "acoustid", //unique fingerprint (id) for a recording

@@ -132,7 +132,11 @@ export function movementCoverageLabel(
     return actMovements?.length
       ? $t("classical_movement_parts", {
           movement: single.name,
-          parts: heldCount(parts.length, actMovements.length),
+          // a number's pieces are not numbers of the act
+          parts: heldCount(
+            parts.length,
+            actMovements.filter((m) => m.parent == null).length,
+          ),
         })
       : single.name;
   if (single?.work_id)

@@ -77,6 +77,9 @@ const selectedArias = defineModel<string[]>("selectedArias", {
   default: () => [],
 });
 
+// the arias an act shows until the list is expanded
+const FOLDED_ARIAS = 3;
+
 const expanded = ref(false);
 
 // A long list shows only its first few movements until expanded; a chosen one
@@ -91,9 +94,28 @@ const folded = computed(() => {
   return props.movements.filter((m) => kept.has(m.number));
 });
 
-const hasHidden = computed(() => folded.value.length < props.movements.length);
+// An act shows only its first few arias until expanded; a chosen one always
+// shows.
+const foldedArias = computed(() =>
+  (props.arias ?? []).filter(
+    (a) =>
+      selectedArias.value.includes(a.key) ||
+      (props.arias ?? []).filter((other) => other.act === a.act).indexOf(a) <
+        FOLDED_ARIAS,
+  ),
+);
+
+const hasHidden = computed(
+  () =>
+    folded.value.length < props.movements.length ||
+    foldedArias.value.length < (props.arias ?? []).length,
+);
 
 const shown = computed(() => (expanded.value ? props.movements : folded.value));
+
+const shownArias = computed(() =>
+  expanded.value ? (props.arias ?? []) : foldedArias.value,
+);
 
 // each shown movement followed by its arias
 const groups = computed(() =>
@@ -106,7 +128,7 @@ const groups = computed(() =>
       selected: model.value.includes(m.number),
       toggle: () => (model.value = toggled(model.value, m.number)),
     },
-    ...(props.arias ?? [])
+    ...shownArias.value
       .filter((a) => a.act === m.number)
       .map((a) => ({
         key: `aria-${a.key}`,

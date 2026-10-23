@@ -1,12 +1,14 @@
 import { normalizeForFilter } from "@/helpers/utils";
-import type {
-  ArtistRole,
-  ClassicalLinkProgress,
-  LifeSpan,
-  Period,
-  Recording,
-  WorkMovement,
-  WorkType,
+import {
+  ExternalID,
+  type ArtistRole,
+  type ClassicalLinkProgress,
+  type LifeSpan,
+  type Period,
+  type Recording,
+  type Track,
+  type WorkMovement,
+  type WorkType,
 } from "@/plugins/api/interfaces";
 import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
 
@@ -95,20 +97,21 @@ export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
 }
 
 /**
- * The movements a recording covers, e.g. Complete, I, I–II, Includes Aria or
- * 3 of 32. Under a heading naming the one movement it covers, its track count
- * instead, e.g. 6 tracks. Empty when they are unknown.
+ * What a recording holds, as its row names it: an act or other part it holds
+ * whole by its name, nothing for the whole work, else a count such as 3 of 22.
+ * A recording of some of an act's numbers names the act first, e.g. Act III:
+ * 1 of 9.
  *
- * :param recording: The recording, with the movement numbers it covers.
+ * :param recording: The recording, with the movements it covers.
  * :param movements: The work's movements.
- * :param heading: The number of the movement the recording is listed under.
+ * :param actMovements: The act's own numbers, for a recording of some of them.
  */
 export function movementCoverageLabel(
   recording: Recording,
   movements: WorkMovement[],
-  heading?: number,
+  actMovements?: WorkMovement[],
 ): string {
-  if (recording.complete) return $t("classical_complete");
+  if (recording.complete) return "";
   const covered = new Set(recording.movement_numbers);
   // a part under a covered movement, e.g. an aria of a covered act, adds
   // nothing to it
@@ -117,33 +120,62 @@ export function movementCoverageLabel(
     return parent == null || !covered.has(parent);
   });
   if (!numbers.length) return "";
-  if (numbers.length === 1 && numbers[0] === heading)
-    return $t("classical_n_tracks", recording.tracks.length, {
-      named: { count: recording.tracks.length },
-    });
-  // the number the score gives a movement, as its name leads with it
-  const ownNumber = (n: number) =>
-    movements.find((m) => m.number === n)?.name.match(NUMBERED_NAME)?.[1];
-  const topLevel = movements.filter((m) => m.parent == null);
-  if (numbers.length > 1)
-    return topLevel.every((m) => NUMBERED_NAME.test(m.name)) &&
-      topLevel.length <= LONG_MOVEMENT_LIST
-      ? numberRanges(numbers, (n) => ownNumber(n) ?? "")
-      : $t("classical_movements_of", {
-          count: numbers.length,
-          total: topLevel.length,
-        });
-  const name = movements.find((m) => m.number === numbers[0])?.name;
-  const label = (name && ownNumber(numbers[0])) ?? name;
-  if (!label) return "";
-  // tracks matched to no movement mean it holds more than the listed part
-  const trackNumbers = recording.tracks.map((t) => t.movement_number);
-  if (
-    trackNumbers.some((n) => n == null) &&
-    trackNumbers.some((n) => n != null)
-  )
-    return $t("classical_movement_includes", { movement: label });
-  return label;
+  const single =
+    numbers.length === 1
+      ? movements.find((m) => m.number === numbers[0])
+      : undefined;
+  const parts = recording.part_movements ?? [];
+  if (single && parts.length)
+    // the act's own numbers are fetched after the page, so the act shows alone
+    // until they are in
+    return actMovements?.length
+      ? $t("classical_movement_parts", {
+          movement: single.name,
+          parts: heldCount(parts.length, actMovements.length),
+        })
+      : single.name;
+  if (single?.work_id) return single.name;
+  return heldCount(
+    numbers.length,
+    movements.filter((m) => m.parent == null).length,
+  );
+}
+
+/**
+ * A track's name in a recording's track list: its movement name, else its own
+ * title without the work's name in front, else the names of the movements its
+ * MusicBrainz work ids point to. Never just the name of its work or act.
+ *
+ * :param track: The track.
+ * :param workNames: The names of the work and act it is of, e.g. Act I.
+ * :param movements: The movements it may hold, e.g. its act's numbers.
+ */
+export function trackLabel(
+  track: Track,
+  workNames: string[],
+  movements: WorkMovement[] = [],
+): string {
+  const folded = workNames.map((w) => w.toLowerCase());
+  const isWorkName = (text: string) => folded.includes(text.toLowerCase());
+  if (track.movement_name && !isWorkName(track.movement_name))
+    return track.movement_name;
+  const prefix = workNames.find((w) =>
+    track.name.toLowerCase().startsWith(w.toLowerCase()),
+  );
+  const title = (prefix ? track.name.slice(prefix.length) : track.name)
+    .replace(/^[\s:,.–—-]+/, "")
+    .trim();
+  if (title && !isWorkName(title)) return title;
+  const held = movements
+    .filter(
+      (m) =>
+        m.mbid &&
+        track.external_ids.some(
+          ([type, id]) => type === ExternalID.MB_WORK && id === m.mbid,
+        ),
+    )
+    .map((m) => m.name);
+  return held.join(", ") || track.name;
 }
 
 /**
@@ -157,31 +189,12 @@ export function shortMovementName(name: string): string {
     : name;
 }
 
-/** Movement lists longer than this are summarised and folded. */
+/** Movement lists longer than this are folded. */
 export const LONG_MOVEMENT_LIST = 8;
 
-// a name led by its number, e.g. "II. Andante" or "2. Andante"
-const NUMBERED_NAME = /^([IVXLCDM]+|\d+)\./;
-
-// sorted movement numbers as runs of the numbers their names give, e.g.
-// 1, 2, 3, 5 as I–III, V
-function numberRanges(
-  numbers: number[],
-  ownNumber: (n: number) => string,
-): string {
-  const runs: Array<[number, number]> = [];
-  for (const n of numbers) {
-    const last = runs.at(-1);
-    if (last && n === last[1] + 1) last[1] = n;
-    else runs.push([n, n]);
-  }
-  return runs
-    .map(([first, last]) =>
-      first === last
-        ? ownNumber(first)
-        : `${ownNumber(first)}–${ownNumber(last)}`,
-    )
-    .join(", ");
+// held movements as a count of all, e.g. 3 of 22
+function heldCount(count: number, total: number): string {
+  return $t("classical_movements_of", { count, total });
 }
 
 // a quoted part of a name, e.g. “Che gelida manina!” or « Salut ! »

@@ -63,7 +63,7 @@
         >
           <RowPlayButton
             side="start"
-            :label="`${$t('play')} ${m.movement_name || m.name}`"
+            :label="`${$t('play')} ${trackName(m)}`"
             @play="(e: Event) => $emit('play-movement', m, e)"
           />
           <button
@@ -71,15 +71,15 @@
             class="movement-play"
             @click="(e: MouseEvent) => openMovement(m, e)"
           >
-            <span class="movement-title">{{ m.movement_name || m.name }}</span>
+            <span class="movement-title">{{ trackName(m) }}</span>
           </button>
           <RowPlayButton
             side="end"
-            :label="`${$t('play')} ${m.movement_name || m.name}`"
+            :label="`${$t('play')} ${trackName(m)}`"
             @play="(e: Event) => $emit('play-movement', m, e)"
           />
           <ClassicalRowActions
-            :name="m.movement_name || m.name"
+            :name="trackName(m)"
             :playing="isTrackPlaying(m)"
             :duration="m.duration"
             :source-item="m"
@@ -88,11 +88,7 @@
           />
         </li>
       </ol>
-      <div
-        v-for="album in recording.albums"
-        :key="album.item_id"
-        class="source-album"
-      >
+      <div v-for="album in albums" :key="album.item_id" class="source-album">
         <span class="source-album-arrow">→</span>
         <router-link :to="`/albums/library/${album.item_id}`">
           {{ album.year ? `${album.name} (${album.year})` : album.name }}
@@ -115,7 +111,7 @@ import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { isRowControlClick } from "@/views/classical/listing";
 import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
-import { movementCoverageLabel } from "@/views/classical/labels";
+import { movementCoverageLabel, trackLabel } from "@/views/classical/labels";
 import { isTrackPlaying } from "@/views/classical/playback";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -126,8 +122,8 @@ const props = defineProps<{
   recording: Recording;
   // the work's movements, to name those the recording covers
   movements?: WorkMovement[];
-  // the number of the movement it is listed under, which its label leaves out
-  heading?: number;
+  // the own numbers of the act it is of, to count those it holds
+  actMovements?: WorkMovement[];
 }>();
 
 const emit = defineEmits<{
@@ -170,8 +166,33 @@ const favorite = computed(() => allLiked(props.recording.tracks));
 const recordingName = computed(() => nameOf(props.recording));
 
 const coverage = computed(() =>
-  movementCoverageLabel(props.recording, props.movements ?? [], props.heading),
+  movementCoverageLabel(
+    props.recording,
+    props.movements ?? [],
+    props.actMovements,
+  ),
 );
+
+// the work's, its parent's and the page's act names, which a track never goes by
+const workNames = computed(() => [
+  props.recording.work.name,
+  ...(props.recording.parent_work ? [props.recording.parent_work.name] : []),
+  ...(props.movements ?? []).filter((m) => m.work_id).map((m) => m.name),
+]);
+
+const trackName = (track: Track) =>
+  trackLabel(track, workNames.value, props.actMovements);
+
+// each album once, also when the library holds it twice under one name and year
+const albums = computed(() => {
+  const seen = new Set<string>();
+  return props.recording.albums.filter((album) => {
+    const keys = [album.item_id, `${album.name}|${album.year ?? ""}`];
+    if (keys.some((key) => seen.has(key))) return false;
+    keys.forEach((key) => seen.add(key));
+    return true;
+  });
+});
 
 // the covered movements' names, on hover
 const coverageTitle = computed(() => {

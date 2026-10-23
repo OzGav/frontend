@@ -17,6 +17,8 @@ export interface ActAria {
   number: number;
   name: string;
   mbid: string | null;
+  // for a piece of a number, e.g. one dance of a set, that number
+  parent: number | null;
 }
 
 /** A recording with its tracks of one aria. */
@@ -57,13 +59,26 @@ export function useActArias(
     () => new Map([...actNumbers.value].map(([id, act]) => [act, id])),
   );
 
+  // the act a recording is of: the one act it covers, else the act that is its
+  // work or, for a recording of a scene, its parent work
+  const actOf = (r: Recording) => {
+    const acts = (r.movement_numbers ?? []).filter((n) =>
+      actWorkIds.value.has(n),
+    );
+    if (acts.length === 1) return acts[0];
+    return (
+      actNumbers.value.get(r.work.item_id) ??
+      (r.parent_work ? actNumbers.value.get(r.parent_work.item_id) : undefined)
+    );
+  };
+
   // the numbers the recordings hold of each act they hold part of, by act
   // number; null for an act a recording holds whole
   const heldNumbers = computed(() => {
     const held = new Map<number, Set<number> | null>();
     for (const r of recordings.value) {
       if (r.part_movements?.length) {
-        const act = actNumbers.value.get(r.work.item_id);
+        const act = actOf(r);
         const numbers = act != null ? held.get(act) : null;
         if (act == null || numbers === null) continue;
         held.set(
@@ -119,27 +134,41 @@ export function useActArias(
     },
   );
 
+  // in each act's own order, a piece after its number
   const arias = computed<ActAria[]>(() =>
     [...heldNumbers.value]
+      .sort(([a], [b]) => a - b)
       .flatMap(([act, numbers]) =>
         (actMovements.value.get(act) ?? [])
-          .filter((m) => numbers === null || numbers.has(m.number))
+          // a piece shows with its number
+          .filter((m) => numbers === null || numbers.has(m.parent ?? m.number))
           .map((m) => ({
             key: `${act}-${m.number}`,
             act,
             number: m.number,
             name: shortMovementName(m.name),
             mbid: m.mbid,
+            parent: m.parent ?? null,
           })),
-      )
-      .sort((a, b) => a.act - b.act || a.number - b.number),
+      ),
   );
 
-  // the act's own recording of a track, by the track's id
-  const actRecordingByTrack = computed(() => {
-    const byTrack = new Map<string, Recording>();
-    for (const recs of actRecordings.value.values())
-      for (const r of recs) for (const t of r.tracks) byTrack.set(t.item_id, r);
+  // the act's own recordings of a track, by the track's id; a scene's
+  // recording on the act's page counts as the act's
+  const actRecordingsByTrack = computed(() => {
+    const byTrack = new Map<
+      string,
+      Array<{ act: number; recording: Recording }>
+    >();
+    for (const [workId, recs] of actRecordings.value) {
+      const act = actNumbers.value.get(workId)!;
+      for (const recording of recs)
+        for (const t of recording.tracks)
+          byTrack.set(t.item_id, [
+            ...(byTrack.get(t.item_id) ?? []),
+            { act, recording },
+          ]);
+    }
     return byTrack;
   });
 
@@ -147,22 +176,48 @@ export function useActArias(
   const ariaRows = (aria: ActAria): AriaRow[] =>
     shown.value.flatMap((recording) => {
       // aria numbers restart in every act, and one recording may span acts
-      const actRecording = recording.tracks
-        .map((t) => actRecordingByTrack.value.get(t.item_id))
-        .find((r) => r && actNumbers.value.get(r.work.item_id) === aria.act);
-      if (!actRecording) return [];
+      // a group that is a work of its own comes as a recording of its own, so
+      // the performance can be spread over several of the act's recordings
+      const actRecordings = [
+        ...new Set(
+          recording.tracks
+            .flatMap((t) => actRecordingsByTrack.value.get(t.item_id) ?? [])
+            .filter((entry) => entry.act === aria.act)
+            .map((entry) => entry.recording),
+        ),
+      ];
+      if (!actRecordings.length) return [];
+      const actTracks = actRecordings.flatMap((r) => r.tracks);
+      // a piece plays only from a track of its own
+      if (aria.parent != null) {
+        const tracks = actTracks.filter(
+          (t) => t.movement_number === aria.number,
+        );
+        return tracks.length ? [{ recording, tracks }] : [];
+      }
+      // a number plays its own tracks and those of its pieces
+      const numbers = new Set([
+        aria.number,
+        ...(actMovements.value.get(aria.act) ?? [])
+          .filter((m) => m.parent === aria.number)
+          .map((m) => m.number),
+      ]);
       // a track holding several numbers is numbered as only one of them, but
       // carries the MusicBrainz work id of each
-      const tracks = actRecording.tracks.filter(
-        (t) => t.movement_number === aria.number,
+      const tracks = actTracks.filter(
+        (t) => t.movement_number != null && numbers.has(t.movement_number),
       );
       const holding = tracks.length
         ? tracks
-        : actRecording.tracks.filter((t) => holdsWork(t, aria.mbid));
+        : actTracks.filter((t) => holdsWork(t, aria.mbid));
       if (holding.length) return [{ recording, tracks: holding }];
-      // where the aria is cannot be told, so the whole recording plays
-      return actRecording.movement_numbers?.includes(aria.number)
-        ? [{ recording, tracks: actRecording.tracks }]
+      // where the aria is cannot be told, so the act's main recording plays
+      const main =
+        actRecordings.find(
+          (r) => r.work.item_id === actWorkIds.value.get(aria.act),
+        ) ?? actRecordings[0];
+      return main.movement_numbers?.includes(aria.number)
+        ? [{ recording, tracks: main.tracks }]
         : [];
     });
 
@@ -173,7 +228,7 @@ export function useActArias(
 
   /** The own numbers of the act a recording is of, once fetched. */
   const actMovementsOf = (recording: Recording) => {
-    const act = actNumbers.value.get(recording.work.item_id);
+    const act = actOf(recording);
     return act != null ? actMovements.value.get(act) : undefined;
   };
 

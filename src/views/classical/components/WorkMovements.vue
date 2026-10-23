@@ -14,7 +14,10 @@
         <div
           v-for="row in group"
           :key="row.key"
-          :class="{ 'movement-child': row.child }"
+          :class="{
+            'movement-child': row.depth === 1,
+            'movement-grandchild': row.depth === 2,
+          }"
         >
           <button
             type="button"
@@ -95,15 +98,28 @@ const folded = computed(() => {
 });
 
 // An act shows only its first few arias until expanded; a chosen one always
-// shows.
-const foldedArias = computed(() =>
-  (props.arias ?? []).filter(
+// shows, and a piece shows with its number.
+const foldedArias = computed(() => {
+  const arias = props.arias ?? [];
+  const kept = new Set(
+    arias
+      .filter(
+        (a) =>
+          a.parent == null &&
+          (selectedArias.value.includes(a.key) ||
+            arias
+              .filter((other) => other.act === a.act && other.parent == null)
+              .indexOf(a) < FOLDED_ARIAS),
+      )
+      .map((a) => a.key),
+  );
+  return arias.filter(
     (a) =>
+      kept.has(a.key) ||
       selectedArias.value.includes(a.key) ||
-      (props.arias ?? []).filter((other) => other.act === a.act).indexOf(a) <
-        FOLDED_ARIAS,
-  ),
-);
+      (a.parent != null && kept.has(`${a.act}-${a.parent}`)),
+  );
+});
 
 const hasHidden = computed(
   () =>
@@ -123,7 +139,7 @@ const groups = computed(() =>
     {
       key: `movement-${m.number}`,
       name: m.name,
-      child: m.parent != null,
+      depth: m.parent != null ? 1 : 0,
       count: props.counts[m.number] ?? 0,
       selected: model.value.includes(m.number),
       toggle: () => (model.value = toggled(model.value, m.number)),
@@ -133,7 +149,8 @@ const groups = computed(() =>
       .map((a) => ({
         key: `aria-${a.key}`,
         name: a.name,
-        child: true,
+        // a piece sits under its number
+        depth: a.parent != null ? 2 : 1,
         count: props.ariaCounts?.[a.key] ?? 0,
         selected: selectedArias.value.includes(a.key),
         toggle: () =>
@@ -185,6 +202,11 @@ function toggled<T>(list: T[], value: T): T[] {
 /* e.g. an aria under its act */
 .movement-child {
   padding-left: 1.5rem;
+}
+
+/* e.g. one dance of a number */
+.movement-grandchild {
+  padding-left: 3rem;
 }
 
 @media (max-width: 768px) {

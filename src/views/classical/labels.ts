@@ -196,7 +196,7 @@ export function shortMovementName(name: string): string {
   const words = quoted
     .map((q) => q.slice(1).find((part) => part !== undefined)!)
     .join(" – ");
-  const number = name.match(SCORE_NUMBER)?.[1];
+  const number = name.match(SCORE_NUMBER)?.[1] ?? name.match(SCENE)?.[1];
   const short = number ? `${number}. ${words}` : words;
   return EXCERPT.test(name) ? `${short} (excerpt)` : short;
 }
@@ -213,6 +213,9 @@ function heldCount(count: number, total: number): string {
 // "." or ":" keeps a word such as Il from passing for one
 const SCORE_NUMBER =
   /^((?:[IVXLCDM]+|\d+)[a-z]?|(?:no\.|No\.|Nr\.|N°)\s*\d+[a-z]?)[.:]/;
+
+// a scene leading a name, e.g. Scene V. or Scene I before its quoted words
+const SCENE = /^((?:Scene|Scène|Szene|Scena|Bild)\s+(?:[IVXLCDM]+|\d+))[.:\s]/;
 
 // a name marked as an excerpt at its end
 const EXCERPT = /\s\(excerpt\)$/i;

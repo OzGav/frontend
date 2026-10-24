@@ -9,7 +9,7 @@ import { getWork, getWorkRecordings } from "@/services/classical";
 import { shortMovementName } from "@/views/classical/labels";
 import { computed, ref, watch, type Ref } from "vue";
 
-/** An aria some recordings of an act hold, as an opera page offers it. */
+/** An entry of an act's own list, as an opera page offers it. */
 export interface ActAria {
   // e.g. "1-13", the act's number on the opera then the aria's in the act
   key: string;
@@ -28,20 +28,18 @@ export interface AriaRow {
 }
 
 /**
- * The arias of an opera's acts that its recordings hold, and each recording's
- * tracks of them. A work without acts has none.
+ * The arias of an opera's acts, and each recording's tracks of them. A work
+ * without acts has none.
  *
- * The arias come from the acts' own lists of numbers, and which track is which
- * aria from the acts' own recordings, both fetched once the opera's
- * recordings are in.
+ * The arias are every entry of the acts' own lists of numbers, and which track
+ * is which aria comes from the acts' own recordings, both fetched once the
+ * opera is in.
  *
  * :param work: The opera.
- * :param recordings: All recordings of the opera.
  * :param shown: The recordings the page shows, which the counts and rows keep to.
  */
 export function useActArias(
   work: Ref<Work | undefined>,
-  recordings: Ref<Recording[]>,
   shown: Ref<Recording[]>,
 ) {
   // the act's number on the opera by the act's work id
@@ -72,37 +70,12 @@ export function useActArias(
     );
   };
 
-  // the numbers the recordings hold of each act they hold part of, by act
-  // number; null for an act a recording holds whole
-  const heldNumbers = computed(() => {
-    const held = new Map<number, Set<number> | null>();
-    for (const r of recordings.value) {
-      if (r.part_movements?.length) {
-        const act = actOf(r);
-        const numbers = act != null ? held.get(act) : null;
-        if (act == null || numbers === null) continue;
-        held.set(
-          act,
-          new Set([
-            ...(numbers ?? []),
-            ...r.part_movements.map((m) => m.number),
-          ]),
-        );
-      } else {
-        for (const n of r.movement_numbers ?? [])
-          if (actWorkIds.value.has(n)) held.set(n, null);
-      }
-    }
-    return held;
-  });
-
   // each act's own list of numbers and recordings, by its number and work id
   const actMovements = ref(new Map<number, WorkMovement[]>());
   const actRecordings = ref(new Map<string, Recording[]>());
   let loadId = 0;
   watch(
-    () =>
-      [...heldNumbers.value.keys()].map((act) => actWorkIds.value.get(act)!),
+    () => [...actNumbers.value.keys()],
     async (workIds) => {
       const id = ++loadId;
       actMovements.value = new Map();
@@ -134,22 +107,19 @@ export function useActArias(
     },
   );
 
-  // in each act's own order, a piece after its number
+  // every entry of every act, in each act's own order, a piece after its number
   const arias = computed<ActAria[]>(() =>
-    [...heldNumbers.value]
+    [...actMovements.value]
       .sort(([a], [b]) => a - b)
-      .flatMap(([act, numbers]) =>
-        (actMovements.value.get(act) ?? [])
-          // a piece shows with its number
-          .filter((m) => numbers === null || numbers.has(m.parent ?? m.number))
-          .map((m) => ({
-            key: `${act}-${m.number}`,
-            act,
-            number: m.number,
-            name: shortMovementName(m.name),
-            mbid: m.mbid,
-            parent: m.parent ?? null,
-          })),
+      .flatMap(([act, movements]) =>
+        movements.map((m) => ({
+          key: `${act}-${m.number}`,
+          act,
+          number: m.number,
+          name: shortMovementName(m.name),
+          mbid: m.mbid,
+          parent: m.parent ?? null,
+        })),
       ),
   );
 

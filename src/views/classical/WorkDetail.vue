@@ -3,6 +3,8 @@
     <!-- The work has no artwork of its own; the hero borrows the composer's. -->
     <ClassicalHero :item="heroItem" section="works">
       <template v-if="work" #meta>
+        <!-- tells it apart from a work of the same title -->
+        <div v-if="work.version" class="work-meta-text">{{ work.version }}</div>
         <div class="work-meta-line">
           <Music :size="16" class="work-meta-icon" />
           <span class="work-meta-text">
@@ -26,6 +28,9 @@
             class="work-parent-link"
           >
             {{ work.parent_work.name }}
+            <span v-if="work.parent_work.version" class="text-muted-foreground">
+              ({{ work.parent_work.version }})</span
+            >
           </router-link>
         </div>
       </template>
@@ -135,6 +140,9 @@
           <h3 v-if="g.link || recordingGroups.length > 1" class="part-heading">
             <router-link v-if="g.link" :to="g.link" class="part-title">
               {{ g.name }}
+              <span v-if="g.version" class="text-muted-foreground">
+                ({{ g.version }})</span
+              >
             </router-link>
             <span v-else class="part-title">{{ g.name }}</span>
             <span v-if="g.composer" class="part-composer">
@@ -166,6 +174,9 @@
           {{ $t(r.label) }}
           <router-link :to="`/classical/works/${r.work.item_id}`">
             {{ r.work.name }}
+            <span v-if="r.work.version" class="text-muted-foreground">
+              ({{ r.work.version }})</span
+            >
           </router-link>
         </li>
       </ul>
@@ -375,7 +386,6 @@ const selectedArias = ref<string[]>([]);
 
 const { arias, ariaCounts, ariaRows, actMovementsOf } = useActArias(
   work,
-  recordings,
   displayedRecordings,
 );
 
@@ -438,6 +448,8 @@ interface RecordingGroup {
   link?: string;
   // named only where it differs from the work's composer
   composer?: string;
+  // tells apart works sharing a title, e.g. 1888 version
+  version?: string;
   recordings: Recording[];
 }
 
@@ -655,6 +667,7 @@ function groupByPart(w: Work): RecordingGroup[] {
       return {
         key: id,
         name: g.work.name,
+        version: g.work.version,
         link: id === w.item_id ? undefined : `/classical/works/${id}`,
         composer:
           c && c.item_id !== composerMapping.value?.item_id

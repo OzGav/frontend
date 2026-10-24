@@ -49,6 +49,9 @@
           <router-link :to="`/classical/works/${w.item_id}`" class="work-title">
             {{ w.name }}
           </router-link>
+          <span v-if="w.version" class="text-[0.8rem] text-muted-foreground">
+            {{ w.version }}
+          </span>
         </div>
         <!-- Rendered even when empty so every row keeps all four columns. -->
         <template v-if="!mobile">
@@ -108,6 +111,8 @@ const { t } = useI18n();
 interface WorkRow {
   item_id: string;
   name: string;
+  // tells apart works sharing a title, e.g. 1888 version
+  version: string;
   composer: string;
   composer_id?: string;
   period?: Period | null;
@@ -200,6 +205,7 @@ const { loading, reload } = useClassicalListing({
         return {
           item_id: work.item_id,
           name: work.name,
+          version: work.version,
           composer,
           composer_id: work.composers[0]?.item_id,
           period,

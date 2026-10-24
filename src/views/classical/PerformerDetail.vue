@@ -58,6 +58,12 @@
               </span>
             </router-link>
             <span
+              v-if="w.work.version"
+              class="text-[0.8rem] text-muted-foreground"
+            >
+              {{ w.work.version }}
+            </span>
+            <span
               v-if="coPerformers[w.work.item_id]?.length"
               class="performer-work-composer"
             >

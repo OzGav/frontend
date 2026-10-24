@@ -23,6 +23,15 @@ describe("shortMovementName", () => {
     ['VI. Arie (Alt) "Buß und Reu"', "VI. Buß und Reu"],
     ['36a. Chor "Weissage uns"', "36a. Weissage uns"],
     ["no. 6. “Che gelida manina!” (Rodolfo)", "no. 6. Che gelida manina!"],
+    [
+      'Scene V. "Sankt Krispin, lobet ihn!"',
+      "Scene V. Sankt Krispin, lobet ihn!",
+    ],
+    ['Scene I "Hojotoho! Hojotoho!"', "Scene I. Hojotoho! Hojotoho!"],
+    [
+      'Scene II "Wo ist Brünnhild\', wo die Verbrecherin?"',
+      "Scene II. Wo ist Brünnhild', wo die Verbrecherin?",
+    ],
   ])("keeps the score number of %s", (name, shown) => {
     expect(shortMovementName(name)).toBe(shown);
   });
@@ -31,6 +40,7 @@ describe("shortMovementName", () => {
     ["“E lucevan le stelle” (Cavaradossi)", "E lucevan le stelle"],
     ["no. 6. Che gelida manina", "no. 6. Che gelida manina"],
     ["IV", "IV"],
+    ["Scene II", "Scene II"],
   ])("shortens %s as before", (name, shown) => {
     expect(shortMovementName(name)).toBe(shown);
   });

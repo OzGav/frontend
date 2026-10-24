@@ -39,6 +39,7 @@
             <router-link :to="workLink(w.item_id)" class="composer-work-link">
               {{ w.name }}
             </router-link>
+            <span v-if="w.version" class="meta">{{ w.version }}</span>
             <span class="meta">
               {{ workDetails(w) }}
             </span>
@@ -107,6 +108,8 @@ const router = useRouter();
 interface WorkRow {
   item_id: string;
   name: string;
+  // tells apart works sharing a title, e.g. 1888 version
+  version: string;
   catalog_number: string;
   work_type?: WorkType | null;
   recording_count: number;
@@ -193,6 +196,7 @@ const load = async (id: string) => {
       .map(({ work, recording_count, part_names }) => ({
         item_id: work.item_id,
         name: work.name,
+        version: work.version,
         catalog_number: work.catalog_numbers[0] ?? "",
         work_type: work.work_type,
         recording_count,

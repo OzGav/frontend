@@ -42,7 +42,7 @@
       size="sm"
       @click="expanded = !expanded"
     >
-      {{ expanded ? $t("show_less") : $t("classical_show_all_movements") }}
+      {{ expanded ? $t("show_less") : $t("classical_filter_show_all") }}
     </Button>
     <p v-if="fromLibrary" class="movements-note">
       * {{ $t("classical_movements_from_library") }}

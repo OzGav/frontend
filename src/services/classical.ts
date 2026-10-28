@@ -5,7 +5,6 @@
 import api from "@/plugins/api";
 import type {
   Artist,
-  ArtistRole,
   ClassicalComposer,
   ClassicalLinkProgress,
   ClassicalPerformer,
@@ -35,16 +34,9 @@ export interface ClassicalSort {
   sort_direction?: SortDirection;
 }
 
-/**
- * Whether the library holds any classical tracks the user can see. False
- * when the server does not offer the classical commands.
- */
+/** Whether the library holds any classical tracks the user can see. */
 export function hasClassicalContent(): Promise<boolean> {
-  return api
-    .sendCommand<boolean>("music/has_classical_content", undefined, {
-      suppressGlobalError: true,
-    })
-    .catch(() => false);
+  return api.sendCommand("music/has_classical_content");
 }
 
 /**
@@ -56,8 +48,7 @@ export function getClassicalArtist(id: string): Promise<Artist> {
 
 /**
  * The Classical composer and performer rows of a library artist, each absent
- * when the artist holds no such role. Both are absent when the server does
- * not offer the classical commands.
+ * when the artist holds no such role. Fails quietly, leaving both absent.
  */
 export async function getClassicalRoles(artistId: string): Promise<{
   composer?: ClassicalComposer;
@@ -120,18 +111,9 @@ export function getWork(id: string): Promise<Work> {
   return api.sendCommand("music/classical/work", { item_id: id });
 }
 
-/**
- * A work's recordings in their canonical order, optionally narrowed to those
- * an artist performs on.
- */
-export function getWorkRecordings(
-  workId: string,
-  performerId?: string,
-): Promise<Recording[]> {
-  return api.sendCommand("music/classical/recordings", {
-    work_id: workId,
-    performer_id: performerId,
-  });
+/** A work's recordings in their canonical order. */
+export function getWorkRecordings(workId: string): Promise<Recording[]> {
+  return api.sendCommand("music/classical/recordings", { work_id: workId });
 }
 
 /**
@@ -146,19 +128,11 @@ export function getPerformerRecordings(
   });
 }
 
-/**
- * Artists with a performing role on a classical track. With a role given,
- * only those holding that role among their roles.
- */
+/** Artists with a performing role on a classical track. */
 export function getPerformers(
   sort: ClassicalSort = {},
-  role?: ArtistRole,
 ): Promise<ClassicalPerformer[]> {
-  return api.sendCommand("music/classical/performers", {
-    ...sort,
-    role,
-    limit: 0,
-  });
+  return api.sendCommand("music/classical/performers", { ...sort, limit: 0 });
 }
 
 /**

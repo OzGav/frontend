@@ -4,8 +4,8 @@
     <SearchInput
       v-model="model"
       clearable
-      :placeholder="$t('classical_filter_detail_works_placeholder')"
-      :aria-label="$t('classical_filter_detail_works_placeholder')"
+      :placeholder="$t('classical_filter_works_placeholder')"
+      :aria-label="$t('classical_filter_works_placeholder')"
     />
   </div>
 </template>

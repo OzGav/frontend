@@ -22,7 +22,7 @@ export interface ActAria {
 }
 
 /** A recording with its tracks of one aria. */
-export interface AriaRow {
+interface AriaRow {
   recording: Recording;
   tracks: Track[];
 }

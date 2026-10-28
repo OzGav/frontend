@@ -14,15 +14,7 @@
     </template>
 
     <template v-if="item" #main>
-      <img
-        v-if="artistLogo"
-        class="artist-hero__logo"
-        :src="artistLogo"
-        alt=""
-      />
-      <h1 :class="artistLogo ? 'sr-only' : 'artist-hero__name'">
-        {{ item.name }}
-      </h1>
+      <DetailHeroTitle :item="item" />
 
       <div class="artist-hero__actions">
         <DetailHeroPlayButton :item="item" />
@@ -59,10 +51,11 @@ import DetailHeroGenres from "@/components/details/DetailHeroGenres.vue";
 import DetailHeroPlayButton from "@/components/details/DetailHeroPlayButton.vue";
 import DetailHeroProviders from "@/components/details/DetailHeroProviders.vue";
 import DetailHeroSourceBadge from "@/components/details/DetailHeroSourceBadge.vue";
+import DetailHeroTitle from "@/components/details/DetailHeroTitle.vue";
+import { heroBackdrop } from "@/helpers/hero_backdrop";
 import { gotoRadio, radioRelevant, radioSupported } from "@/helpers/radio";
-import { getImageThumbForItem } from "@/helpers/utils";
 import { api } from "@/plugins/api";
-import { ImageType, type Artist } from "@/plugins/api/interfaces";
+import type { Artist } from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
@@ -83,43 +76,10 @@ const isPhone = computed(() => isPhoneSizedScreen());
 
 const classicalLinks = useClassicalArtistLinks(() => props.item);
 
-// wide art (fanart, then landscape) suits the hero; a square thumb is the
-// last resort. No size is passed, so the server serves the original image.
-const backdrop = computed(() => {
-  if (!props.item) return undefined;
-  return (
-    getImageThumbForItem(props.item, ImageType.FANART) ||
-    getImageThumbForItem(props.item, ImageType.LANDSCAPE) ||
-    getImageThumbForItem(props.item, ImageType.THUMB)
-  );
-});
-
-const artistLogo = computed(() =>
-  props.item ? getImageThumbForItem(props.item, ImageType.LOGO) : undefined,
-);
+const backdrop = computed(() => heroBackdrop(props.item));
 </script>
 
 <style scoped>
-.artist-hero__logo {
-  height: 80px;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-  object-position: left;
-}
-.artist-hero__name {
-  margin: 0;
-  font-size: 48px;
-  font-weight: 500;
-  letter-spacing: -1.2px;
-  line-height: 1.2;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .artist-hero__actions {
   display: flex;
   align-items: center;
@@ -131,13 +91,6 @@ const artistLogo = computed(() =>
   min-width: 0;
 }
 
-.artist-hero--phone .artist-hero__name {
-  font-size: 34px;
-  letter-spacing: -0.8px;
-}
-.artist-hero--phone .artist-hero__logo {
-  height: 56px;
-}
 .artist-hero--phone .artist-hero__actions {
   gap: 10px;
 }

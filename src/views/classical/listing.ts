@@ -25,6 +25,7 @@ import {
   onUnmounted,
   ref,
   toRaw,
+  watch,
   watchEffect,
   type InjectionKey,
   type Ref,
@@ -144,8 +145,8 @@ interface ClassicalListingOptions extends Omit<
   // filter, with undefined for one left out; read as the panel is built, so
   // their state must exist before this is called
   filters?: () => Array<ListingFilter | undefined>;
-  // adds a text filter, opened from a toolbar button
-  search?: { text: Ref<string>; placeholder: () => string };
+  // adds a text filter, opened from a toolbar button and kept per user
+  search?: { placeholder: () => string };
 }
 
 /**
@@ -161,6 +162,9 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     options.itemtype,
   );
   const sort = useClassicalSort({ ...options, onChange: () => reload() });
+  // the text filter, empty where the tab has none
+  const search = ref(options.search ? (prefs.search ?? "") : "");
+  watch(search, (value) => save("search", value));
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
   );
@@ -181,7 +185,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   };
 
   // a kept filter opens with the tab, so it shows what narrows the list
-  const searchOpen = ref(!!options.search?.text.value);
+  const searchOpen = ref(!!search.value);
 
   const toggleSearch = () => {
     if (searchOpen.value) {
@@ -192,7 +196,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   };
 
   const closeSearch = () => {
-    if (options.search) options.search.text.value = "";
+    search.value = "";
     searchOpen.value = false;
   };
 
@@ -263,11 +267,11 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   useClassicalMenu(() => ({
     items: items.value,
     search: options.search && {
-      text: options.search.text.value,
+      text: search.value,
       placeholder: options.search.placeholder(),
       open: searchOpen.value,
       setText: (text: string) => {
-        if (options.search) options.search.text.value = text;
+        search.value = text;
       },
       toggle: toggleSearch,
       close: closeSearch,
@@ -283,7 +287,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     clearFilters: () => filters.value.forEach(clearFilter),
   }));
 
-  return { viewMode, favoritesOnly, gridSize, loading, reload };
+  return { viewMode, favoritesOnly, gridSize, loading, reload, search };
 }
 
 /**

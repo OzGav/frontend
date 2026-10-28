@@ -9,70 +9,41 @@
       :dialog-title="artistItem.name"
       markdown
     />
-    <ClassicalSection
+    <WorksSection
+      v-slot="{ filtered }"
       :title="$t('works')"
-      :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
+      :works="works"
+      :loading="loading"
+      :artist-id="id"
     >
-      <template v-if="works.length" #append>
-        <div class="ms-auto flex items-center">
-          <SectionSearch
-            ref="searchField"
-            v-model="worksFilter"
-            :open="searchOpen"
-            :placeholder="$t('classical_filter_works_placeholder')"
-            @toggle="toggleSearch"
-            @close="closeSearch"
-          />
-          <ToolbarOverflowMenu
-            v-if="worksMenu.length"
-            :items="worksMenu"
-            :active="worksMenuActive"
-          />
-        </div>
-      </template>
-      <template v-if="works.length" #below-head>
-        <ListingSearchRow
-          ref="searchRow"
-          v-model="worksFilter"
-          :open="searchOpen"
-          :placeholder="$t('classical_filter_works_placeholder')"
-          @close="closeSearch"
+      <li
+        v-for="w in filtered"
+        :key="w.item_id"
+        class="composer-work-row classical-play-row"
+        @click="navigateOnRowClick($event, router, workLink(w.item_id))"
+      >
+        <RowPlayButton
+          side="start"
+          :label="`${$t('play')} ${w.name}`"
+          @play="(e: Event) => playWork(w.item_id, e)"
         />
-      </template>
-      <div v-if="loading">
-        <ListViewSkeleton v-for="n in 4" :key="n" />
-      </div>
-      <ul v-else-if="filteredWorks.length" class="composer-works-list">
-        <li
-          v-for="w in filteredWorks"
-          :key="w.item_id"
-          class="composer-work-row classical-play-row"
-          @click="navigateOnRowClick($event, router, workLink(w.item_id))"
-        >
-          <RowPlayButton
-            side="start"
-            :label="`${$t('play')} ${w.name}`"
-            @play="(e: Event) => playWork(w.item_id, e)"
-          />
-          <!-- the details on their own line, under the title -->
-          <span class="composer-work-text">
-            <router-link :to="workLink(w.item_id)" class="composer-work-link">
-              {{ w.name }}
-            </router-link>
-            <span v-if="w.version" class="meta">{{ w.version }}</span>
-            <span class="meta">
-              {{ workDetails(w) }}
-            </span>
+        <!-- the details on their own line, under the title -->
+        <span class="composer-work-text">
+          <router-link :to="workLink(w.item_id)" class="composer-work-link">
+            {{ w.name }}
+          </router-link>
+          <span v-if="w.version" class="meta">{{ w.version }}</span>
+          <span class="meta">
+            {{ workDetails(w) }}
           </span>
-          <RowPlayButton
-            side="end"
-            :label="`${$t('play')} ${w.name}`"
-            @play="(e: Event) => playWork(w.item_id, e)"
-          />
-        </li>
-      </ul>
-      <ClassicalEmpty v-else :filtered="works.length > 0" />
-    </ClassicalSection>
+        </span>
+        <RowPlayButton
+          side="end"
+          :label="`${$t('play')} ${w.name}`"
+          @play="(e: Event) => playWork(w.item_id, e)"
+        />
+      </li>
+    </WorksSection>
 
     <OtherTracksSection
       :artist-id="id"
@@ -85,9 +56,6 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
-import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
-import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
 import {
@@ -97,29 +65,20 @@ import {
 } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import { navigateOnRowClick } from "@/views/classical/listing";
-import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
-import { useBackFilter } from "@/views/classical/backFilter";
 import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
-import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
-import SectionSearch from "@/views/classical/components/SectionSearch.vue";
-import {
-  UNKNOWN_WORK_TYPE,
-  worksMenuItems,
-} from "@/views/classical/listFilters";
+import WorksSection from "@/views/classical/components/WorksSection.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
   countryLabel,
   lifeYearsLabel,
   periodLabel,
   recordingCountLabel,
-  workCountLabel,
   workTypeLabel,
 } from "@/views/classical/labels";
 import { playWork, playTracks } from "@/views/classical/playback";
-import { useSectionSearch } from "@/views/classical/sectionSearch";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -162,39 +121,6 @@ const heroMeta = computed(() =>
 const works = ref<WorkRow[]>([]);
 const loading = ref(true);
 useBackScroll(() => loading.value);
-const worksFilter = ref("");
-const {
-  open: searchOpen,
-  field: searchField,
-  row: searchRow,
-  toggle: toggleSearch,
-  close: closeSearch,
-} = useSectionSearch(worksFilter);
-const typeFilter = ref<string[]>([]);
-const restoreWorksFilter = useBackFilter(
-  () => ({ text: worksFilter.value, types: typeFilter.value }),
-  (saved) => {
-    worksFilter.value = saved.text;
-    typeFilter.value = saved.types;
-  },
-);
-
-const workTypes = computed(() =>
-  works.value.map((w) => w.work_type ?? UNKNOWN_WORK_TYPE),
-);
-const worksMenu = computed(() => worksMenuItems(workTypes.value, typeFilter));
-const worksMenuActive = computed(() => worksMenu.value.some((i) => i.active));
-
-const filteredWorks = computed(() => {
-  const q = normalizeForFilter(worksFilter.value.trim());
-  return works.value.filter(
-    (w) =>
-      (!q || w.haystack.includes(q)) &&
-      (!typeFilter.value.length ||
-        typeFilter.value.includes(w.work_type ?? UNKNOWN_WORK_TYPE)),
-  );
-});
-
 const workLink = (workId: string) => `/classical/works/${workId}`;
 
 // e.g. op. 27 no. 2 · Sonata · 3 recordings
@@ -213,9 +139,6 @@ const load = async (id: string) => {
   country.value = undefined;
   works.value = [];
   loading.value = true;
-  closeSearch();
-  typeFilter.value = [];
-  restoreWorksFilter();
   try {
     const [artist, list, composer] = await Promise.all([
       getClassicalArtist(id),
@@ -271,14 +194,6 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 </script>
 
 <style scoped>
-.composer-works-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
 .composer-work-row {
   /* like the standard rows, the highlight starts 7px before the play slot */
   padding: 0.5rem 0 0.5rem 7px;

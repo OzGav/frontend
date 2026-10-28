@@ -14,33 +14,21 @@
 </template>
 
 <script setup lang="ts">
-import { normalizeForFilter } from "@/helpers/utils";
 import {
   ArtistRole,
   ListingType,
   type ClassicalPerformer,
 } from "@/plugins/api/interfaces";
 import { getPerformers } from "@/services/classical";
-import ClassicalArtistGrid, {
-  type ClassicalArtistGridItem,
-} from "@/views/classical/components/ClassicalArtistGrid.vue";
+import { useArtistGridItems } from "@/views/classical/artistGrid";
+import ClassicalArtistGrid from "@/views/classical/components/ClassicalArtistGrid.vue";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
-import {
-  cardImage,
-  LIST_IMAGE_SIZE,
-  SQUARE_IMAGE_SIZE,
-  squareImage,
-  WIDE_IMAGE_SIZE,
-} from "@/views/classical/images";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { useListFilter } from "@/views/classical/listFilters";
-import {
-  useClassicalListing,
-  useClassicalPreferences,
-} from "@/views/classical/listing";
+import { useClassicalListing } from "@/views/classical/listing";
 import { Users } from "@lucide/vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "PerformersTab" });
@@ -64,11 +52,6 @@ const performers = ref<ClassicalPerformer[]>([]);
 
 useOwnFavorites(() => performers.value.map((row) => row.artist));
 
-const { preferences, save } = useClassicalPreferences(ITEMTYPE);
-
-const search = ref(preferences.search ?? "");
-watch(search, (value) => save("search", value));
-
 const roleFilter = useListFilter({
   itemtype: ITEMTYPE,
   key: "roleFilter",
@@ -82,7 +65,7 @@ const roleFilter = useListFilter({
 });
 
 // The full list is fetched once; the filters narrow it client-side.
-const { viewMode, favoritesOnly, gridSize, loading, reload } =
+const { viewMode, favoritesOnly, gridSize, loading, reload, search } =
   useClassicalListing({
     itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_PERFORMERS,
@@ -91,42 +74,21 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
     },
     views: true,
     search: {
-      text: search,
       placeholder: () => t("classical_filter_performers_placeholder"),
     },
     filters: () => [roleFilter.filter.value],
   });
 
-// Built once per load, so filtering and redrawing reuse the folded name and
-// image urls.
-const rows = computed(() =>
-  performers.value.map((p) => ({
-    performer: p,
-    haystack: normalizeForFilter(p.artist.name),
-    item: {
-      id: p.artist.item_id,
-      artist: p.artist,
-      name: p.artist.name,
-      link: `/classical/performers/${p.artist.item_id}`,
-      wideImage: cardImage(p, WIDE_IMAGE_SIZE),
-      squareImage: squareImage(p, SQUARE_IMAGE_SIZE),
-      listImage: squareImage(p, LIST_IMAGE_SIZE),
-      role: roleLabel(p.main_role),
-      lines: [recordingCountLabel(p.recording_count)],
-    } satisfies ClassicalArtistGridItem,
-  })),
-);
-
-const gridItems = computed<ClassicalArtistGridItem[]>(() => {
-  const q = normalizeForFilter(search.value.trim());
-  return rows.value
-    .filter(
-      (r) =>
-        roleFilter.matches(r.performer.roles) &&
-        (!favoritesOnly.value || r.performer.artist.favorite === true) &&
-        (!q || r.haystack.includes(q)),
-    )
-    .map((r) => r.item);
+const gridItems = useArtistGridItems({
+  rows: () => performers.value,
+  section: "performers",
+  search,
+  favoritesOnly,
+  details: (p) => ({
+    role: roleLabel(p.main_role),
+    lines: [recordingCountLabel(p.recording_count)],
+  }),
+  matches: (p) => roleFilter.matches(p.roles),
 });
 
 onMounted(reload);

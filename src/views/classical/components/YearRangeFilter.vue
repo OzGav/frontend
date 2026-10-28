@@ -1,11 +1,12 @@
 <template>
   <!-- Both boxes share one mat so the pair reads as a single control. The
        keys that move within and between the boxes stay here, so a menu
-       holding the control does not take them for its own navigation. -->
+       holding the control does not take them for its own navigation. It is as
+       tall as the standard search box beside it, growing only when it wraps. -->
   <div
-    class="year-range"
+    class="inline-flex min-h-[2.25rem] flex-wrap items-center gap-[0.35rem_0.6rem] rounded-[8px] border-[1px] border-solid bg-muted p-[0_0.15rem_0_0.7rem]"
     role="group"
-    :class="{ 'year-range--active': isActive }"
+    :class="isActive ? 'border-ring' : 'border-border'"
     @keydown.left.stop
     @keydown.right.stop
     @keydown.up.stop
@@ -14,26 +15,27 @@
     @keydown.end.stop
     @keydown.tab.stop
   >
-    <div class="year-range-fields">
+    <!-- the boxes share any room the control is stretched to -->
+    <div class="flex flex-auto items-center gap-[0.35rem]">
       <input
         :value="from"
         type="text"
         inputmode="numeric"
         maxlength="4"
-        class="year-input"
+        :class="INPUT_CLASS"
         :placeholder="fromPlaceholder"
         :aria-label="$t('classical_date_range_from')"
         @input="onInput('from', $event)"
         @blur="settle('from')"
         @keydown.enter="settle('from')"
       />
-      <span class="year-range-dash" aria-hidden="true">–</span>
+      <span class="text-muted-foreground" aria-hidden="true">–</span>
       <input
         :value="to"
         type="text"
         inputmode="numeric"
         maxlength="4"
-        class="year-input"
+        :class="INPUT_CLASS"
         :placeholder="toPlaceholder"
         :aria-label="$t('classical_date_range_to')"
         @input="onInput('to', $event)"
@@ -44,7 +46,7 @@
     <!-- Always laid out, so the mat keeps its width as a range is typed in. -->
     <button
       type="button"
-      class="year-range-clear"
+      class="flex size-[1.5rem] cursor-pointer items-center justify-center rounded-[50%] border-0 bg-[transparent] text-muted-foreground disabled:invisible [&:hover]:bg-accent [&:hover]:text-inherit"
       :disabled="!isActive"
       :title="$t('classical_date_range_clear')"
       :aria-label="$t('classical_date_range_clear')"
@@ -60,6 +62,9 @@ import { X } from "@lucide/vue";
 import { computed } from "vue";
 
 defineOptions({ name: "YearRangeFilter" });
+
+const INPUT_CLASS =
+  "year-input h-[1.75rem] w-[4.25rem] min-w-0 flex-[1_1_4.25rem] rounded-[6px] border-[1px] border-solid border-border bg-card p-[0_0.4rem] text-center text-[0.9rem] text-inherit [&:focus-visible]:outline-offset-[1px] [&:focus-visible]:[outline:2px_solid_var(--ring)]";
 
 const props = defineProps<{
   /** Earliest and latest year present in the list, shown as placeholders. */
@@ -99,74 +104,8 @@ const clear = () => {
 </script>
 
 <style scoped>
-.year-range {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.6rem;
-  /* as tall as the standard search box beside it, growing only when it wraps */
-  min-height: 2.25rem;
-  padding: 0 0.15rem 0 0.7rem;
-  border-radius: 8px;
-  background: var(--muted, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border, #3d3d3d);
-}
-
-.year-range--active {
-  border-color: var(--ring, #03a9f4);
-}
-
-/* the boxes share any room the control is stretched to */
-.year-range-fields {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
+/* the page font, at the size its text utility sets */
 .year-input {
-  flex: 1 1 4.25rem;
-  min-width: 0;
-  width: 4.25rem;
-  height: 1.75rem;
-  padding: 0 0.4rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #444);
-  background: var(--card, transparent);
-  color: inherit;
   font: inherit;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.year-input:focus-visible {
-  outline: 2px solid var(--ring, #03a9f4);
-  outline-offset: 1px;
-}
-
-.year-range-dash {
-  color: var(--muted-foreground, #888);
-}
-
-.year-range-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--muted-foreground, #aaa);
-  cursor: pointer;
-}
-
-.year-range-clear:disabled {
-  visibility: hidden;
-}
-
-.year-range-clear:hover {
-  background: var(--accent, rgba(255, 255, 255, 0.08));
-  color: inherit;
 }
 </style>

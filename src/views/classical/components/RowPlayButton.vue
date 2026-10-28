@@ -1,16 +1,19 @@
 <template>
   <!-- The standard list play affordance, on hover-capable screens a blue play
        revealed on row hover in a reserved slot at the start of the row, on
-       touch screens a small play button at the end. -->
+       touch screens a small play button at the end. The slot is sized like the
+       album view's track number slot. -->
   <button
     v-if="side === 'start' && !isTouch"
     type="button"
-    class="row-play-slot"
+    class="row-play-slot grid size-[32px] flex-none cursor-pointer place-items-center self-center border-0 bg-[transparent] p-0 text-inherit disabled:cursor-default"
     :disabled="disabled"
     :aria-label="label"
     @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
-    <span class="row-play-disc">
+    <span
+      class="row-play-disc inline-flex size-[32px] items-center justify-center rounded-[999px] bg-[rgb(var(--v-theme-primary))] text-[#fff]"
+    >
       <Play
         :size="16"
         fill="currentColor"
@@ -24,11 +27,13 @@
     icon
     variant="text"
     size="small"
-    class="row-play-touch"
+    class="ml-auto flex-none self-center"
     :aria-label="label"
     @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
-    <span class="row-play-disc-touch">
+    <span
+      class="inline-flex size-[22px] items-center justify-center rounded-[999px] bg-[rgb(var(--v-theme-primary))] text-[#fff]"
+    >
       <Play
         :size="11"
         fill="currentColor"
@@ -59,42 +64,11 @@ defineEmits<{
 </script>
 
 <style scoped>
-/* Sized like the album view's track number slot. */
-.row-play-slot {
-  display: grid;
-  place-items: center;
-  flex: none;
-  align-self: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.row-play-slot:disabled {
-  cursor: default;
-}
-
 .row-play-slot:disabled .row-play-disc {
   visibility: hidden;
 }
 
-.row-play-disc,
-.row-play-disc-touch {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgb(var(--v-theme-primary));
-  color: #fff;
-}
-
 .row-play-disc {
-  width: 32px;
-  height: 32px;
   opacity: 0;
   transition: opacity 0.18s ease;
 }
@@ -102,16 +76,5 @@ defineEmits<{
 .classical-play-row:hover .row-play-disc,
 .row-play-slot:focus-visible .row-play-disc {
   opacity: 1;
-}
-
-.row-play-touch {
-  flex: none;
-  align-self: center;
-  margin-left: auto;
-}
-
-.row-play-disc-touch {
-  width: 22px;
-  height: 22px;
 }
 </style>

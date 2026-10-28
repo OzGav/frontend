@@ -18,27 +18,32 @@
         v-for="{ entry: w } in filtered"
         :key="w.work.item_id"
         tag="li"
-        class="performer-work-row"
+        class="flex cursor-pointer items-center gap-[0.5rem] py-[0.5rem]"
         :label="`${$t('play')} ${w.work.name}`"
         :disabled="!tracksByWork[w.work.item_id]?.length"
         @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
         @menu="(e: Event) => onMenuWork(w, e)"
         @play="(e: Event) => onPlayWork(w.work.item_id, e)"
       >
-        <div class="performer-work-link">
+        <div class="flex min-w-0 flex-1 flex-col text-inherit no-underline">
+          <!-- Only the name is the link, so the underline marks just what is
+               clicked. -->
           <router-link
             v-if="w.work.composers[0]"
             :to="`/classical/composers/${w.work.composers[0].item_id}`"
-            class="performer-work-composer performer-work-composer-link"
+            class="max-w-full self-start text-[0.8rem] text-muted-foreground no-underline [&:focus-visible]:underline [&:hover]:underline"
           >
             {{ w.work.composers[0].name }}
           </router-link>
           <router-link
             :to="workLink(w.work.item_id)"
-            class="performer-work-title"
+            class="text-[0.95rem] font-semibold text-inherit no-underline"
           >
             {{ w.work.name }}
-            <span v-if="w.work.catalog_numbers[0]" class="performer-work-meta">
+            <span
+              v-if="w.work.catalog_numbers[0]"
+              class="ml-[0.4rem] text-[0.875rem] text-muted-foreground tabular-nums"
+            >
               [{{ w.work.catalog_numbers[0] }}]
             </span>
           </router-link>
@@ -50,12 +55,12 @@
           </span>
           <span
             v-if="coPerformers[w.work.item_id]?.length"
-            class="performer-work-composer"
+            class="text-[0.8rem] text-muted-foreground"
           >
             {{ coPerformersLabel(coPerformers[w.work.item_id]) }}
           </span>
         </div>
-        <span class="meta-recordings">
+        <span class="text-[0.875rem] whitespace-nowrap text-muted-foreground">
           {{ recordingCountLabel(w.recording_count) }}
         </span>
         <template #actions>
@@ -255,61 +260,3 @@ watch(
   { immediate: true },
 );
 </script>
-
-<style scoped>
-.performer-work-row {
-  cursor: pointer;
-  padding-block: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.performer-work-link {
-  display: flex;
-  flex-direction: column;
-  color: inherit;
-  text-decoration: none;
-  flex: 1;
-  min-width: 0;
-}
-
-.performer-work-composer {
-  font-size: 0.8rem;
-  color: var(--muted-foreground, #aaa);
-}
-
-/* Only the name is the link, so the underline marks just what is clicked. */
-.performer-work-composer-link {
-  align-self: flex-start;
-  max-width: 100%;
-  text-decoration: none;
-}
-
-.performer-work-composer-link:hover,
-.performer-work-composer-link:focus-visible {
-  text-decoration: underline;
-}
-
-.performer-work-title {
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.meta-recordings,
-.performer-work-meta {
-  color: var(--muted-foreground, #888);
-  font-size: 0.875rem;
-}
-
-.meta-recordings {
-  white-space: nowrap;
-}
-
-.performer-work-meta {
-  font-variant-numeric: tabular-nums;
-  margin-left: 0.4rem;
-}
-</style>

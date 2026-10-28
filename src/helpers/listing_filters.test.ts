@@ -5,6 +5,7 @@ import {
   clearedFilters,
   listingItemCount,
   type ListingChoiceFilter,
+  type ListingCustomFilter,
   type ListingMultiFilter,
   type ListingToggleFilter,
 } from "./listing_filters";
@@ -45,6 +46,16 @@ const choiceFilter = (selected: string): ListingChoiceFilter => ({
   select: vi.fn(),
 });
 
+const customFilter = (activeCount: number): ListingCustomFilter => ({
+  kind: "custom",
+  id: "year",
+  label: "Year",
+  component: {},
+  props: {},
+  activeCount,
+  clear: vi.fn(),
+});
+
 describe("activeFilterCount", () => {
   it("counts nothing while nothing narrows the listing", () => {
     expect(
@@ -52,18 +63,20 @@ describe("activeFilterCount", () => {
         toggleFilter(false),
         multiFilter([]),
         choiceFilter("all"),
+        customFilter(0),
       ]),
     ).toBe(0);
   });
 
-  it("counts an active toggle, each picked value and a narrowing choice", () => {
+  it("counts an active toggle, each picked value, a narrowing choice and a custom filter's count", () => {
     expect(
       activeFilterCount([
         toggleFilter(true),
         multiFilter(["spotify--1", "tidal--1"]),
         choiceFilter("hide_empty"),
+        customFilter(1),
       ]),
-    ).toBe(4);
+    ).toBe(5);
   });
 });
 

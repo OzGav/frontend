@@ -18,14 +18,14 @@
       :disabled="disabled"
       @play="(e: Event) => $emit('play', e)"
     />
-    <slot />
+    <slot></slot>
     <RowPlayButton
       side="end"
       :label="label"
       :disabled="disabled"
       @play="(e: Event) => $emit('play', e)"
     />
-    <slot name="actions" />
+    <slot name="actions"></slot>
   </component>
 </template>
 
@@ -46,7 +46,7 @@ const props = withDefaults(
     // a prop rather than an emit, so a row without one keeps the browser's menu
     onMenu?: (evt: Event) => void;
   }>(),
-  { tag: "div" },
+  { tag: "div", onMenu: undefined },
 );
 
 defineEmits<{

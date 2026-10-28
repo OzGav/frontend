@@ -1,4 +1,5 @@
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
+import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
 import {
@@ -21,6 +22,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Grid3x3,
   Heart,
   LayoutGrid,
   LayoutList,
@@ -48,6 +50,18 @@ export interface ClassicalMenu {
   active: boolean;
   // the page's text filter, opened from its toolbar button
   search?: ClassicalMenuSearch;
+  // the page's sort, and its view where it offers more than one
+  sort: ClassicalMenuSort;
+}
+
+/** A page's sort and view, for the Classical view to show in its toolbar. */
+interface ClassicalMenuSort {
+  options: SortOptionInfo[];
+  sortBy: string;
+  setSort: (value: string) => void;
+  // left out where the page has a single view
+  viewMode?: ClassicalViewMode;
+  setViewMode: (mode: string) => void;
 }
 
 /** A page's text filter, for the Classical view to show in its toolbar. */
@@ -90,6 +104,28 @@ export function navigateOnRowClick(
 
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";
 
+// the views a picture tab offers in its sort menu
+export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
+  {
+    value: "fanart",
+    label: "classical_view_fanart",
+    shortLabel: "classical_view_fanart_short",
+    icon: LayoutGrid,
+  },
+  {
+    value: "thumbs",
+    label: "view.panel",
+    shortLabel: "view.panel_short",
+    icon: LayoutGrid,
+  },
+  {
+    value: "list",
+    label: "view.list",
+    shortLabel: "view.list_short",
+    icon: LayoutList,
+  },
+];
+
 /** The classical lists the server offers sort choices for. */
 export type ClassicalListingType =
   | ListingType.CLASSICAL_COMPOSERS
@@ -105,7 +141,7 @@ interface ClassicalSortOptions {
   onChange: () => void;
   // fields left out of the menu, e.g. while the data they sort on is missing
   exclude?: () => SortField[];
-  // translation keys replacing the server's labels, e.g. a more specific year
+  // label keys under sort replacing the server's, e.g. a more specific year
   labels?: Partial<Record<SortField, string>>;
 }
 
@@ -127,9 +163,9 @@ interface ClassicalListingOptions extends Omit<
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode, cover size and the tab's own
  * filters. The settings are kept per user like those of the other library
- * listings, the menu and text filter show in the Classical view's toolbar
- * while the tab is open, and going back to the tab returns it to where it was
- * scrolled.
+ * listings, the menu, text filter and sort show in the Classical view's
+ * toolbar while the tab is open, and going back to the tab returns it to where
+ * it was scrolled.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
   const { preferences: prefs, save } = useClassicalPreferences(
@@ -173,24 +209,19 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     searchOpen.value = false;
   };
 
-  const viewModeItem = (): ToolBarMenuItem => ({
-    label: "tooltip.view_mode_current",
-    labelArgs: [$t(VIEW_MODE_LABELS[viewMode.value])],
-    icon: viewMode.value === "list" ? LayoutList : LayoutGrid,
+  const setViewMode = (mode: string) => {
+    if (!isViewMode(mode)) return;
+    viewMode.value = mode;
+    save("viewMode", mode);
+  };
+
+  const gridSizeItem = (): ToolBarMenuItem => ({
+    label: "grid_size",
+    icon: Grid3x3,
     overflowAllowed: true,
     subItems: [
-      ...(["list", "fanart", "thumbs"] as const).map((mode) => ({
-        label: VIEW_MODE_LABELS[mode],
-        icon: mode === "list" ? LayoutList : LayoutGrid,
-        selected: viewMode.value === mode,
-        action: () => {
-          viewMode.value = mode;
-          save("viewMode", mode);
-        },
-      })),
       {
         label: "grid_size",
-        hide: viewMode.value === "list",
         // markRaw, as the menu items land in a reactive array; a bare component
         // definition there would be needlessly made reactive.
         component: markRaw(GridSizeSlider),
@@ -230,12 +261,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       overflowAllowed: true,
       action: reload,
     });
-    list.push({
-      ...sort.menuItem.value,
-      disabled: sort.menuItem.value.disabled || loading.value,
-      overflowAllowed: true,
-    });
-    if (options.views) list.push(viewModeItem());
+    if (options.views && viewMode.value !== "list") list.push(gridSizeItem());
     return list;
   });
 
@@ -254,6 +280,13 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       bindInput: (input: unknown) => {
         searchInput = input as { focus: () => void } | null;
       },
+    },
+    sort: {
+      options: sort.options.value,
+      sortBy: sort.sortBy.value,
+      setSort: sort.setSort,
+      viewMode: options.views ? viewMode.value : undefined,
+      setViewMode,
     },
   }));
 
@@ -282,7 +315,8 @@ export function useClassicalPreferences(itemtype: string) {
  * it and kept per user like the other library listings keep theirs.
  *
  * Returns `ready`, settled once the choices are known; `sort`, the arguments
- * to fetch the list with; and `menuItem`, the sort entry for the list's menu.
+ * to fetch the list with; `options`, `sortBy` and `setSort`, for a sort menu;
+ * and `menuItem`, the sort entry for the list's menu.
  */
 export function useClassicalSort(options: ClassicalSortOptions) {
   const { getItemsListingPreferences, setItemsListingPreference } =
@@ -321,6 +355,17 @@ export function useClassicalSort(options: ClassicalSortOptions) {
       : {},
   );
 
+  // the choices on offer, under the page's own labels
+  const offered = computed(() => {
+    const excluded = options.exclude?.() ?? [];
+    return sortOptions.value
+      .filter((o) => !excluded.includes(o.field))
+      .map((o) => ({
+        ...o,
+        label_key: options.labels?.[o.field] ?? o.label_key,
+      }));
+  });
+
   const setSort = (value: string | undefined) => {
     if (!value || value === sortBy.value) return;
     sortBy.value = value;
@@ -337,12 +382,8 @@ export function useClassicalSort(options: ClassicalSortOptions) {
   });
 
   const menuItem = computed<ContextMenuItem>(() => {
-    const excluded = options.exclude?.() ?? [];
-    const offered = sortOptions.value.filter(
-      (o) => !excluded.includes(o.field),
-    );
-    const subItems: ContextMenuItem[] = offered.map((o) => ({
-      label: options.labels?.[o.field] ?? `sort.${o.label_key ?? o.field}`,
+    const subItems: ContextMenuItem[] = offered.value.map((o) => ({
+      label: `sort.${o.label_key ?? o.field}`,
       selected: o.field === selectedOption.value?.field,
       action: () => setSort(sorting.sortByOption(o)),
     }));
@@ -354,12 +395,19 @@ export function useClassicalSort(options: ClassicalSortOptions) {
     return {
       label: "tooltip.sort_options",
       icon: ArrowUpDown,
-      disabled: !offered.length,
+      disabled: !offered.value.length,
       subItems,
     };
   });
 
-  return { ready, sort, menuItem };
+  return {
+    ready,
+    sort,
+    options: offered,
+    sortBy: computed(() => sortBy.value),
+    setSort,
+    menuItem,
+  };
 }
 
 /**
@@ -383,14 +431,8 @@ const PREFS_PATH = "classical";
 // the most columns the grid size slider allows elsewhere
 const MAX_GRID_COLUMNS = 12;
 
-const VIEW_MODE_LABELS: Record<ClassicalViewMode, string> = {
-  fanart: "classical_view_fanart",
-  thumbs: "view.panel",
-  list: "view.list",
-};
-
 function isViewMode(value: unknown): value is ClassicalViewMode {
-  return value === "fanart" || value === "thumbs" || value === "list";
+  return CLASSICAL_VIEWS.some((view) => view.value === value);
 }
 
 /**

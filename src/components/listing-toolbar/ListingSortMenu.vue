@@ -74,6 +74,7 @@
         <ListingViewModeRow
           v-if="!fixedView"
           :model-value="viewMode"
+          :views="views"
           @update:model-value="(value) => emit('view-mode', value)"
         />
         <GridSizeSlider
@@ -106,7 +107,7 @@ import { useI18n } from "vue-i18n";
 import {
   MENU_SECTION_LABEL_CLASS,
   VIEW_MODES,
-  type ListingViewMode,
+  type ListingViewOption,
 } from "./constants";
 import ListingViewModeRow from "./ListingViewModeRow.vue";
 
@@ -114,21 +115,26 @@ import ListingViewModeRow from "./ListingViewModeRow.vue";
  * A library page's sort menu: picking the sort it is on flips its order, and
  * unless the page fixes the view, the menu picks that too.
  */
-const props = defineProps<{
-  options: SortOptionInfo[];
-  sortBy: string;
-  viewMode: string;
-  // the page picks the view itself: only the thumbs view's controls show
-  fixedView?: boolean;
-  // the cover size and action buttons, shown under the thumbs view
-  gridControls?: GridSizeControls;
-  // a phone has room for the icon only
-  compact: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    options: SortOptionInfo[];
+    sortBy: string;
+    viewMode: string;
+    // the views to pick from, when not the library's own
+    views?: readonly ListingViewOption[];
+    // the page picks the view itself: only the thumbs view's controls show
+    fixedView?: boolean;
+    // the cover size and action buttons, shown under the thumbs view
+    gridControls?: GridSizeControls;
+    // a phone has room for the icon only
+    compact: boolean;
+  }>(),
+  { views: () => VIEW_MODES },
+);
 
 const emit = defineEmits<{
   "sort-by": [value: string];
-  "view-mode": [value: ListingViewMode];
+  "view-mode": [value: string];
 }>();
 
 const { t } = useI18n();
@@ -179,7 +185,7 @@ const titled = computed(() => !props.compact || showViewSection.value);
 const currentView = computed(() =>
   props.fixedView
     ? undefined
-    : VIEW_MODES.find((view) => view.value === props.viewMode),
+    : props.views.find((view) => view.value === props.viewMode),
 );
 
 const triggerAriaLabel = computed(() => {

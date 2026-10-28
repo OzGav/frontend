@@ -187,7 +187,7 @@ const { loading, reload } = useClassicalListing({
   itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_WORKS,
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
-  labels: { [SortField.YEAR]: "classical_sort_year" },
+  labels: { [SortField.YEAR]: "year_composed" },
   search: {
     text: search,
     placeholder: () => t("classical_filter_works_placeholder"),

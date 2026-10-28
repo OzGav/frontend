@@ -145,11 +145,6 @@ export async function openArtistMenu(
   emit(await classicalArtistMenuItems(artist, router), evt, false);
 }
 
-/** Open a plain menu of the given entries at the pointer, e.g. a section's sort. */
-export function openMenu(items: ContextMenuItem[], evt: Event | MouseEvent) {
-  emit(items, evt, false);
-}
-
 interface BuildArgs {
   tracks: Track[];
   credits: Credit[];

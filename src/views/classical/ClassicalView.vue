@@ -102,11 +102,12 @@
           :view-mode="menu.sort.viewMode ?? ''"
           :show-view-modes="!!menu.sort.viewMode"
           :views="CLASSICAL_VIEWS"
-          :filters="[]"
-          :active-filter-count="0"
+          :filters="menu.filters"
+          :active-filter-count="activeFilters"
           :compact="store.mobileLayout"
           @sort-by="menu.sort.setSort"
           @view-mode="menu.sort.setViewMode"
+          @clear-filters="menu.clearFilters"
         />
       </template>
     </Toolbar>
@@ -153,6 +154,7 @@ import { Button } from "@/components/ui/button";
 import { InputGroupAddon, InputGroupButton } from "@/components/ui/input-group";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";
 import {
   CLASSICAL_DEFAULT_TAB,
@@ -180,6 +182,9 @@ const menu = ref<ClassicalMenu>();
 provide(CLASSICAL_MENU_KEY, menu);
 
 const search = computed(() => menu.value?.search);
+const activeFilters = computed(() =>
+  activeFilterCount(menu.value?.filters ?? []),
+);
 
 // the field stays on screen while it closes, and its icon waits for it to go
 const searchSlotShown = ref(false);

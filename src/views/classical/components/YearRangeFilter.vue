@@ -1,15 +1,19 @@
 <template>
-  <!-- Label and both boxes share one mat so the pair reads as a single
-       control rather than two loose inputs next to a caption. -->
+  <!-- Both boxes share one mat so the pair reads as a single control. The
+       keys that move within and between the boxes stay here, so a menu
+       holding the control does not take them for its own navigation. -->
   <div
     class="year-range"
     role="group"
-    :aria-labelledby="unlabelled ? undefined : labelId"
     :class="{ 'year-range--active': isActive }"
+    @keydown.left.stop
+    @keydown.right.stop
+    @keydown.up.stop
+    @keydown.down.stop
+    @keydown.home.stop
+    @keydown.end.stop
+    @keydown.tab.stop
   >
-    <span v-if="!unlabelled" :id="labelId" class="year-range-label">
-      {{ $t("classical_date_range_label") }}
-    </span>
     <div class="year-range-fields">
       <input
         :value="from"
@@ -53,7 +57,7 @@
 
 <script setup lang="ts">
 import { X } from "@lucide/vue";
-import { computed, useId } from "vue";
+import { computed } from "vue";
 
 defineOptions({ name: "YearRangeFilter" });
 
@@ -61,14 +65,10 @@ const props = defineProps<{
   /** Earliest and latest year present in the list, shown as placeholders. */
   earliest?: number;
   latest?: number;
-  // for a place that already heads the control with its own label
-  unlabelled?: boolean;
 }>();
 
 const from = defineModel<string>("from", { required: true });
 const to = defineModel<string>("to", { required: true });
-
-const labelId = useId();
 
 const isActive = computed(() => Boolean(from.value || to.value));
 
@@ -114,12 +114,6 @@ const clear = () => {
 
 .year-range--active {
   border-color: var(--ring, #03a9f4);
-}
-
-.year-range-label {
-  font-size: 0.9rem;
-  color: var(--muted-foreground, #aaa);
-  white-space: nowrap;
 }
 
 /* the boxes share any room the control is stretched to */

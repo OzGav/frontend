@@ -54,50 +54,40 @@
     />
 
     <ClassicalSection
-      ref="recordingsSection"
       :title="$t('recordings')"
-      :controls-own-line="committed"
       :meta="recordings.length ? recordingCountLabel(shownCount) : undefined"
     >
-      <!-- too narrow for it, the year range sits behind a menu beside the title -->
-      <template
-        v-if="narrowRecordings && recordedBounds.earliest !== undefined"
-        #append
-      >
-        <YearRangeMenuButton
-          v-model:from="yearFrom"
-          v-model:to="yearTo"
-          :earliest="recordedBounds.earliest"
-          :latest="recordedBounds.latest"
-          :active="yearRangeActive"
-        />
-      </template>
-      <template v-if="recordings.length" #controls>
-        <!-- the filter banner leads its own line, the year range at its end -->
-        <div
-          class="recordings-controls"
-          :class="{ 'recordings-controls--banner': committed }"
-        >
-          <YearRangeFilter
-            v-if="!narrowRecordings && recordedBounds.earliest !== undefined"
-            v-model:from="yearFrom"
-            v-model:to="yearTo"
-            :earliest="recordedBounds.earliest"
-            :latest="recordedBounds.latest"
-          />
-          <RecordingsFilter
+      <template v-if="recordings.length" #append>
+        <div class="ms-auto flex items-center">
+          <SectionSearch
+            ref="searchField"
             v-model="query"
-            :committed="committed"
-            :count="displayedRecordings.length"
-            :performer-name="committedKind === 'performer' ? performerName : ''"
-            :term="committedKind === 'text' ? committedTerm : ''"
-            :generic-no-match="yearRangeActive"
-            class="recordings-filter"
-            @commit="commitFilter"
-            @edit="editFilter"
-            @clear="clearFilter"
+            :open="searchOpen"
+            :placeholder="$t('classical_filter_recordings_placeholder')"
+            @toggle="toggleSearch"
+            @close="closeSearch"
+          />
+          <ToolbarOverflowMenu
+            v-if="recordingsMenu.length"
+            :items="recordingsMenu"
+            :active="yearRangeActive"
           />
         </div>
+      </template>
+      <template v-if="recordings.length" #below-head>
+        <ListingSearchRow
+          ref="searchRow"
+          v-model="query"
+          :open="searchOpen"
+          :placeholder="$t('classical_filter_recordings_placeholder')"
+          @close="closeSearch"
+        />
+        <PerformerFilterLine
+          v-if="performerName"
+          :performer="performerName"
+          :count="displayedRecordings.length"
+          @clear="clearPerformer"
+        />
       </template>
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
@@ -162,10 +152,7 @@
           />
         </template>
       </div>
-      <ClassicalEmpty
-        v-else-if="!committed"
-        :filtered="recordings.length > 0"
-      />
+      <ClassicalEmpty v-else :filtered="recordings.length > 0" />
     </ClassicalSection>
 
     <ClassicalSection v-if="relatedWorks.length" :title="$t('related_works')">
@@ -186,7 +173,10 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { normalizeForFilter } from "@/helpers/utils";
 import api from "@/plugins/api";
 import {
@@ -213,12 +203,12 @@ import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import MovementRecordingRow from "@/views/classical/components/MovementRecordingRow.vue";
-import RecordingsFilter from "@/views/classical/components/RecordingsFilter.vue";
+import PerformerFilterLine from "@/views/classical/components/PerformerFilterLine.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import SectionSearch from "@/views/classical/components/SectionSearch.vue";
 import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
-import YearRangeMenuButton from "@/views/classical/components/YearRangeMenuButton.vue";
 import { useActArias } from "@/views/classical/actArias";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import {
@@ -228,10 +218,10 @@ import {
 } from "@/views/classical/labels";
 import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
 import { playTracks } from "@/views/classical/playback";
+import { useSectionSearch } from "@/views/classical/sectionSearch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { Music } from "@lucide/vue";
-import { useElementSize } from "@vueuse/core";
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
+import { CalendarRange, Music } from "@lucide/vue";
+import { computed, markRaw, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorkDetail" });
@@ -246,16 +236,6 @@ const props = defineProps<{
 
 const router = useRouter();
 
-// Narrower than this, the year range and the recordings filter, at its
-// widest as the performer banner, cannot share a line.
-const YEAR_RANGE_INLINE_WIDTH = 720;
-
-const recordingsSection = useTemplateRef("recordingsSection");
-const { width: recordingsWidth } = useElementSize(recordingsSection);
-const narrowRecordings = computed(
-  () => recordingsWidth.value < YEAR_RANGE_INLINE_WIDTH,
-);
-
 const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
 const recordings = ref<Recording[]>([]);
@@ -264,13 +244,15 @@ useBackScroll(() => loading.value);
 
 useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
 
-// Recordings filter state. `query` is the live input text; `committed` swaps
-// the input for the status banner. A commit is either user-driven (Enter, kind
-// "text") or a performer-context arrival (filterByArtistId, kind "performer").
 const query = ref("");
-const committed = ref(false);
-const committedKind = ref<"text" | "performer" | null>(null);
-const committedTerm = ref("");
+const {
+  open: searchOpen,
+  field: searchField,
+  row: searchRow,
+  toggle: toggleSearch,
+  close: closeSearch,
+} = useSectionSearch(query);
+// the performer the page was opened for, whose recordings alone show
 const performerArtistId = ref<string | null>(null);
 
 // Recordings carry the year they were performed, so the range filters on that.
@@ -285,6 +267,33 @@ const {
 const recordedBounds = computed(() =>
   yearBounds(recordings.value.map((r) => r.year)),
 );
+
+const recordingsMenu = computed<ToolBarMenuItem[]>(() => {
+  const { earliest, latest } = recordedBounds.value;
+  if (earliest === undefined) return [];
+  return [
+    {
+      label: "classical_year_recorded",
+      icon: CalendarRange,
+      active: yearRangeActive.value,
+      subItems: [
+        {
+          label: "classical_year_recorded",
+          // markRaw, as the menu items land in a reactive array
+          component: markRaw(YearRangeFilter),
+          componentProps: {
+            from: yearFrom.value,
+            to: yearTo.value,
+            earliest,
+            latest,
+            "onUpdate:from": (value: string) => (yearFrom.value = value),
+            "onUpdate:to": (value: string) => (yearTo.value = value),
+          },
+        },
+      ],
+    },
+  ];
+});
 
 const composerMapping = computed(() => work.value?.composers[0]);
 
@@ -332,22 +341,13 @@ const matchesArtist = (r: Recording, id: string): boolean =>
   r.credits.some((c) => c.artist.item_id === id);
 
 const matchedRecordings = computed(() => {
-  if (
-    committed.value &&
-    committedKind.value === "performer" &&
-    performerArtistId.value
-  )
-    return recordings.value.filter((r) =>
-      matchesArtist(r, performerArtistId.value!),
-    );
-  const raw =
-    committed.value && committedKind.value === "text"
-      ? committedTerm.value
-      : query.value;
-  const term = normalizeForFilter(raw.trim());
-  if (!term) return recordings.value;
+  const term = normalizeForFilter(query.value.trim());
+  const id = performerArtistId.value;
   return searchable.value
-    .filter((s) => s.haystack.includes(term))
+    .filter(
+      (s) =>
+        (!id || matchesArtist(s.r, id)) && (!term || s.haystack.includes(term)),
+    )
     .map((s) => s.r);
 });
 
@@ -493,19 +493,13 @@ const heroItem = computed<Work | undefined>(() => {
 
 const resetFilter = () => {
   clearYearRange();
-  query.value = "";
-  committed.value = false;
-  committedKind.value = null;
-  committedTerm.value = "";
+  closeSearch();
   performerArtistId.value = null;
 };
 
 const restoreFilter = useBackFilter(
   () => ({
     query: query.value,
-    committed: committed.value,
-    committedKind: committedKind.value,
-    committedTerm: committedTerm.value,
     performerArtistId: performerArtistId.value,
     yearFrom: yearFrom.value,
     yearTo: yearTo.value,
@@ -514,9 +508,6 @@ const restoreFilter = useBackFilter(
   }),
   (saved) => {
     query.value = saved.query;
-    committed.value = saved.committed;
-    committedKind.value = saved.committedKind;
-    committedTerm.value = saved.committedTerm;
     performerArtistId.value = saved.performerArtistId;
     yearFrom.value = saved.yearFrom;
     yearTo.value = saved.yearTo;
@@ -588,18 +579,12 @@ onBeforeUnmount(() => {
   unsubUpdates();
 });
 
-// A performer-context arrival pre-commits the filter to that performer. Only
-// truthy values drive this, as clearing the param (Show all / banner edit) must
-// not clobber the local input state those handlers set themselves.
+// A performer-context arrival shows that performer's recordings alone. Only
+// truthy values drive this, as Show all clears the performer itself.
 watch(
   () => props.filterByArtistId,
   (id) => {
-    if (!id) return;
-    performerArtistId.value = id;
-    committedKind.value = "performer";
-    committed.value = true;
-    committedTerm.value = "";
-    query.value = "";
+    if (id) performerArtistId.value = id;
   },
   { immediate: true },
 );
@@ -609,31 +594,9 @@ const dropArtistParam = () => {
     router.replace({ path: `/classical/works/${props.id}` });
 };
 
-const commitFilter = () => {
-  const term = query.value.trim();
-  if (!term) return;
-  committedTerm.value = term;
-  committedKind.value = "text";
-  committed.value = true;
-};
-
-// Banner → editable input, pre-filled with the active term so it can be tweaked.
-const editFilter = () => {
-  if (committedKind.value === "performer") {
-    query.value = performerName.value;
-    dropArtistParam();
-  } else {
-    query.value = committedTerm.value;
-  }
-  committed.value = false;
-  committedKind.value = null;
-  committedTerm.value = "";
-  performerArtistId.value = null;
-};
-
-const clearFilter = () => {
+const clearPerformer = () => {
   dropArtistParam();
-  resetFilter();
+  performerArtistId.value = null;
 };
 
 const playRecording = (r: Recording, evt: Event) => {
@@ -798,28 +761,6 @@ function groupByMovement(
 .work-meta-sep {
   margin: 0 4px;
   opacity: 0.5;
-}
-
-/* on the heading line, wrapping under itself when the line is too narrow */
-.recordings-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  min-width: 0;
-}
-
-.recordings-filter {
-  min-width: 0;
-}
-
-.recordings-controls--banner {
-  justify-content: space-between;
-}
-
-.recordings-controls--banner .recordings-filter {
-  order: -1;
 }
 
 .recordings-list {

@@ -92,10 +92,8 @@ function performerSubmenuEntry(
   router: Router,
 ): ContextMenuItem {
   return {
-    label: qualifier
-      ? "classical_performer_with_qualifier"
-      : "classical_role_label_performer",
-    labelArgs: qualifier ? [name, qualifier] : [name],
+    label: qualifier ? "classical_performer_with_qualifier" : name,
+    labelArgs: qualifier ? [name, qualifier] : undefined,
     icon: Users,
     action: () => router.push(`/classical/performers/${artistId}`),
   };

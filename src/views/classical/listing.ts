@@ -42,6 +42,7 @@ import {
   type Ref,
 } from "vue";
 import type { RouteLocationRaw, Router } from "vue-router";
+import { toast } from "vue-sonner";
 
 /** The toolbar menu a classical page hands to the Classical view. */
 export interface ClassicalMenu {
@@ -53,7 +54,7 @@ export interface ClassicalMenu {
 }
 
 /** A page's text filter, for the Classical view to show in its toolbar. */
-export interface ClassicalMenuSearch {
+interface ClassicalMenuSearch {
   text: string;
   placeholder: string;
   open: boolean;
@@ -97,7 +98,7 @@ export type ClassicalListingType =
   | ListingType.CLASSICAL_WORKS
   | ListingType.CLASSICAL_OTHER_TRACKS;
 
-export interface ClassicalSortOptions {
+interface ClassicalSortOptions {
   // name the choice is stored under
   itemtype: string;
   listing: ClassicalListingType;
@@ -109,7 +110,7 @@ export interface ClassicalSortOptions {
   labels?: Partial<Record<SortField, string>>;
 }
 
-export interface ClassicalListingOptions extends Omit<
+interface ClassicalListingOptions extends Omit<
   ClassicalSortOptions,
   "onChange"
 > {
@@ -310,14 +311,18 @@ export function useClassicalSort(options: ClassicalSortOptions) {
   );
   const sorting = useLibrarySorting(sortOptions, sortBy);
 
-  // Without the choices (an older server) the list keeps the server default.
+  // Without the choices the list still loads, in the server's default order.
   const ready = api
     .getSortOptions(options.listing)
     .then((list) => {
       sortOptions.value = list;
       sortBy.value = sorting.normalizeSortBy(sortBy.value);
     })
-    .catch(() => undefined);
+    .catch(() => {
+      toast.error($t("settings.error_loading_sort_options"), {
+        id: "library-sort-options-error",
+      });
+    });
 
   const selectedOption = computed(() =>
     sortOptions.value.find((o) => o.field === sorting.current.value.field),

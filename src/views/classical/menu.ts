@@ -79,8 +79,8 @@ export async function openRecordingMenu(
 }
 
 // Workless tracks reuse the standard track menu, plus the classical entries
-// spliced near "Go to album". "Go to work" is omitted entirely, as there is
-// no work to navigate to, so the spec opts for absence over a greyed entry.
+// spliced near "Go to album". With no work to go to, "Go to work" is left out
+// rather than shown greyed out.
 export async function openOtherTrackMenu(
   track: Track,
   router: Router,
@@ -108,7 +108,7 @@ export async function openOtherTrackMenu(
  * The standard artist menu for a composer or performer, without play entries
  * and led by Show info, which opens the artist's normal page.
  */
-export async function classicalArtistMenuItems(
+async function classicalArtistMenuItems(
   artist: Artist,
   router: Router,
 ): Promise<ContextMenuItem[]> {

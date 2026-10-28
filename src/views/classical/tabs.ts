@@ -1,12 +1,12 @@
 import { useRoute, useRouter } from "vue-router";
 
-export const CLASSICAL_TABS = ["composers", "works", "performers"] as const;
+const CLASSICAL_TABS = ["composers", "works", "performers"] as const;
 
 export type ClassicalTab = (typeof CLASSICAL_TABS)[number];
 
 export const CLASSICAL_DEFAULT_TAB: ClassicalTab = "composers";
 
-export const CLASSICAL_LAST_TAB_KEY = "frontend.classical.last_tab";
+const CLASSICAL_LAST_TAB_KEY = "frontend.classical.last_tab";
 
 export function isClassicalTab(value: unknown): value is ClassicalTab {
   return (

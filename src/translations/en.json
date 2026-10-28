@@ -127,6 +127,8 @@
     "radios": "Radio",
     "read_more": "read more",
     "refresh_item": "Refresh item",
+    "refreshed_work": "Refreshed {0}",
+    "refreshing_work": "Refreshing {0} from MusicBrainz, which can take a minute or two",
     "remove_library": "Remove from library",
     "remove_playlist": "Remove from playlist",
     "review": "Review",

@@ -188,10 +188,13 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { normalizeForFilter } from "@/helpers/utils";
+import api from "@/plugins/api";
 import {
+  EventType,
   ImageType,
   WorkType,
   type Artist,
+  type EventMessage,
   type ItemMapping,
   type Recording,
   type Track,
@@ -228,10 +231,13 @@ import { playTracks } from "@/views/classical/playback";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { Music } from "@lucide/vue";
 import { useElementSize } from "@vueuse/core";
-import { computed, ref, useTemplateRef, watch } from "vue";
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorkDetail" });
+
+// waits out the burst of updates a refresh of the work's tree sends
+const ITEM_UPDATE_DELAY_MS = 2000;
 
 const props = defineProps<{
   id: string;
@@ -529,6 +535,14 @@ const load = async (id: string) => {
   selectedMovements.value = [];
   selectedArias.value = [];
   restoreFilter();
+  if (await fetchPage(id)) loading.value = false;
+};
+
+// Fills the page with the work as the server has it now. False when the id is
+// unknown or a newer fetch has taken over the page.
+let pageFetch = 0;
+const fetchPage = async (id: string): Promise<boolean> => {
+  const fetchId = ++pageFetch;
   try {
     const [w, recs] = await Promise.all([getWork(id), getWorkRecordings(id)]);
     const composerId = w.composers[0]?.item_id;
@@ -536,16 +550,15 @@ const load = async (id: string) => {
     const c = composerId
       ? await getClassicalArtist(composerId).catch(() => undefined)
       : undefined;
-    // a newer load has taken over the page
-    if (id !== props.id) return;
+    if (fetchId !== pageFetch) return false;
     composer.value = c;
     work.value = w;
     recordings.value = recs;
+    return true;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does
-    return;
+    return false;
   }
-  loading.value = false;
 };
 
 watch(
@@ -553,6 +566,27 @@ watch(
   (id) => load(id),
   { immediate: true },
 );
+
+// A refresh reloads the whole tree of works, so a part's page updates too. The
+// update carries the work alone, so once the updates stop the page fetches its
+// movements and recordings again, keeping the filters.
+let updateTimer: ReturnType<typeof setTimeout> | undefined;
+const unsubUpdates = api.subscribe(
+  EventType.MEDIA_ITEM_UPDATED,
+  (evt: EventMessage) => {
+    const uri = work.value?.uri;
+    if (!uri || evt.object_id !== uri) return;
+    clearTimeout(updateTimer);
+    updateTimer = setTimeout(() => {
+      // the page may have moved on to another work meanwhile
+      if (work.value?.uri === uri) fetchPage(props.id);
+    }, ITEM_UPDATE_DELAY_MS);
+  },
+);
+onBeforeUnmount(() => {
+  clearTimeout(updateTimer);
+  unsubUpdates();
+});
 
 // A performer-context arrival pre-commits the filter to that performer. Only
 // truthy values drive this, as clearing the param (Show all / banner edit) must

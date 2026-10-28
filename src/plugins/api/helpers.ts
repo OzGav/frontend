@@ -233,9 +233,11 @@ export const itemIsAvailable = function (
   if (item.media_type == MediaType.FOLDER) return true;
   if (item.media_type == MediaType.COLLECTION && item.provider == "library")
     return true;
+  // library-only items, with no music service behind them
   if (
     (item.media_type == MediaType.GENRE ||
-      item.media_type == MediaType.GENRE_ALIAS) &&
+      item.media_type == MediaType.GENRE_ALIAS ||
+      item.media_type == MediaType.WORK) &&
     item.provider == "library"
   )
     return true;

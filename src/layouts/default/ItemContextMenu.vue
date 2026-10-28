@@ -1146,12 +1146,13 @@ export const getContextMenuItems = async function (
   }
 
   // update metadata
-  // podcast episodes are never stored in the library, so there is nothing to write to
+  // podcast episodes are never stored in the library, so there is nothing to
+  // write to; a work's data all comes from MusicBrainz, which Refresh item reads
   if (
     managesLibrary &&
     items.length === 1 &&
     items[0] == parentItem &&
-    ![MediaType.COLLECTION, MediaType.PODCAST_EPISODE].includes(
+    ![MediaType.COLLECTION, MediaType.PODCAST_EPISODE, MediaType.WORK].includes(
       items[0].media_type,
     )
   ) {
@@ -1235,7 +1236,12 @@ export const getContextMenuItems = async function (
       label: unavailable ? "find_on_music_services" : "refresh_item",
       labelArgs: [],
       action: async () => {
+        // a work is read again from MusicBrainz with all the works of its
+        // tree, which takes a while for a large one
+        const isWork = items[0].media_type === MediaType.WORK;
+        if (isWork) toast.info($t("refreshing_work", [items[0].name]));
         const updatedInfo = await api.refreshItem(items[0]);
+        if (isWork) toast.success($t("refreshed_work", [items[0].name]));
         if (updatedInfo) {
           // Emit synthetic MEDIA_ITEM_UPDATED event to trigger UI refresh
           // This ensures child components (like track listings) also refresh
@@ -1399,9 +1405,9 @@ export const getContextMenuItems = async function (
     managesLibrary &&
     items.every(
       (i) =>
-        i.media_type !== MediaType.GENRE &&
-        i.media_type !== MediaType.COLLECTION &&
-        i.provider === "library",
+        ![MediaType.GENRE, MediaType.COLLECTION, MediaType.WORK].includes(
+          i.media_type,
+        ) && i.provider === "library",
     )
   ) {
     contextMenuItems.push({

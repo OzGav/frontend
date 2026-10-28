@@ -6,7 +6,6 @@
     :backdrop="backdrop"
     :height="440"
     :phone-height="340"
-    :hide-menu="!artist"
     :editable-rows="false"
     :leading-menu-items="leadingMenuItems"
   >
@@ -65,8 +64,7 @@ const props = defineProps<Props>();
 
 const router = useRouter();
 
-// A composer or performer gets the artist page menu, led by Show info; a work
-// has none.
+// A composer or performer gets the artist page menu, led by Show info.
 const artist = computed(() =>
   props.item?.media_type === MediaType.ARTIST
     ? (props.item as Artist)

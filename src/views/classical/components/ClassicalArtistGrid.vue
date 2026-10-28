@@ -2,11 +2,12 @@
   <div v-if="loading && !items.length && viewMode === 'list'">
     <ListViewSkeleton v-for="n in 8" :key="n" />
   </div>
+  <!-- The card's 8px padding sits outside the line the rest of the page uses. -->
   <ul
     v-else
     ref="gridEl"
-    class="artist-grid"
-    :class="`artist-grid--${viewMode}`"
+    class="artist-grid m-[0_-8px] grid list-none p-0"
+    :class="layout.grid"
     :style="gridStyle"
   >
     <template v-if="loading && !items.length">
@@ -15,11 +16,13 @@
       </li>
     </template>
     <template v-else>
+      <!-- The standard panel card, padded with a hover tile. -->
       <li
         v-for="{ item, image } in rows"
         :key="item.id"
         v-hold="(e: TouchEvent) => onHold(e, item.artist)"
-        class="artist-card"
+        class="flex min-w-0 cursor-pointer rounded-[8px] [transition:background_0.15s_ease]"
+        :class="layout.card"
         @click.capture="swallowClickAfterHold"
         @click="navigateOnRowClick($event, router, item.link)"
         @contextmenu.prevent="openArtistMenu(item.artist, router, $event)"
@@ -27,42 +30,60 @@
       >
         <router-link
           :to="item.link"
-          class="artist-card-link"
+          class="flex min-w-0 text-inherit no-underline"
+          :class="layout.link"
           :aria-label="item.name"
         >
-          <div class="artist-thumb">
-            <img v-if="image" :src="image" :alt="item.name" loading="lazy" />
+          <div class="relative block overflow-hidden" :class="layout.thumb">
+            <img
+              v-if="image"
+              :src="image"
+              :alt="item.name"
+              loading="lazy"
+              class="block size-full object-cover"
+            />
+            <!-- the standard banner artwork, kept quiet in grey -->
             <div
               v-else
-              class="artist-thumb-placeholder"
+              class="size-full [filter:grayscale(1)]"
               :style="{ background: bannerBackground }"
             >
+              <!-- sized from the picture box, so it scales with the card -->
               <component
                 :is="placeholderIcon"
-                class="artist-placeholder-icon"
+                class="absolute inset-0 m-auto aspect-[1] h-[34%] w-auto text-[rgba(255,255,255,0.7)]"
                 aria-hidden="true"
               />
             </div>
           </div>
-          <div class="artist-meta">
-            <div class="artist-name">{{ item.name }}</div>
+          <div class="flex min-w-0 flex-col" :class="layout.meta">
+            <div
+              class="overflow-hidden text-[14px] text-ellipsis whitespace-nowrap"
+              :class="layout.name"
+            >
+              {{ item.name }}
+            </div>
             <template v-if="viewMode === 'list'">
-              <div v-if="item.role || item.lines.length" class="artist-sub">
+              <div v-if="item.role || item.lines.length" :class="layout.sub">
                 {{ [item.role, ...item.lines].filter(Boolean).join(" · ") }}
               </div>
             </template>
             <template v-else>
-              <div v-if="item.role" class="artist-sub">
+              <div v-if="item.role" :class="layout.sub">
                 {{ item.role }}
               </div>
-              <div v-for="line in item.lines" :key="line" class="artist-sub">
+              <div v-for="line in item.lines" :key="line" :class="layout.sub">
                 {{ line }}
               </div>
             </template>
           </div>
         </router-link>
         <!-- the actions row of the standard panel cards -->
-        <div class="artist-actions" @click.stop>
+        <div
+          class="flex h-[32px] items-center gap-[10px]"
+          :class="layout.actions"
+          @click.stop
+        >
           <FavouriteButton
             v-if="showHeart && canHoldFavorite(item.artist)"
             :item="item.artist"
@@ -70,7 +91,7 @@
           <MAButton
             variant="list"
             icon="mdi-dots-vertical"
-            class="artist-menu-btn"
+            class="ml-auto"
             :aria-label="`${$t('more_options')}: ${item.name}`"
             @click.stop="openArtistMenu(item.artist, router, $event)"
           />
@@ -177,197 +198,63 @@ const gridStyle = computed(() => {
   };
 });
 
+const layout = computed(() => LAYOUTS[props.viewMode]);
+
 const SQUARE_MIN_WIDTH = 160;
 // matches the grid gap
 const GRID_GAP = 8;
+
+/** The classes of a card's elements that differ between the views. */
+interface CardLayout {
+  grid: string;
+  card: string;
+  link: string;
+  thumb: string;
+  meta: string;
+  name: string;
+  sub: string;
+  actions: string;
+}
+
+const SUB_CLASS =
+  "overflow-hidden text-[12px] text-ellipsis whitespace-nowrap text-[color:rgba(var(--v-theme-on-surface),0.6)]";
+
+const PICTURE_LAYOUT: Omit<CardLayout, "thumb"> = {
+  grid: "gap-[8px]",
+  card: "flex-col p-[8px] max-[501px]:p-[4px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),0.08)]",
+  link: "flex-col",
+  meta: "mt-[10px] max-[501px]:mt-[4px]",
+  name: "font-semibold",
+  sub: `${SUB_CLASS} mt-[2px] max-[501px]:mt-0`,
+  actions: "mt-[8px]",
+};
+
+const PICTURE_THUMB_CLASS =
+  "rounded-[8px] [box-shadow:0_2px_8px_rgba(0,0,0,0.25),inset_0_0_0_1px_rgba(255,255,255,0.04)]";
+
+const LAYOUTS: Record<ClassicalViewMode, CardLayout> = {
+  // fanart.tv background art proportions
+  fanart: { ...PICTURE_LAYOUT, thumb: `aspect-[16/9] ${PICTURE_THUMB_CLASS}` },
+  thumbs: { ...PICTURE_LAYOUT, thumb: `aspect-[1/1] ${PICTURE_THUMB_CLASS}` },
+  // Multi-column list, laid out like an artist's top tracks.
+  list: {
+    grid: "auto-rows-[56px] grid-cols-[repeat(3,minmax(0,1fr))] gap-[0_16px] max-[769px]:m-0 max-[769px]:grid-cols-[minmax(0,1fr)]",
+    card: "h-[56px] items-center gap-[12px] p-[0_8px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]",
+    link: "flex-1 items-center gap-[12px]",
+    thumb: "size-[40px] flex-none rounded-[6px]",
+    meta: "flex-1",
+    name: "font-medium",
+    sub: SUB_CLASS,
+    actions: "flex-none",
+  },
+};
 </script>
 
 <style scoped>
-/* The card's 8px padding sits outside the line the rest of the page uses. */
 .artist-grid {
-  list-style: none;
-  margin: 0 -8px;
-  padding: 0;
-  display: grid;
   grid-template-columns: repeat(
     auto-fill,
     minmax(var(--artist-card-min, 220px), 1fr)
   );
-  gap: 8px;
-}
-
-/* The standard panel card, padded with a hover tile. */
-.artist-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.artist-card:hover {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.artist-card-link {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.artist-thumb {
-  position: relative;
-  display: block;
-  /* fanart.tv background art proportions */
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-.artist-grid--thumbs .artist-thumb {
-  aspect-ratio: 1 / 1;
-}
-
-.artist-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.artist-thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  /* the standard banner artwork, kept quiet in grey */
-  filter: grayscale(1);
-}
-
-/* sized from the picture box, so it scales with the card */
-.artist-placeholder-icon {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  height: 34%;
-  width: auto;
-  aspect-ratio: 1;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.artist-meta {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.artist-name {
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.artist-sub {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.artist-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  height: 32px;
-}
-
-.artist-menu-btn {
-  margin-left: auto;
-}
-
-@media (max-width: 500px) {
-  .artist-card {
-    padding: 4px;
-  }
-  .artist-meta {
-    margin-top: 4px;
-  }
-  .artist-sub {
-    margin-top: 0;
-  }
-}
-
-/* Multi-column list, laid out like an artist's top tracks. */
-.artist-grid--list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: 56px;
-  gap: 0 16px;
-}
-
-.artist-grid--list .artist-card {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  height: 56px;
-  padding: 0 8px;
-}
-
-.artist-grid--list .artist-card:hover {
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
-}
-
-.artist-grid--list .artist-card-link {
-  flex: 1;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-.artist-grid--list .artist-thumb {
-  width: 40px;
-  height: 40px;
-  flex: none;
-  aspect-ratio: auto;
-  border-radius: 6px;
-  box-shadow: none;
-}
-
-.artist-grid--list .artist-meta {
-  margin-top: 0;
-  flex: 1;
-}
-
-.artist-grid--list .artist-name {
-  font-weight: 500;
-}
-
-.artist-grid--list .artist-sub {
-  margin-top: 0;
-}
-
-.artist-grid--list .artist-actions {
-  margin-top: 0;
-  flex: none;
-}
-
-@media (max-width: 768px) {
-  .artist-grid--list {
-    grid-template-columns: minmax(0, 1fr);
-    margin: 0;
-  }
 }
 </style>

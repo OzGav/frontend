@@ -1,5 +1,5 @@
 <template>
-  <section class="classical-view classical-typography">
+  <section class="classical-typography flex flex-col">
     <Toolbar
       v-if="!fullBleedContent"
       ref="toolbar"
@@ -9,36 +9,46 @@
       :enforce-overflow-menu="true"
       class="classical-toolbar"
     >
+      <!-- The minimum width leaves room for the three tab icons. -->
       <Tabs
         ref="tabs"
         :model-value="activeTab"
-        class="classical-tabs-inline"
+        class="min-w-[8rem] flex-[1_1_auto] pr-[0.75rem] max-[769px]:pr-0"
         :class="{ 'icons-only': iconsOnly }"
       >
-        <TabsList class="classical-tabs w-full h-auto">
+        <TabsList class="w-full h-auto">
           <TabsTrigger
             value="composers"
-            class="classical-tab-trigger"
+            class="classical-tab-trigger min-w-0 overflow-hidden"
             @click="goToTab('composers')"
           >
-            <Feather class="classical-tab-icon" />
-            <span class="classical-tab-label">{{ $t("composers") }}</span>
+            <Feather class="shrink-0" />
+            <span
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              >{{ $t("composers") }}</span
+            >
           </TabsTrigger>
           <TabsTrigger
             value="works"
-            class="classical-tab-trigger"
+            class="classical-tab-trigger min-w-0 overflow-hidden"
             @click="goToTab('works')"
           >
-            <Music3 class="classical-tab-icon" />
-            <span class="classical-tab-label">{{ $t("works") }}</span>
+            <Music3 class="shrink-0" />
+            <span
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              >{{ $t("works") }}</span
+            >
           </TabsTrigger>
           <TabsTrigger
             value="performers"
-            class="classical-tab-trigger"
+            class="classical-tab-trigger min-w-0 overflow-hidden"
             @click="goToTab('performers')"
           >
-            <Users class="classical-tab-icon" />
-            <span class="classical-tab-label">{{ $t("performers") }}</span>
+            <Users class="shrink-0" />
+            <span
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              >{{ $t("performers") }}</span
+            >
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -83,8 +93,8 @@
     />
     <v-divider v-if="!fullBleedContent" />
     <div
-      class="classical-tab-content"
-      :class="{ 'full-bleed': fullBleedContent }"
+      class="min-h-0 flex-1"
+      :class="fullBleedContent ? 'p-0' : 'p-[0.75rem_1rem_1rem]'"
     >
       <LinkProgressAlert v-if="!fullBleedContent" />
       <router-view />
@@ -234,11 +244,6 @@ const goToTab = useClassicalTabNavigation();
 </script>
 
 <style scoped>
-.classical-view {
-  display: flex;
-  flex-direction: column;
-}
-
 /* Inherited by all child routes; referenced by inner components for movement titles. */
 .classical-typography {
   --font-classical-serif:
@@ -294,36 +299,6 @@ const goToTab = useClassicalTabNavigation();
   padding-right: 2rem;
 }
 
-.classical-tabs-inline {
-  flex: 1 1 auto;
-  /* room for the three tab icons */
-  min-width: 8rem;
-  padding-right: 0.75rem;
-}
-
-.classical-tabs {
-  width: 100%;
-}
-
-.classical-tab-trigger {
-  font-weight: 600;
-  line-height: 1.1;
-  padding: 0.35rem 0.6rem;
-  gap: 0.4rem;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.classical-tab-label {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.classical-tab-icon {
-  flex-shrink: 0;
-}
-
 /* Pin icon size and font size against TabsTrigger's baked-in defaults
    (text-sm and [&_svg]:size-4). */
 :deep(.classical-tab-trigger svg) {
@@ -341,26 +316,9 @@ const goToTab = useClassicalTabNavigation();
   .classical-toolbar :deep(.v-toolbar-title__placeholder) {
     padding-right: 0.5rem;
   }
-  .classical-tabs-inline {
-    padding-right: 0;
-  }
 }
 
 .icons-only .classical-tab-label {
   display: none;
-}
-
-.icons-only .classical-tab-trigger {
-  padding: 0.3rem 0.5rem;
-}
-
-.classical-tab-content {
-  flex: 1;
-  min-height: 0;
-  padding: 0.75rem 1rem 1rem;
-}
-
-.classical-tab-content.full-bleed {
-  padding: 0;
 }
 </style>

@@ -1,4 +1,5 @@
 import { LayoutGrid, LayoutList } from "@lucide/vue";
+import type { Component } from "vue";
 
 // the small heading above each group of controls in the Filters panel
 export const SECTION_LABEL_CLASS =
@@ -8,8 +9,16 @@ export const SECTION_LABEL_CLASS =
 export const MENU_SECTION_LABEL_CLASS =
   "text-xs text-muted-foreground uppercase";
 
+/** A way a listing can show its items, as the sort menu offers it. */
+export interface ListingViewOption {
+  value: string;
+  label: string;
+  shortLabel: string;
+  icon: Component;
+}
+
 // the ways a library page can show its items
-export const VIEW_MODES = [
+export const VIEW_MODES: readonly ListingViewOption[] = [
   {
     value: "panel",
     label: "view.panel",
@@ -22,6 +31,4 @@ export const VIEW_MODES = [
     shortLabel: "view.list_short",
     icon: LayoutList,
   },
-] as const;
-
-export type ListingViewMode = (typeof VIEW_MODES)[number]["value"];
+];

@@ -42,9 +42,9 @@
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <template v-if="search" #append>
+      <template v-if="menu" #append>
         <Button
-          v-if="!searchButtonCloses && !searchSlotShown"
+          v-if="search && !searchButtonCloses && !searchSlotShown"
           ref="searchButton"
           variant="ghost"
           size="icon-lg"
@@ -56,7 +56,7 @@
           <Search class="size-[22px]" />
         </Button>
         <Transition
-          v-if="!store.mobileLayout"
+          v-if="search && !store.mobileLayout"
           name="listing-search"
           @before-enter="searchSlotShown = true"
           @before-leave="onSearchSlotLeave"
@@ -96,6 +96,18 @@
             </SearchInput>
           </div>
         </Transition>
+        <ListingToolbarControls
+          :sort-options="menu.sort.options"
+          :sort-by="menu.sort.sortBy"
+          :view-mode="menu.sort.viewMode ?? ''"
+          :show-view-modes="!!menu.sort.viewMode"
+          :views="CLASSICAL_VIEWS"
+          :filters="[]"
+          :active-filter-count="0"
+          :compact="store.mobileLayout"
+          @sort-by="menu.sort.setSort"
+          @view-mode="menu.sort.setViewMode"
+        />
       </template>
     </Toolbar>
     <div
@@ -135,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+import ListingToolbarControls from "@/components/listing-toolbar/ListingToolbarControls.vue";
 import Toolbar from "@/components/Toolbar.vue";
 import { Button } from "@/components/ui/button";
 import { InputGroupAddon, InputGroupButton } from "@/components/ui/input-group";
@@ -150,6 +163,7 @@ import {
 import LinkProgressAlert from "@/views/classical/components/LinkProgressAlert.vue";
 import {
   CLASSICAL_MENU_KEY,
+  CLASSICAL_VIEWS,
   type ClassicalMenu,
 } from "@/views/classical/listing";
 import { Feather, Music3, Piano, Search, Users, X } from "@lucide/vue";

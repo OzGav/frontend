@@ -8,6 +8,7 @@ import {
 } from "@/composables/userPreferences";
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { normalizeGridSize } from "@/helpers/grid_size";
+import type { ListingFilter } from "@/helpers/listing_filters";
 import api from "@/plugins/api";
 import {
   SortDirection,
@@ -52,6 +53,9 @@ export interface ClassicalMenu {
   search?: ClassicalMenuSearch;
   // the page's sort, and its view where it offers more than one
   sort: ClassicalMenuSort;
+  // the page's filters, shown in the Filters panel
+  filters: ListingFilter[];
+  clearFilters: () => void;
 }
 
 /** A page's sort and view, for the Classical view to show in its toolbar. */
@@ -152,8 +156,8 @@ interface ClassicalListingOptions extends Omit<
   load: (sort: ClassicalSort) => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
-  // the tab's own filters, shown after the favourites filter; read as the
-  // menu is built, so their state must exist before this is called
+  // the tab's own filters, shown in its menu; read as the menu is built, so
+  // their state must exist before this is called
   filters?: () => ToolBarMenuItem[];
   // adds a text filter, opened from a toolbar button
   search?: { text: Ref<string>; placeholder: () => string };
@@ -163,9 +167,9 @@ interface ClassicalListingOptions extends Omit<
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode, cover size and the tab's own
  * filters. The settings are kept per user like those of the other library
- * listings, the menu, text filter and sort show in the Classical view's
- * toolbar while the tab is open, and going back to the tab returns it to where
- * it was scrolled.
+ * listings, the menu, text filter, sort and filters show in the Classical
+ * view's toolbar while the tab is open, and going back to the tab returns it
+ * to where it was scrolled.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
   const { preferences: prefs, save } = useClassicalPreferences(
@@ -239,20 +243,26 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     ],
   });
 
-  const items = computed<ToolBarMenuItem[]>(() => {
-    const list: ToolBarMenuItem[] = [];
+  const filters = computed<ListingFilter[]>(() => {
+    const list: ListingFilter[] = [];
     if (options.views) {
       list.push({
-        label: "tooltip.filter_favorites",
+        kind: "toggle",
+        id: "favorites",
+        label: $t("listing_filters.favorites_only"),
         icon: Heart,
         active: favoritesOnly.value,
-        overflowAllowed: true,
-        action: () => {
+        toggle: () => {
           favoritesOnly.value = !favoritesOnly.value;
           save("favoriteFilter", favoritesOnly.value);
         },
       });
     }
+    return list;
+  });
+
+  const items = computed<ToolBarMenuItem[]>(() => {
+    const list: ToolBarMenuItem[] = [];
     if (options.filters) list.push(...options.filters());
     list.push({
       label: "tooltip.refresh",
@@ -288,6 +298,8 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       viewMode: options.views ? viewMode.value : undefined,
       setViewMode,
     },
+    filters: filters.value,
+    clearFilters: () => filters.value.forEach(clearFilter),
   }));
 
   return { viewMode, favoritesOnly, gridSize, loading, reload };
@@ -430,6 +442,18 @@ const PREFS_PATH = "classical";
 
 // the most columns the grid size slider allows elsewhere
 const MAX_GRID_COLUMNS = 12;
+
+// turns a filter off through its own handler, which saves the change
+function clearFilter(filter: ListingFilter) {
+  switch (filter.kind) {
+    case "toggle":
+      if (filter.active) filter.toggle();
+      return;
+    case "multi":
+      if (filter.set) filter.set([]);
+      else [...filter.selected].forEach(filter.toggle);
+  }
+}
 
 function isViewMode(value: unknown): value is ClassicalViewMode {
   return CLASSICAL_VIEWS.some((view) => view.value === value);

@@ -10,14 +10,6 @@
       </div>
       <!-- beside the title, e.g. a menu -->
       <slot name="append"></slot>
-      <!-- filters, on a line of their own on phones -->
-      <div
-        v-if="$slots.controls"
-        class="classical-section__controls"
-        :class="{ 'classical-section__controls--own-line': controlsOwnLine }"
-      >
-        <slot name="controls"></slot>
-      </div>
     </div>
     <!-- under the heading, e.g. a phone's search field -->
     <slot name="below-head"></slot>
@@ -32,8 +24,6 @@ defineProps<{
   title: string;
   // short text beside the title, e.g. a count
   meta?: string;
-  // the filters take the line under the title at any width
-  controlsOwnLine?: boolean;
 }>();
 </script>
 
@@ -43,7 +33,7 @@ defineProps<{
   padding: 26px 28px 0;
 }
 
-/* filters that do not fit beside the title move to a line of their own */
+/* controls that do not fit beside the title wrap under it */
 .classical-section__head {
   display: flex;
   flex-wrap: wrap;
@@ -83,31 +73,6 @@ defineProps<{
   }
   .classical-section__title {
     font-size: 19px;
-  }
-}
-
-.classical-section__controls {
-  display: flex;
-  min-width: 0;
-  margin-left: auto;
-}
-
-.classical-section__controls--own-line {
-  flex-basis: 100%;
-  margin-left: 0;
-}
-
-.classical-section__controls--own-line > :slotted(*) {
-  flex: 1;
-}
-
-@media (max-width: 539px) {
-  .classical-section__controls {
-    flex-basis: 100%;
-  }
-
-  .classical-section__controls > :slotted(*) {
-    flex: 1;
   }
 }
 </style>

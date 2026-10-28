@@ -5,7 +5,6 @@
       :icon="Piano"
       :title="$t('classical')"
       :menu-items="menu?.items"
-      :menu-active="menu?.active"
       :enforce-overflow-menu="true"
       class="classical-toolbar"
     >

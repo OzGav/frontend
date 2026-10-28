@@ -40,6 +40,17 @@
         v-if="filter.kind === 'multi'"
         :filter="filter"
       />
+      <div
+        v-else-if="filter.kind === 'custom'"
+        role="group"
+        :aria-labelledby="controlId(filter.id)"
+        class="flex flex-col gap-2"
+      >
+        <span :id="controlId(filter.id)" :class="SECTION_LABEL_CLASS">
+          {{ filter.label }}
+        </span>
+        <component :is="filter.component" v-bind="filter.props" />
+      </div>
       <div v-else class="flex flex-col gap-2">
         <span :id="controlId(filter.id)" :class="SECTION_LABEL_CLASS">
           {{ filter.label }}
@@ -71,9 +82,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import type {
-  ListingChoiceFilter,
   ListingFilter,
-  ListingMultiFilter,
   ListingToggleFilter,
 } from "@/helpers/listing_filters";
 import { computed, useId } from "vue";
@@ -100,7 +109,7 @@ const toggles = computed(() =>
 );
 const fields = computed(() =>
   props.filters.filter(
-    (filter): filter is ListingMultiFilter | ListingChoiceFilter =>
+    (filter): filter is Exclude<ListingFilter, ListingToggleFilter> =>
       filter.kind !== "toggle",
   ),
 );

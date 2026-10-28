@@ -72,13 +72,13 @@
 
 <script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
-import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import type { ListingCustomFilter } from "@/helpers/listing_filters";
 import { normalizeForFilter } from "@/helpers/utils";
 import { ListingType, SortField, type Period } from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
-import YearRangeMenuRow from "@/views/classical/components/YearRangeMenuRow.vue";
+import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import {
   navigateOnRowClick,
   useClassicalListing,
@@ -93,7 +93,6 @@ import {
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { CalendarRange } from "@lucide/vue";
 import { computed, markRaw, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
@@ -153,35 +152,40 @@ const workTypeFilter = useWorkTypeFilter(ITEMTYPE, () =>
   works.value.map((w) => w.work_type),
 );
 
-const { from: yearFrom, to: yearTo, matches: matchesYear } = useYearRange();
+const {
+  from: yearFrom,
+  to: yearTo,
+  isActive: yearActive,
+  matches: matchesYear,
+  clear: clearYears,
+} = useYearRange();
 yearFrom.value = preferences.yearFrom ?? "";
 yearTo.value = preferences.yearTo ?? "";
 watch(yearFrom, (value) => save("yearFrom", value));
 watch(yearTo, (value) => save("yearTo", value));
 
-const yearFilterItem = computed<ToolBarMenuItem>(() => ({
-  label: "classical_filter_year",
-  icon: CalendarRange,
-  hide: !hasComposedYears.value,
-  active: !!(yearFrom.value || yearTo.value),
-  closeOnContentClick: false,
-  overflowAllowed: true,
-  subItems: [
-    {
-      label: "classical_filter_year",
-      // markRaw, as the menu items land in a reactive array
-      component: markRaw(YearRangeMenuRow),
-      componentProps: {
-        from: yearFrom.value,
-        to: yearTo.value,
-        earliest: composedBounds.value.earliest,
-        latest: composedBounds.value.latest,
-        "onUpdate:from": (value: string) => (yearFrom.value = value),
-        "onUpdate:to": (value: string) => (yearTo.value = value),
-      },
-    },
-  ],
-}));
+const yearFilter = computed<ListingCustomFilter | undefined>(() =>
+  hasComposedYears.value
+    ? {
+        kind: "custom",
+        id: "year_composed",
+        label: t("sort.year_composed"),
+        // markRaw, as the filters land in a reactive object
+        component: markRaw(YearRangeFilter),
+        props: {
+          from: yearFrom.value,
+          to: yearTo.value,
+          earliest: composedBounds.value.earliest,
+          latest: composedBounds.value.latest,
+          unlabelled: true,
+          "onUpdate:from": (value: string) => (yearFrom.value = value),
+          "onUpdate:to": (value: string) => (yearTo.value = value),
+        },
+        activeCount: Number(yearActive.value),
+        clear: clearYears,
+      }
+    : undefined,
+);
 
 const { loading, reload } = useClassicalListing({
   itemtype: ITEMTYPE,
@@ -192,8 +196,11 @@ const { loading, reload } = useClassicalListing({
     text: search,
     placeholder: () => t("classical_filter_works_placeholder"),
   },
-  filters: () => [periodFilter.filter.value, workTypeFilter.filter.value],
-  menuItems: () => [yearFilterItem.value],
+  filters: () => [
+    periodFilter.filter.value,
+    workTypeFilter.filter.value,
+    yearFilter.value,
+  ],
   load: async (sort) => {
     works.value = (await getWorks(sort)).map(
       ({ work, recording_count, part_names, period }) => {

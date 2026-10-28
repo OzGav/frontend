@@ -4,8 +4,6 @@
     :class="{ 'classical-hero--phone': isPhone }"
     :item="item"
     :backdrop="backdrop"
-    :height="440"
-    :phone-height="340"
     :editable-rows="false"
     :leading-menu-items="leadingMenuItems"
   >
@@ -15,10 +13,7 @@
     </template>
 
     <template v-if="item" #main>
-      <img v-if="logo" class="classical-hero__logo" :src="logo" alt="" />
-      <h1 :class="logo ? 'sr-only' : 'classical-hero__name'">
-        {{ item.name }}
-      </h1>
+      <DetailHeroTitle :item="item" />
 
       <div v-if="$slots.meta" class="classical-hero__meta">
         <slot name="meta"></slot>
@@ -36,15 +31,11 @@
 import DetailHero from "@/components/details/DetailHero.vue";
 import DetailHeroFavorite from "@/components/details/DetailHeroFavorite.vue";
 import DetailHeroProviders from "@/components/details/DetailHeroProviders.vue";
+import DetailHeroTitle from "@/components/details/DetailHeroTitle.vue";
 import { canHoldFavorite } from "@/helpers/favorites";
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
-import { getImageThumbForItem } from "@/helpers/utils";
-import {
-  ImageType,
-  MediaType,
-  type Artist,
-  type Work,
-} from "@/plugins/api/interfaces";
+import { heroBackdrop } from "@/helpers/hero_backdrop";
+import { MediaType, type Artist, type Work } from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import ClassicalSectionLinks from "@/views/classical/components/ClassicalSectionLinks.vue";
 import { artistShowInfoEntry } from "@/views/classical/menu";
@@ -82,43 +73,10 @@ const favoriteItem = computed(() =>
     : undefined,
 );
 
-// wide art (fanart, then landscape) suits the hero; a square thumb is the
-// last resort
-const backdrop = computed(() => {
-  if (!props.item) return undefined;
-  return (
-    getImageThumbForItem(props.item, ImageType.FANART) ||
-    getImageThumbForItem(props.item, ImageType.LANDSCAPE) ||
-    getImageThumbForItem(props.item, ImageType.THUMB)
-  );
-});
-
-const logo = computed(() =>
-  props.item ? getImageThumbForItem(props.item, ImageType.LOGO) : undefined,
-);
+const backdrop = computed(() => heroBackdrop(props.item));
 </script>
 
 <style scoped>
-.classical-hero__logo {
-  height: 80px;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-  object-position: left;
-}
-.classical-hero__name {
-  margin: 0;
-  font-size: 48px;
-  font-weight: 500;
-  letter-spacing: -1.2px;
-  line-height: 1.2;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .classical-hero__meta {
   display: flex;
   flex-direction: column;
@@ -130,13 +88,6 @@ const logo = computed(() =>
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
-.classical-hero--phone .classical-hero__name {
-  font-size: 34px;
-  letter-spacing: -0.8px;
-}
-.classical-hero--phone .classical-hero__logo {
-  height: 56px;
-}
 .classical-hero--phone .classical-hero__meta {
   font-size: 14px;
 }

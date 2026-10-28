@@ -1,14 +1,12 @@
 <template>
   <!-- headed like the rows of the standard detail pages -->
   <section class="classical-section">
-    <div class="classical-section__head">
-      <div class="classical-section__titles">
-        <h2 class="classical-section__title">{{ title }}</h2>
-        <!-- a note on the title, e.g. a footnote mark -->
+    <div
+      class="mb-[8px] flex flex-wrap items-center justify-between gap-[10px]"
+    >
+      <DetailSectionTitle :title="title" :meta="meta" align="baseline">
         <slot name="title-append"></slot>
-        <span v-if="meta" class="classical-section__meta">{{ meta }}</span>
-      </div>
-      <!-- beside the title, e.g. a menu -->
+      </DetailSectionTitle>
       <slot name="append"></slot>
     </div>
     <!-- under the heading, e.g. a phone's search field -->
@@ -18,6 +16,8 @@
 </template>
 
 <script setup lang="ts">
+import DetailSectionTitle from "@/components/details/DetailSectionTitle.vue";
+
 defineOptions({ name: "ClassicalSection" });
 
 defineProps<{
@@ -28,51 +28,14 @@ defineProps<{
 </script>
 
 <style scoped>
-/* MediaRowList's heading and spacing, so lists line up with the text above */
+/* MediaRowList's spacing, so lists line up with the text above */
 .classical-section {
   padding: 26px 28px 0;
-}
-
-/* controls that do not fit beside the title wrap under it */
-.classical-section__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.classical-section__titles {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-}
-
-.classical-section__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: rgb(var(--v-theme-on-background));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.classical-section__meta {
-  font-size: 13px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
   .classical-section {
     padding: 20px 16px 0;
-  }
-  .classical-section__title {
-    font-size: 19px;
   }
 }
 </style>

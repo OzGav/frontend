@@ -1,17 +1,11 @@
 <template>
   <article class="recording-card" :class="{ expanded }">
-    <div
-      v-hold="(e: TouchEvent) => onHold(e)"
-      class="recording-header-row classical-play-row"
-      @click.capture="swallowClickAfterHold"
-      @contextmenu.prevent="$emit('menu-recording', recording, $event)"
-      @touchstart.passive="onTouchStart"
+    <ClassicalPlayRow
+      class="recording-header-row"
+      :label="`${$t('play')} ${recordingName}`"
+      @menu="(e: Event) => $emit('menu-recording', recording, e)"
+      @play="(e: Event) => $emit('play-recording', recording, e)"
     >
-      <RowPlayButton
-        side="start"
-        :label="`${$t('play')} ${recordingName}`"
-        @play="(e: Event) => $emit('play-recording', recording, e)"
-      />
       <!-- Not a <button>, as the credited names inside are links. -->
       <div
         role="button"
@@ -33,39 +27,29 @@
           </span>
         </RecordingCredits>
       </div>
-      <RowPlayButton
-        side="end"
-        :label="`${$t('play')} ${recordingName}`"
-        @play="(e: Event) => $emit('play-recording', recording, e)"
-      />
-      <ClassicalRowActions
-        :name="recordingName"
-        :duration="recording.duration"
-        :source-item="recording.tracks[0]"
-        :favorite="favorite"
-        @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
-        @menu="(e: Event) => $emit('menu-recording', recording, e)"
-      />
-    </div>
+      <template #actions>
+        <ClassicalRowActions
+          :name="recordingName"
+          :duration="recording.duration"
+          :source-item="recording.tracks[0]"
+          :favorite="favorite"
+          @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
+          @menu="(e: Event) => $emit('menu-recording', recording, e)"
+        />
+      </template>
+    </ClassicalPlayRow>
     <div v-if="expanded" class="recording-body">
       <ol class="movements">
-        <li
+        <ClassicalPlayRow
           v-for="m in recording.tracks"
           :key="m.item_id"
-          v-hold="(e: TouchEvent) => onHold(e, m)"
-          class="movement classical-play-row"
-          @click.capture="swallowClickAfterHold"
+          tag="li"
+          class="movement"
+          :label="`${$t('play')} ${trackName(m)}`"
           @click="onMovementClick(m, $event)"
-          @contextmenu.prevent.stop="
-            $emit('menu-movement', m, recording, $event)
-          "
-          @touchstart.passive="onTouchStart"
+          @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
+          @play="(e: Event) => $emit('play-movement', m, e)"
         >
-          <RowPlayButton
-            side="start"
-            :label="`${$t('play')} ${trackName(m)}`"
-            @play="(e: Event) => $emit('play-movement', m, e)"
-          />
           <button
             type="button"
             class="movement-play"
@@ -73,20 +57,17 @@
           >
             <span class="movement-title">{{ trackName(m) }}</span>
           </button>
-          <RowPlayButton
-            side="end"
-            :label="`${$t('play')} ${trackName(m)}`"
-            @play="(e: Event) => $emit('play-movement', m, e)"
-          />
-          <ClassicalRowActions
-            :name="trackName(m)"
-            :playing="isTrackPlaying(m)"
-            :duration="m.duration"
-            :source-item="m"
-            :favorite-item="m"
-            @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
-          />
-        </li>
+          <template #actions>
+            <ClassicalRowActions
+              :name="trackName(m)"
+              :playing="isTrackPlaying(m)"
+              :duration="m.duration"
+              :source-item="m"
+              :favorite-item="m"
+              @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
+            />
+          </template>
+        </ClassicalPlayRow>
       </ol>
       <div v-for="album in albums" :key="album.item_id" class="source-album">
         <span class="source-album-arrow">→</span>
@@ -99,15 +80,12 @@
 </template>
 
 <script setup lang="ts">
-import {
-  getEventPosition,
-  useHoldToOpenMenu,
-} from "@/composables/useHoldToOpenMenu";
+import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { isRowControlClick } from "@/views/classical/listing";
 import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
@@ -126,7 +104,7 @@ const props = defineProps<{
   actMovements?: WorkMovement[];
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: "play-recording", recording: Recording, evt: Event): void;
   (e: "play-movement", movement: Track, evt: Event): void;
   (e: "menu-recording", recording: Recording, evt: Event): void;
@@ -134,14 +112,6 @@ const emit = defineEmits<{
 }>();
 
 const expanded = ref(false);
-
-// A long press opens the recording's menu, or a movement's when given one.
-const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
-  (evt: Event, movement?: Track) => {
-    if (movement) emit("menu-movement", movement, props.recording, evt);
-    else emit("menu-recording", props.recording, evt);
-  },
-);
 
 // A movement opens or plays the way a click on any track row does.
 const openMovement = (track: Track, evt: MouseEvent) => {
@@ -209,10 +179,6 @@ const coverageTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding-left: 7px;
-  margin-left: -7px;
-  border-radius: 4px;
 }
 
 .recording-header {
@@ -228,14 +194,6 @@ const coverageTitle = computed(() => {
   cursor: pointer;
   font: inherit;
   color: inherit;
-}
-
-.recording-header-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
 }
 
 .chevron {
@@ -285,10 +243,6 @@ const coverageTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding-left: 7px;
-  margin-left: -7px;
-  border-radius: 4px;
   cursor: pointer;
 }
 
@@ -306,14 +260,6 @@ const coverageTitle = computed(() => {
   display: flex;
   align-items: baseline;
   gap: 0;
-}
-
-.movement:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
 }
 
 .movement-title {

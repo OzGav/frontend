@@ -8,19 +8,17 @@
       class="work-list"
       :class="{ touch: isTouch, narrow: mobile }"
     >
-      <li
+      <ClassicalPlayRow
         v-for="w in filteredWorks"
         :key="w.item_id"
-        class="work-row classical-play-row"
+        tag="li"
+        class="work-row"
+        :label="`${$t('play')} ${w.name}`"
         @click="
           navigateOnRowClick($event, router, `/classical/works/${w.item_id}`)
         "
+        @play="(e: Event) => playWork(w.item_id, e)"
       >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playWork(w.item_id, e)"
-        />
         <div class="work-link">
           <span class="work-composer">
             <router-link
@@ -59,12 +57,7 @@
           <span class="work-year">{{ w.year_composed }}</span>
           <span class="work-recordings">{{ w.recordings_label }}</span>
         </template>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playWork(w.item_id, e)"
-        />
-      </li>
+      </ClassicalPlayRow>
     </ul>
     <ClassicalEmpty v-else :filtered="works.length > 0" />
   </div>
@@ -77,7 +70,7 @@ import { normalizeForFilter } from "@/helpers/utils";
 import { ListingType, SortField, type Period } from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import {
   navigateOnRowClick,
@@ -285,18 +278,8 @@ const filteredWorks = computed(() => {
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: baseline;
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding: 0.5rem 0.25rem 0.5rem 7px;
-  margin-left: calc(0.25rem - 7px);
-  border-radius: 4px;
-}
-
-.work-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
+  padding-block: 0.5rem;
+  --play-row-inset: 0.25rem;
 }
 
 .work-link {

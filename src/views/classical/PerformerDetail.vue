@@ -14,22 +14,17 @@
       :loading="loading"
       :artist-id="id"
     >
-      <li
+      <ClassicalPlayRow
         v-for="{ entry: w } in filtered"
         :key="w.work.item_id"
-        v-hold="(e: TouchEvent) => onHold(e, w)"
-        class="performer-work-row classical-play-row"
-        @click.capture="swallowClickAfterHold"
+        tag="li"
+        class="performer-work-row"
+        :label="`${$t('play')} ${w.work.name}`"
+        :disabled="!tracksByWork[w.work.item_id]?.length"
         @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
-        @contextmenu.prevent="onMenuWork(w, $event)"
-        @touchstart.passive="onTouchStart"
+        @menu="(e: Event) => onMenuWork(w, e)"
+        @play="(e: Event) => onPlayWork(w.work.item_id, e)"
       >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${w.work.name}`"
-          :disabled="!tracksByWork[w.work.item_id]?.length"
-          @play="(e: Event) => onPlayWork(w.work.item_id, e)"
-        />
         <div class="performer-work-link">
           <router-link
             v-if="w.work.composers[0]"
@@ -63,24 +58,20 @@
         <span class="meta-recordings">
           {{ recordingCountLabel(w.recording_count) }}
         </span>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${w.work.name}`"
-          :disabled="!tracksByWork[w.work.item_id]?.length"
-          @play="(e: Event) => onPlayWork(w.work.item_id, e)"
-        />
-        <ClassicalRowActions
-          :name="w.work.name"
-          :source-item="tracksByWork[w.work.item_id]?.[0]"
-          :favorite="
-            tracksByWork[w.work.item_id]?.length
-              ? allLiked(tracksByWork[w.work.item_id])
-              : undefined
-          "
-          @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
-          @menu="(e: Event) => onMenuWork(w, e)"
-        />
-      </li>
+        <template #actions>
+          <ClassicalRowActions
+            :name="w.work.name"
+            :source-item="tracksByWork[w.work.item_id]?.[0]"
+            :favorite="
+              tracksByWork[w.work.item_id]?.length
+                ? allLiked(tracksByWork[w.work.item_id])
+                : undefined
+            "
+            @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
+            @menu="(e: Event) => onMenuWork(w, e)"
+          />
+        </template>
+      </ClassicalPlayRow>
     </WorksSection>
 
     <OtherTracksSection
@@ -94,7 +85,6 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import { normalizeForFilter } from "@/helpers/utils";
 import type {
   Artist,
@@ -111,8 +101,8 @@ import ClassicalRowActions from "@/views/classical/components/ClassicalRowAction
 import { navigateOnRowClick } from "@/views/classical/listing";
 import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksSection from "@/views/classical/components/WorksSection.vue";
 import { coPerformerNames } from "@/views/classical/credits";
 import {
@@ -226,10 +216,6 @@ const onMenuWork = (w: ClassicalWorkEntry, evt: Event) => {
   );
 };
 
-const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
-  (evt: Event, w: ClassicalWorkEntry) => onMenuWork(w, evt),
-);
-
 const load = async (id: string) => {
   // the previous performer must not stay actionable under the new route
   artistItem.value = undefined;
@@ -273,21 +259,10 @@ watch(
 <style scoped>
 .performer-work-row {
   cursor: pointer;
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding: 0.5rem 0 0.5rem 7px;
-  margin-left: -7px;
-  border-radius: 4px;
+  padding-block: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.performer-work-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
 }
 
 .performer-work-link {

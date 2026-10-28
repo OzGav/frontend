@@ -1,34 +1,38 @@
-import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import type { ListingMultiFilter } from "@/helpers/listing_filters";
 import { Period, WorkType } from "@/plugins/api/interfaces";
-import { countryLabel } from "@/views/classical/labels";
+import { countryLabel, periodLabel } from "@/views/classical/labels";
 import { useClassicalPreferences } from "@/views/classical/listing";
 import { $t } from "@/plugins/i18n";
-import { Globe, Hourglass, Shapes } from "@lucide/vue";
-import { computed, shallowRef, type Component } from "vue";
+import { computed, shallowRef } from "vue";
 
-interface MenuFilterOptions<T extends string> {
+interface ListFilterOptions<T extends string> {
   // the tab the choice is stored under
   itemtype: string;
   // the preference the choice is stored as
   key: "periodFilter" | "roleFilter" | "workTypeFilter" | "countryFilter";
+  // the filter's id in the Filters panel
+  id: string;
+  // translation keys of the filter's heading, and of what stands in for the
+  // picked values while there are none
   label: string;
-  icon: Component;
-  // every value, in the order the menu lists them, or those of the listed
+  placeholder: string;
+  layout: ListingMultiFilter["layout"];
+  // every value, in the order the panel lists them, or those of the listed
   // items when the values are not known up front
   values: readonly T[] | (() => readonly T[]);
-  // a value's name, or its translation key
   valueLabel: (value: T) => string;
   // the values of the listed items, to offer only those
   present: () => Iterable<string | null | undefined>;
 }
 
 /**
- * A multi-select filter for a classical tab's menu, kept per user.
+ * A multi-select filter for a classical tab's Filters panel, kept per user.
  *
- * Returns `menuItem`, the filter's menu entry, and `matches`, which tells
- * whether an item with a value, or with any of several, passes the filter.
+ * Returns `filter`, the panel's filter or undefined while there is nothing to
+ * choose from, and `matches`, which tells whether an item with a value, or
+ * with any of several, passes the filter.
  */
-export function useMenuFilter<T extends string>(options: MenuFilterOptions<T>) {
+export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
   const { preferences, save } = useClassicalPreferences(options.itemtype);
   const { values } = options;
   const saved = (preferences[options.key] ?? []) as T[];
@@ -40,34 +44,39 @@ export function useMenuFilter<T extends string>(options: MenuFilterOptions<T>) {
       : saved.filter((v) => values.includes(v)),
   );
 
-  const toggle = (value: T) => {
-    selected.value = selected.value.includes(value)
-      ? selected.value.filter((v) => v !== value)
-      : [...selected.value, value];
-    save(options.key, selected.value);
+  const set = (next: T[]) => {
+    selected.value = next;
+    save(options.key, next);
   };
 
   // A chosen value stays listed so it can be cleared even when no item has it
   // any more. A single value would filter nothing, so the filter hides then.
-  const menuItem = computed<ToolBarMenuItem>(() => {
+  const filter = computed<ListingMultiFilter | undefined>(() => {
     const present = new Set<string | null | undefined>(options.present());
     const all = typeof values === "function" ? values() : values;
     const offered = [
       ...all.filter((v) => present.has(v) || selected.value.includes(v)),
       ...selected.value.filter((v) => !all.includes(v)),
     ];
+    if (offered.length < 2 && !selected.value.length) return undefined;
     return {
-      label: options.label,
-      icon: options.icon,
-      hide: offered.length < 2 && !selected.value.length,
-      active: selected.value.length > 0,
-      closeOnContentClick: false,
-      overflowAllowed: true,
-      subItems: offered.map((value) => ({
+      kind: "multi",
+      id: options.id,
+      label: $t(options.label),
+      placeholder: $t(options.placeholder),
+      layout: options.layout,
+      options: offered.map((value) => ({
         label: options.valueLabel(value),
-        selected: selected.value.includes(value),
-        action: () => toggle(value),
+        value,
       })),
+      selected: selected.value,
+      toggle: (value) =>
+        set(
+          selected.value.includes(value as T)
+            ? selected.value.filter((v) => v !== value)
+            : [...selected.value, value as T],
+        ),
+      set: (next) => set(next as T[]),
     };
   });
 
@@ -77,7 +86,7 @@ export function useMenuFilter<T extends string>(options: MenuFilterOptions<T>) {
     return values.some((v) => selected.value.includes(v as T));
   };
 
-  return { menuItem, matches };
+  return { filter, matches };
 }
 
 /**
@@ -90,13 +99,15 @@ export function usePeriodFilter(
   itemtype: string,
   periods: () => Array<Period | null | undefined>,
 ) {
-  return useMenuFilter({
+  return useListFilter({
     itemtype,
     key: "periodFilter",
+    id: "period",
     label: "classical_filter_period",
-    icon: Hourglass,
+    placeholder: "classical_filter_any_period",
+    layout: "dropdown",
     values: Object.values(Period),
-    valueLabel: (period) => `classical_period.${period}`,
+    valueLabel: periodLabel,
     present: periods,
   });
 }
@@ -128,13 +139,15 @@ export function workTypeChoices(): string[] {
  *   without one.
  */
 export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
-  return useMenuFilter<string>({
+  return useListFilter<string>({
     itemtype,
     key: "workTypeFilter",
-    label: "classical_filter_type",
-    icon: Shapes,
+    id: "work_type",
+    label: "classical_type",
+    placeholder: "classical_filter_any_type",
+    layout: "dropdown",
     values: workTypeChoices(),
-    valueLabel: workTypeChoiceLabel,
+    valueLabel: (type) => $t(workTypeChoiceLabel(type)),
     present: types,
   });
 }
@@ -142,9 +155,11 @@ export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
 /** The choice for composers without a country in the country filter. */
 export const UNKNOWN_COUNTRY = "unknown";
 
-/** The name, or translation key, of a country filter choice. */
+/** The name of a country filter choice. */
 const countryChoiceLabel = (code: string) =>
-  code === UNKNOWN_COUNTRY ? "classical_country_unknown" : countryLabel(code);
+  code === UNKNOWN_COUNTRY
+    ? $t("classical_country_unknown")
+    : countryLabel(code);
 
 /**
  * The country filter of a classical tab, listing countries by name with
@@ -155,11 +170,13 @@ const countryChoiceLabel = (code: string) =>
  *   for those without one.
  */
 export function useCountryFilter(itemtype: string, countries: () => string[]) {
-  return useMenuFilter<string>({
+  return useListFilter<string>({
     itemtype,
     key: "countryFilter",
+    id: "country",
     label: "classical_filter_country",
-    icon: Globe,
+    placeholder: "classical_filter_any_country",
+    layout: "dropdown",
     values: () => {
       const codes = [...new Set(countries())].filter(
         (c) => c !== UNKNOWN_COUNTRY,

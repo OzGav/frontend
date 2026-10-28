@@ -1,37 +1,50 @@
 <template>
   <ClassicalSection :title="$t('classical_movements')">
     <template v-if="fromLibrary" #title-append>
-      <span class="movements-mark" aria-hidden="true">*</span>
+      <!-- hugs the title, past the gap the section puts after it -->
+      <span class="ml-[-8px] text-[22px] font-bold" aria-hidden="true">*</span>
     </template>
     <template v-if="model.length || selectedArias.length" #append>
       <Button variant="ghost" size="sm" @click="clear">
         {{ $t("clear") }}
       </Button>
     </template>
-    <ul class="movement-list">
+    <!-- filled down the first column, then the second -->
+    <ul class="m-0 list-none columns-2 gap-x-[2rem] p-0 max-[769px]:columns-1">
       <!-- a movement and its arias share a column -->
-      <li v-for="group in groups" :key="group[0].key">
+      <li
+        v-for="group in groups"
+        :key="group[0].key"
+        class="break-inside-avoid"
+      >
+        <!-- one step in, e.g. an aria under its act; two, e.g. one dance of
+             a number -->
         <div
           v-for="row in group"
           :key="row.key"
           :class="{
-            'movement-child': row.depth === 1,
-            'movement-grandchild': row.depth === 2,
+            'pl-[1.5rem]': row.depth === 1,
+            'pl-[3rem]': row.depth === 2,
           }"
         >
+          <!-- the hover matches the overlay of the standard list rows -->
           <button
             type="button"
-            class="movement-toggle"
-            :class="{ selected: row.selected }"
+            class="flex w-full cursor-pointer items-baseline gap-[0.4rem] rounded-[4px] border-0 bg-[transparent] p-[0.3rem_0.5rem_0.3rem_0] text-left [font:inherit] disabled:cursor-default disabled:opacity-50 [&:hover:not(:disabled)]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]"
+            :class="
+              row.selected ? 'text-[color:var(--primary)]' : 'text-inherit'
+            "
             :aria-pressed="row.selected"
             :disabled="!row.count && !row.selected"
             @click="row.toggle"
           >
-            <span class="movement-check">
+            <span class="inline-flex w-[16px] flex-none self-center">
               <Check v-if="row.selected" :size="16" />
             </span>
-            <span class="movement-name">{{ row.name }}</span>
-            <span class="movement-count">({{ row.count }})</span>
+            <span class="movement-name text-[0.95rem]">{{ row.name }}</span>
+            <span class="text-[0.875rem] text-muted-foreground"
+              >({{ row.count }})</span
+            >
           </button>
         </div>
       </li>
@@ -44,7 +57,11 @@
     >
       {{ expanded ? $t("show_less") : $t("classical_filter_show_all") }}
     </Button>
-    <p v-if="fromLibrary" class="movements-note">
+    <!-- the room added above is taken back from the gap to the next section -->
+    <p
+      v-if="fromLibrary"
+      class="m-[0.75rem_0_-0.75rem] text-[0.8rem] text-muted-foreground"
+    >
       * {{ $t("classical_movements_from_library") }}
     </p>
   </ClassicalSection>
@@ -172,88 +189,6 @@ function toggled<T>(list: T[], value: T): T[] {
 </script>
 
 <style scoped>
-.movements-mark {
-  /* hugs the title, past the gap the section puts after it */
-  margin-left: -8px;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.movements-note {
-  /* the room added above is taken back from the gap to the next section */
-  margin: 0.75rem 0 -0.75rem;
-  font-size: 0.8rem;
-  color: var(--muted-foreground, #888);
-}
-
-/* filled down the first column, then the second */
-.movement-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  columns: 2;
-  column-gap: 2rem;
-}
-
-.movement-list > li {
-  break-inside: avoid;
-}
-
-/* e.g. an aria under its act */
-.movement-child {
-  padding-left: 1.5rem;
-}
-
-/* e.g. one dance of a number */
-.movement-grandchild {
-  padding-left: 3rem;
-}
-
-@media (max-width: 768px) {
-  .movement-list {
-    columns: 1;
-  }
-}
-
-.movement-toggle {
-  width: 100%;
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.3rem 0.5rem 0.3rem 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.movement-toggle:hover:not(:disabled) {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
-}
-
-.movement-toggle:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.movement-toggle.selected {
-  color: var(--primary);
-}
-
-.movement-check {
-  flex: none;
-  width: 16px;
-  align-self: center;
-  display: inline-flex;
-}
-
 .movement-name {
   font-family: var(
     --font-classical-serif,
@@ -264,11 +199,5 @@ function toggled<T>(list: T[], value: T): T[] {
   );
   font-optical-sizing: auto;
   font-style: italic;
-  font-size: 0.95rem;
-}
-
-.movement-count {
-  color: var(--muted-foreground, #888);
-  font-size: 0.875rem;
 }
 </style>

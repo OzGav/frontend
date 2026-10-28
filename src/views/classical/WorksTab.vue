@@ -1,30 +1,37 @@
 <template>
-  <div class="works-tab">
+  <div class="flex flex-col gap-3">
     <div v-if="loading && !works.length">
       <ListViewSkeleton v-for="n in 8" :key="n" />
     </div>
+    <!-- Column tracks live on the list, and the rows borrow them through
+         subgrid, so catalog, year and count line up all the way down. -->
     <ul
       v-else-if="filteredWorks.length"
-      class="work-list"
-      :class="{ touch: isTouch, narrow: mobile }"
+      class="m-0 grid list-none gap-x-[0.75rem] p-0"
+      :class="listColumns"
     >
       <ClassicalPlayRow
         v-for="w in filteredWorks"
         :key="w.item_id"
         tag="li"
-        class="work-row"
+        class="col-[1/-1] grid cursor-pointer grid-cols-subgrid items-baseline py-[0.5rem] [--play-row-inset:0.25rem]"
         :label="`${$t('play')} ${w.name}`"
         @click="
           navigateOnRowClick($event, router, `/classical/works/${w.item_id}`)
         "
         @play="(e: Event) => playWork(w.item_id, e)"
       >
-        <div class="work-link">
-          <span class="work-composer">
+        <div class="flex min-w-0 flex-col text-inherit no-underline">
+          <span
+            class="text-[0.8rem] text-muted-foreground"
+            :class="{ 'order-1': mobile }"
+          >
+            <!-- Only the name is the link, so the underline marks just what
+                 is clicked. -->
             <router-link
               v-if="w.composer_id"
               :to="`/classical/composers/${w.composer_id}`"
-              class="work-composer-link"
+              class="text-inherit no-underline [&:focus-visible]:underline [&:hover]:underline"
             >
               {{ w.composer }}
             </router-link>
@@ -44,7 +51,11 @@
               </template>
             </template>
           </span>
-          <router-link :to="`/classical/works/${w.item_id}`" class="work-title">
+          <router-link
+            :to="`/classical/works/${w.item_id}`"
+            class="overflow-hidden text-[0.95rem] font-semibold text-ellipsis text-inherit no-underline"
+            :class="mobile ? 'whitespace-normal' : 'whitespace-nowrap'"
+          >
             {{ w.name }}
           </router-link>
           <span v-if="w.version" class="text-[0.8rem] text-muted-foreground">
@@ -53,9 +64,9 @@
         </div>
         <!-- Rendered even when empty so every row keeps all four columns. -->
         <template v-if="!mobile">
-          <span class="work-catalog">{{ w.catalog_number }}</span>
-          <span class="work-year">{{ w.year_composed }}</span>
-          <span class="work-recordings">{{ w.recordings_label }}</span>
+          <span :class="COLUMN_CLASS">{{ w.catalog_number }}</span>
+          <span :class="COLUMN_CLASS">{{ w.year_composed }}</span>
+          <span :class="COLUMN_CLASS">{{ w.recordings_label }}</span>
         </template>
       </ClassicalPlayRow>
     </ul>
@@ -95,6 +106,8 @@ defineOptions({ name: "WorksTab" });
 
 const ITEMTYPE = "works";
 
+const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
+
 const { mobile } = useDisplay();
 
 const { t } = useI18n();
@@ -133,6 +146,18 @@ const hasComposedYears = computed(
 );
 
 const router = useRouter();
+
+// The play column leads on hover screens and trails on touch screens; on
+// phones the title takes the width.
+const listColumns = computed(() => {
+  if (mobile.value)
+    return isTouch.value
+      ? "grid-cols-[minmax(0,1fr)_auto]"
+      : "grid-cols-[auto_minmax(0,1fr)]";
+  return isTouch.value
+    ? "grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
+    : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]";
+});
 
 const periodFilter = usePeriodFilter(ITEMTYPE, () =>
   works.value.map((w) => w.period),
@@ -231,96 +256,3 @@ const filteredWorks = computed(() => {
   );
 });
 </script>
-
-<style scoped>
-.works-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.work-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  /* Column tracks live on the list, and the rows borrow them through subgrid,
-     so catalog, year and count line up all the way down. */
-  display: grid;
-  /* the play column leads on hover screens and trails on touch screens */
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-  column-gap: 0.75rem;
-}
-
-.work-list.touch {
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
-}
-
-/* on phones the title takes the width, the columns join the composer line */
-.work-list.narrow {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
-.work-list.narrow.touch {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.work-list.narrow .work-composer {
-  order: 1;
-}
-
-.work-list.narrow .work-title {
-  white-space: normal;
-}
-
-.work-row {
-  cursor: pointer;
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: baseline;
-  padding-block: 0.5rem;
-  --play-row-inset: 0.25rem;
-}
-
-.work-link {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.work-composer {
-  font-size: 0.8rem;
-  color: var(--muted-foreground, #aaa);
-}
-
-/* Only the name is the link, so the underline marks just what is clicked. */
-.work-composer-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.work-composer-link:hover,
-.work-composer-link:focus-visible {
-  text-decoration: underline;
-}
-
-.work-title {
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.work-catalog,
-.work-year,
-.work-recordings {
-  font-size: 0.85rem;
-  color: var(--muted-foreground, #888);
-  white-space: nowrap;
-}
-</style>

@@ -1,6 +1,7 @@
 <template>
-  <!-- headed like the rows of the standard detail pages -->
-  <section class="classical-section">
+  <!-- headed like the rows of the standard detail pages, with MediaRowList's
+       spacing, so lists line up with the text above -->
+  <section class="p-[26px_28px_0] max-[769px]:p-[20px_16px_0]">
     <div
       class="mb-[8px] flex flex-wrap items-center justify-between gap-[10px]"
     >
@@ -26,16 +27,3 @@ defineProps<{
   meta?: string;
 }>();
 </script>
-
-<style scoped>
-/* MediaRowList's spacing, so lists line up with the text above */
-.classical-section {
-  padding: 26px 28px 0;
-}
-
-@media (max-width: 768px) {
-  .classical-section {
-    padding: 20px 16px 0;
-  }
-}
-</style>

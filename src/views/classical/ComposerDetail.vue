@@ -20,18 +20,26 @@
         v-for="w in filtered"
         :key="w.item_id"
         tag="li"
-        class="composer-work-row"
+        class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
         :label="`${$t('play')} ${w.name}`"
         @click="navigateOnRowClick($event, router, workLink(w.item_id))"
         @play="(e: Event) => playWork(w.item_id, e)"
       >
-        <!-- the details on their own line, under the title -->
-        <span class="composer-work-text">
-          <router-link :to="workLink(w.item_id)" class="composer-work-link">
+        <!-- the details on their own line, under the title; title and details
+             keep a shared baseline, centred against the play slot -->
+        <span class="flex min-w-0 flex-1 flex-col">
+          <router-link
+            :to="workLink(w.item_id)"
+            class="font-semibold text-inherit no-underline"
+          >
             {{ w.name }}
           </router-link>
-          <span v-if="w.version" class="meta">{{ w.version }}</span>
-          <span class="meta">
+          <span
+            v-if="w.version"
+            class="text-[0.875rem] text-muted-foreground"
+            >{{ w.version }}</span
+          >
+          <span class="text-[0.875rem] text-muted-foreground">
             {{ workDetails(w) }}
           </span>
         </span>
@@ -185,32 +193,3 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   openOtherTrackMenu(t, router, evt);
 };
 </script>
-
-<style scoped>
-.composer-work-row {
-  padding-block: 0.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-/* Title and details keep a shared baseline, centred against the play slot. */
-.composer-work-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.composer-work-link {
-  font-weight: 600;
-  color: inherit;
-  text-decoration: none;
-}
-
-.meta {
-  color: var(--muted-foreground, #888);
-  font-size: 0.875rem;
-}
-</style>

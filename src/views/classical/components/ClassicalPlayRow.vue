@@ -1,10 +1,13 @@
 <template>
   <!-- A list row with the standard play affordance and hover highlight, and
-       its menu on right-click or long press when it has one. -->
+       its menu on right-click or long press when it has one. Like the standard
+       rows, the highlight starts 7px before the play slot, and its hover overlay
+       matches theirs. A row may set --play-row-inset to sit in from both edges
+       of its list. -->
   <component
     :is="tag"
     v-hold="onRowHold"
-    class="classical-play-row"
+    class="classical-play-row ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]"
     @click.capture="swallowClickAfterHold"
     @contextmenu="onContextMenu"
     @touchstart.passive="onTouchStart"
@@ -64,22 +67,3 @@ const onContextMenu = (evt: MouseEvent) => {
   props.onMenu(evt);
 };
 </script>
-
-<style scoped>
-.classical-play-row {
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding-left: 7px;
-  /* a row may set --play-row-inset to sit in from both edges of its list */
-  padding-right: var(--play-row-inset, 0px);
-  margin-left: calc(var(--play-row-inset, 0px) - 7px);
-  border-radius: 4px;
-}
-
-.classical-play-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
-}
-</style>

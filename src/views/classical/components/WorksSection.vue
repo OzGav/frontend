@@ -32,7 +32,7 @@
     <div v-if="loading">
       <ListViewSkeleton v-for="n in 4" :key="n" />
     </div>
-    <ul v-else-if="filtered.length" class="works-list">
+    <ul v-else-if="filtered.length" class="m-0 flex list-none flex-col p-0">
       <slot :filtered="filtered"></slot>
     </ul>
     <ClassicalEmpty v-else :filtered="works.length > 0" />
@@ -120,13 +120,3 @@ watch(
   { immediate: true },
 );
 </script>
-
-<style scoped>
-.works-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-</style>

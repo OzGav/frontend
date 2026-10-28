@@ -1,27 +1,28 @@
 <template>
   <!-- tells it apart from a work of the same title -->
-  <div v-if="work.version" class="work-meta-text">{{ work.version }}</div>
-  <div class="work-meta-line">
-    <Music :size="16" class="work-meta-icon" />
-    <span class="work-meta-text">
+  <div v-if="work.version" class="min-w-0 truncate">{{ work.version }}</div>
+  <div class="flex min-w-0 items-center gap-[8px]">
+    <Music :size="16" class="flex-none" />
+    <span class="min-w-0 truncate">
       <router-link
         v-if="composerMapping"
         :to="`/classical/composers/${composerMapping.item_id}`"
-        class="work-composer-link"
+        class="font-[family-name:var(--font-classical-serif)] font-semibold text-inherit no-underline [font-optical-sizing:auto]"
       >
         {{ composerMapping.name }}
       </router-link>
       <template v-for="(detail, i) in workDetails" :key="i">
-        <span v-if="composerMapping || i" class="work-meta-sep">·</span
+        <span v-if="composerMapping || i" class="m-[0_4px] opacity-50">·</span
         >{{ detail }}
       </template>
     </span>
   </div>
-  <div v-if="work.parent_work" class="work-meta-text work-part-of">
+  <!-- lines up with the text after the icon on the line above -->
+  <div v-if="work.parent_work" class="min-w-0 truncate pl-[24px]">
     {{ $t("classical_part_of") }}
     <router-link
       :to="`/classical/works/${work.parent_work.item_id}`"
-      class="work-parent-link"
+      class="font-semibold text-inherit no-underline"
     >
       {{ work.parent_work.name }}
       <span v-if="work.parent_work.version" class="text-muted-foreground">
@@ -57,47 +58,3 @@ const workDetails = computed(() => {
   ].filter((d): d is string => !!d);
 });
 </script>
-
-<style scoped>
-.work-meta-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.work-meta-icon {
-  flex: none;
-}
-
-.work-meta-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.work-composer-link {
-  font-family: var(--font-classical-serif);
-  font-optical-sizing: auto;
-  font-weight: 600;
-  color: inherit;
-  text-decoration: none;
-}
-
-.work-meta-sep {
-  margin: 0 4px;
-  opacity: 0.5;
-}
-
-/* lines up with the text after the icon on the line above */
-.work-part-of {
-  padding-left: 24px;
-}
-
-.work-parent-link {
-  font-weight: 600;
-  color: inherit;
-  text-decoration: none;
-}
-</style>

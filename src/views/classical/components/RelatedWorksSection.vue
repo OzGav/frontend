@@ -1,6 +1,6 @@
 <template>
   <ClassicalSection v-if="relatedWorks.length" :title="$t('related_works')">
-    <ul class="related-list">
+    <ul class="m-0 flex list-none flex-col gap-1 p-0">
       <li v-for="r in relatedWorks" :key="`${r.label}-${r.work.item_id}`">
         {{ $t(r.label) }}
         <router-link :to="`/classical/works/${r.work.item_id}`">
@@ -37,14 +37,3 @@ const relatedWorks = computed(() => [
   })),
 ]);
 </script>
-
-<style scoped>
-.related-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-</style>

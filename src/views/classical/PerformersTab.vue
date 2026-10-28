@@ -1,5 +1,5 @@
 <template>
-  <div class="performers-tab">
+  <div class="flex flex-col gap-4">
     <ClassicalArtistGrid
       v-if="gridItems.length || loading"
       :items="gridItems"
@@ -93,11 +93,3 @@ const gridItems = useArtistGridItems({
 
 onMounted(reload);
 </script>
-
-<style scoped>
-.performers-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-</style>

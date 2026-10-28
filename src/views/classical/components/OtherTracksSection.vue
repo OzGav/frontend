@@ -5,11 +5,14 @@
     :meta="$t('n_tracks', tracks.length, { named: { count: tracks.length } })"
   >
     <template #append>
-      <MAButton
-        variant="icon"
-        icon="mdi-dots-vertical"
-        :aria-label="$t('menu')"
-        @click.stop="(e: Event) => openMenu(menuItems, e)"
+      <!-- inset like the rows, so it lines up with their menu -->
+      <LibrarySortControls
+        v-if="sortOptions.length"
+        class="me-1"
+        mode="menu"
+        :options="sortOptions"
+        :sort-by="sortBy"
+        @sort-by="setSort"
       />
     </template>
     <ul class="other-tracks-list">
@@ -58,12 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import MAButton from "@/components/Button.vue";
+import LibrarySortControls from "@/components/LibrarySortControls.vue";
 import {
   getEventPosition,
   useHoldToOpenMenu,
 } from "@/composables/useHoldToOpenMenu";
-import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import { ListingType, type Track } from "@/plugins/api/interfaces";
 import { getOtherTracks } from "@/services/classical";
@@ -72,9 +74,8 @@ import ClassicalSection from "@/views/classical/components/ClassicalSection.vue"
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { isRowControlClick, useClassicalSort } from "@/views/classical/listing";
-import { openMenu } from "@/views/classical/menu";
 import { isTrackPlaying } from "@/views/classical/playback";
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 
 defineOptions({ name: "OtherTracksSection" });
 
@@ -97,14 +98,17 @@ const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event, track: Track) => emit("menu-track", track, evt),
 );
 
-const { ready, sort, menuItem } = useClassicalSort({
+const {
+  ready,
+  sort,
+  options: sortOptions,
+  sortBy,
+  setSort,
+} = useClassicalSort({
   itemtype: "other_tracks",
   listing: ListingType.CLASSICAL_OTHER_TRACKS,
   onChange: () => load(),
 });
-
-// The section's menu holds just its sort.
-const menuItems = computed<ContextMenuItem[]>(() => [menuItem.value]);
 
 let loadCount = 0;
 

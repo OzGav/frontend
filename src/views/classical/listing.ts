@@ -6,12 +6,10 @@ import {
   useUserPreferences,
   type ItemsListingPreferences,
 } from "@/composables/userPreferences";
-import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import { normalizeGridSize } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
 import api from "@/plugins/api";
 import {
-  SortDirection,
   type ListingType,
   type SortField,
   type SortOptionInfo,
@@ -19,16 +17,7 @@ import {
 import { $t } from "@/plugins/i18n";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Grid3x3,
-  Heart,
-  LayoutGrid,
-  LayoutList,
-  RefreshCw,
-} from "@lucide/vue";
+import { Grid3x3, Heart, LayoutGrid, LayoutList, RefreshCw } from "@lucide/vue";
 import {
   computed,
   inject,
@@ -319,8 +308,8 @@ export function useClassicalPreferences(itemtype: string) {
  * it and kept per user like the other library listings keep theirs.
  *
  * Returns `ready`, settled once the choices are known; `sort`, the arguments
- * to fetch the list with; `options`, `sortBy` and `setSort`, for a sort menu;
- * and `menuItem`, the sort entry for the list's menu.
+ * to fetch the list with; and `options`, `sortBy` and `setSort`, for a sort
+ * menu.
  */
 export function useClassicalSort(options: ClassicalSortOptions) {
   const { getItemsListingPreferences, setItemsListingPreference } =
@@ -377,40 +366,12 @@ export function useClassicalSort(options: ClassicalSortOptions) {
     options.onChange();
   };
 
-  const directionItem = (direction: SortDirection): ContextMenuItem => ({
-    label:
-      direction === SortDirection.ASC ? "sort.ascending" : "sort.descending",
-    icon: direction === SortDirection.ASC ? ArrowUp : ArrowDown,
-    selected: sorting.current.value.direction === direction,
-    action: () => setSort(sorting.sortByDirection(direction)),
-  });
-
-  const menuItem = computed<ContextMenuItem>(() => {
-    const subItems: ContextMenuItem[] = offered.value.map((o) => ({
-      label: `sort.${o.label_key ?? o.field}`,
-      selected: o.field === selectedOption.value?.field,
-      action: () => setSort(sorting.sortByOption(o)),
-    }));
-    if (selectedOption.value?.supports_direction)
-      subItems.push(
-        directionItem(SortDirection.ASC),
-        directionItem(SortDirection.DESC),
-      );
-    return {
-      label: "tooltip.sort_options",
-      icon: ArrowUpDown,
-      disabled: !offered.value.length,
-      subItems,
-    };
-  });
-
   return {
     ready,
     sort,
     options: offered,
     sortBy: computed(() => sortBy.value),
     setSort,
-    menuItem,
   };
 }
 

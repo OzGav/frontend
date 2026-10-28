@@ -1,7 +1,12 @@
 <template>
-  <article class="recording-card" :class="{ expanded }">
+  <!-- --play-offset is the play slot in front of each row, absent on touch
+       screens -->
+  <article
+    class="[--play-offset:calc(32px_+_0.4rem)] [@media(hover:none)]:[--play-offset:0px]"
+    :class="{ expanded }"
+  >
     <ClassicalPlayRow
-      class="recording-header-row"
+      class="flex items-center gap-[0.4rem]"
       :label="`${$t('play')} ${recordingName}`"
       @menu="(e: Event) => $emit('menu-recording', recording, e)"
       @play="(e: Event) => $emit('play-recording', recording, e)"
@@ -10,17 +15,20 @@
       <div
         role="button"
         tabindex="0"
-        class="recording-header"
+        class="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.6rem] border-0 bg-[transparent] p-[0.7rem_0.25rem_0.7rem_0] text-left [font:inherit] text-inherit"
         :aria-expanded="expanded"
         @click="toggle"
         @keydown.enter.self.prevent="toggle"
         @keydown.space.self.prevent="toggle"
       >
-        <ChevronRight class="chevron" :class="{ rotated: expanded }" />
+        <ChevronRight
+          class="size-[1.1rem] shrink-0 [transition:transform_0.15s_ease]"
+          :class="{ '[transform:rotate(90deg)]': expanded }"
+        />
         <RecordingCredits :recording="recording">
           <span
             v-if="coverage"
-            class="coverage"
+            class="font-normal text-muted-foreground"
             :title="coverageTitle || undefined"
           >
             · {{ coverage }}
@@ -38,24 +46,27 @@
         />
       </template>
     </ClassicalPlayRow>
-    <div v-if="expanded" class="recording-body">
-      <ol class="movements">
+    <div v-if="expanded" class="flex flex-col gap-[0.5rem] p-[0_0_0.8rem]">
+      <ol class="m-0 flex list-none flex-col gap-[0.1rem] p-0">
         <ClassicalPlayRow
           v-for="m in recording.tracks"
           :key="m.item_id"
           tag="li"
-          class="movement"
+          class="flex cursor-pointer items-center gap-[0.4rem]"
           :label="`${$t('play')} ${trackName(m)}`"
           @click="onMovementClick(m, $event)"
           @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
           @play="(e: Event) => $emit('play-movement', m, e)"
         >
+          <!-- movement titles sit indented under the recording's credits -->
           <button
             type="button"
-            class="movement-play"
+            class="flex min-w-0 flex-1 cursor-pointer items-baseline gap-0 border-0 bg-[transparent] p-[0.25rem_0_0.25rem_2.5rem] text-left [font:inherit] text-inherit"
             @click="(e: MouseEvent) => openMovement(m, e)"
           >
-            <span class="movement-title">{{ trackName(m) }}</span>
+            <span class="movement-title text-[0.95rem]">{{
+              trackName(m)
+            }}</span>
           </button>
           <template #actions>
             <ClassicalRowActions
@@ -69,8 +80,12 @@
           </template>
         </ClassicalPlayRow>
       </ol>
-      <div v-for="album in albums" :key="album.item_id" class="source-album">
-        <span class="source-album-arrow">→</span>
+      <div
+        v-for="album in albums"
+        :key="album.item_id"
+        class="ml-[calc(var(--play-offset)_+_2.5rem)] flex items-baseline gap-[0.4rem] text-[0.85rem] text-muted-foreground"
+      >
+        <span class="opacity-60">→</span>
         <router-link :to="`/albums/library/${album.item_id}`">
           {{ album.year ? `${album.name} (${album.year})` : album.name }}
         </router-link>
@@ -175,93 +190,6 @@ const coverageTitle = computed(() => {
 </script>
 
 <style scoped>
-.recording-header-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.recording-header {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.7rem 0.25rem 0.7rem 0;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
-.chevron {
-  width: 1.1rem;
-  height: 1.1rem;
-  transition: transform 0.15s ease;
-  flex-shrink: 0;
-}
-
-.chevron.rotated {
-  transform: rotate(90deg);
-}
-
-.coverage {
-  color: var(--muted-foreground, #888);
-  font-weight: 400;
-}
-
-.recording-card {
-  /* the play slot in front of each row, absent on touch screens */
-  --play-offset: calc(32px + 0.4rem);
-}
-
-@media (hover: none) {
-  .recording-card {
-    --play-offset: 0px;
-  }
-}
-
-.recording-body {
-  padding: 0 0 0.8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.movements {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.movement {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-}
-
-.movement-play {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  /* movement titles sit indented under the recording's credits */
-  padding: 0.25rem 0 0.25rem 2.5rem;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: baseline;
-  gap: 0;
-}
-
 .movement-title {
   font-family: var(
     --font-classical-serif,
@@ -272,19 +200,5 @@ const coverageTitle = computed(() => {
   );
   font-optical-sizing: auto;
   font-style: italic;
-  font-size: 0.95rem;
-}
-
-.source-album {
-  margin-left: calc(var(--play-offset) + 2.5rem);
-  font-size: 0.85rem;
-  color: var(--muted-foreground, #888);
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-}
-
-.source-album-arrow {
-  opacity: 0.6;
 }
 </style>

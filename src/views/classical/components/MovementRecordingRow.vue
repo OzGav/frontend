@@ -1,16 +1,14 @@
 <template>
   <!-- One recording's take on a movement, as the movement filter lists it. -->
   <ClassicalPlayRow
-    class="movement-recording-row"
+    class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
     :label="`${$t('play')} ${name}`"
     @click="onClick"
     @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
     @play="(e: Event) => $emit('play', tracks, e)"
   >
-    <RecordingCredits
-      :recording="recording"
-      class="movement-recording-credits"
-    />
+    <!-- indented under the movement's heading -->
+    <RecordingCredits :recording="recording" class="pl-[1.5rem]" />
     <template #actions>
       <ClassicalRowActions
         :name="name"
@@ -61,18 +59,3 @@ const onClick = (evt: MouseEvent) => {
   handleMediaItemClick(props.tracks[0], x, y);
 };
 </script>
-
-<style scoped>
-.movement-recording-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding-block: 0.5rem;
-  cursor: pointer;
-}
-
-/* indented under the movement's heading */
-.movement-recording-credits {
-  padding-left: 1.5rem;
-}
-</style>

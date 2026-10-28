@@ -1,7 +1,5 @@
 <template>
   <DetailHero
-    class="classical-hero"
-    :class="{ 'classical-hero--phone': isPhone }"
     :item="item"
     :backdrop="backdrop"
     :editable-rows="false"
@@ -15,7 +13,11 @@
     <template v-if="item" #main>
       <DetailHeroTitle :item="item" />
 
-      <div v-if="$slots.meta" class="classical-hero__meta">
+      <div
+        v-if="$slots.meta"
+        class="flex min-w-0 flex-col gap-[4px] self-stretch text-[rgba(255,255,255,0.85)] [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]"
+        :class="isPhone ? 'text-[14px]' : 'text-[15px]'"
+      >
         <slot name="meta"></slot>
       </div>
     </template>
@@ -75,20 +77,3 @@ const favoriteItem = computed(() =>
 
 const backdrop = computed(() => heroBackdrop(props.item));
 </script>
-
-<style scoped>
-.classical-hero__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-self: stretch;
-  min-width: 0;
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
-
-.classical-hero--phone .classical-hero__meta {
-  font-size: 14px;
-}
-</style>

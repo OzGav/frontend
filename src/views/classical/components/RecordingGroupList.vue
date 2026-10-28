@@ -1,16 +1,23 @@
 <template>
-  <div class="recordings-list">
+  <div class="flex flex-col">
     <template v-for="g in groups" :key="g.key">
       <!-- with parts, the work's own recordings get a heading too -->
-      <h3 v-if="g.link || groups.length > 1" class="part-heading">
-        <router-link v-if="g.link" :to="g.link" class="part-title">
+      <h3
+        v-if="g.link || groups.length > 1"
+        class="mx-0 mt-[1rem] mb-[0.25rem] text-[1rem] font-semibold first:mt-0"
+      >
+        <router-link
+          v-if="g.link"
+          :to="g.link"
+          class="text-inherit no-underline [&:hover]:underline"
+        >
           {{ g.name }}
           <span v-if="g.version" class="text-muted-foreground">
             ({{ g.version }})</span
           >
         </router-link>
-        <span v-else class="part-title">{{ g.name }}</span>
-        <span v-if="g.composer" class="part-composer">
+        <span v-else class="text-inherit no-underline">{{ g.name }}</span>
+        <span v-if="g.composer" class="font-normal opacity-70">
           · {{ g.composer }}
         </span>
       </h3>
@@ -63,34 +70,3 @@ const playMovement = (m: Track, evt: Event) => {
   playTracks([m], evt);
 };
 </script>
-
-<style scoped>
-.recordings-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.part-heading {
-  margin: 1rem 0 0.25rem;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.part-heading:first-child {
-  margin-top: 0;
-}
-
-.part-title {
-  color: inherit;
-  text-decoration: none;
-}
-
-a.part-title:hover {
-  text-decoration: underline;
-}
-
-.part-composer {
-  font-weight: 400;
-  opacity: 0.7;
-}
-</style>

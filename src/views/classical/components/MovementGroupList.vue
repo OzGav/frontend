@@ -1,13 +1,20 @@
 <template>
-  <div class="recordings-list">
+  <div class="flex flex-col">
     <template v-for="g in groups" :key="g.key">
-      <div class="movement-heading classical-play-row">
+      <!-- lines up with the rows below, whose highlight starts 7px early -->
+      <div
+        class="classical-play-row mt-[1rem] mr-0 mb-[0.25rem] ml-[-7px] flex items-center gap-[0.4rem] pl-[7px] first:mt-0"
+      >
         <RowPlayButton
           side="start"
           :label="`${$t('play')} ${g.name}`"
           @play="(e: Event) => playGroup(g.rows, e)"
         />
-        <h3 class="movement-heading-title">{{ g.name }}</h3>
+        <h3
+          class="movement-heading-title m-0 min-w-0 flex-1 text-[1.05rem] font-semibold"
+        >
+          {{ g.name }}
+        </h3>
         <RowPlayButton
           side="end"
           :label="`${$t('play')} ${g.name}`"
@@ -55,29 +62,8 @@ const playGroup = (rows: MovementRow[], evt: Event) => {
 </script>
 
 <style scoped>
-.recordings-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.movement-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  /* lines up with the rows below, whose highlight starts 7px early */
-  padding-left: 7px;
-  margin: 1rem 0 0.25rem -7px;
-}
-
-.movement-heading:first-child {
-  margin-top: 0;
-}
-
 /* in the movements' own italic, as the Movements section lists them */
 .movement-heading-title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
   font-family: var(
     --font-classical-serif,
     "Roboto Serif",
@@ -87,7 +73,5 @@ const playGroup = (rows: MovementRow[], evt: Event) => {
   );
   font-optical-sizing: auto;
   font-style: italic;
-  font-size: 1.05rem;
-  font-weight: 600;
 }
 </style>

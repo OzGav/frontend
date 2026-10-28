@@ -42,70 +42,18 @@
           :sort-by="params.sortBy"
           @sort-by="changeSort"
         />
-        <Button
-          v-if="
-            libraryToolbar &&
-            searchAvailable &&
-            expanded &&
-            !searchButtonCloses &&
-            !searchSlotShown
-          "
-          ref="searchButtonRef"
-          variant="ghost"
-          size="icon-lg"
-          :title="$t('search')"
-          :aria-label="$t('search')"
-          :aria-expanded="showSearchInput"
-          @click="toggleSearch"
-        >
-          <Search class="size-[22px]" />
-        </Button>
-        <Transition
-          v-if="!store.mobileLayout"
-          name="listing-search"
-          @before-enter="searchSlotShown = true"
-          @before-leave="onSearchSlotLeave"
-          @after-leave="onSearchSlotLeft"
-        >
-          <!-- the input follows the slot's edge as it opens, and the padding
-               keeps its 3px focus ring inside the clipped area. On a library
-               page it grows out of the search icon's width and shrinks back
-               to it, so the controls beside it do not jump -->
-          <div
-            v-if="showSearchInput"
-            class="listing-search-slot -m-[3px] box-content p-[3px]"
-            :class="{
-              '[&.listing-search-enter-from]:w-10 [&.listing-search-leave-to]:w-10':
-                libraryToolbar,
-            }"
-          >
-            <SearchInput
-              ref="searchInputRef"
-              v-model="params.search"
-              :clearable="!libraryToolbar"
-              class="listing-search listing-search--inline"
-              :placeholder="searchLabel"
-              :aria-label="searchLabel"
-              @focus="searchHasFocus = true"
-              @blur="searchHasFocus = false"
-            >
-              <!-- the search icon gives way to the field, so it closes here -->
-              <template v-if="libraryToolbar" #append>
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    class="text-muted-foreground"
-                    :title="$t('close')"
-                    :aria-label="$t('close')"
-                    @click="closeSearch"
-                  >
-                    <X />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </template>
-            </SearchInput>
-          </div>
-        </Transition>
+        <ListingSearch
+          ref="searchInputRef"
+          v-model="params.search"
+          :open="showSearchInput"
+          :placeholder="searchLabel"
+          :with-icon="libraryToolbar"
+          :icon-hidden="!searchAvailable || !expanded"
+          @toggle="toggleSearch"
+          @close="closeSearch"
+          @focus="searchHasFocus = true"
+          @blur="searchHasFocus = false"
+        />
         <ListingToolbarControls
           v-if="libraryToolbar"
           :sort-options="sortOptionsLoaded ? sortOptions : []"
@@ -155,31 +103,15 @@
       </Tabs>
     </div>
 
-    <div
-      v-if="showSearchInput && store.mobileLayout"
-      class="mx-2.5 mt-2.5 flex items-center gap-1"
-    >
-      <SearchInput
-        ref="searchInputRef"
-        v-model="params.search"
-        clearable
-        class="listing-search listing-search--row min-w-0 flex-1"
-        :placeholder="searchLabel"
-        :aria-label="searchLabel"
-        @focus="searchHasFocus = true"
-        @blur="searchHasFocus = false"
-      />
-      <Button
-        variant="ghost"
-        size="icon"
-        class="size-10 shrink-0"
-        :aria-label="$t('close')"
-        :title="$t('close')"
-        @click="closeSearch"
-      >
-        <X class="size-[22px]" />
-      </Button>
-    </div>
+    <ListingSearchRow
+      ref="searchRowRef"
+      v-model="params.search"
+      :open="showSearchInput"
+      :placeholder="searchLabel"
+      @close="closeSearch"
+      @focus="searchHasFocus = true"
+      @blur="searchHasFocus = false"
+    />
 
     <Container
       v-if="expanded"
@@ -412,6 +344,8 @@ import TrackTableRow from "@/components/track-table/TrackTableRow.vue";
 import { TRACK_ROW_HEIGHT } from "@/components/track-table/trackTableColumns";
 import LibrarySortControls from "@/components/LibrarySortControls.vue";
 import ListingSelectionBar from "@/components/ListingSelectionBar.vue";
+import ListingSearch from "@/components/listing-toolbar/ListingSearch.vue";
+import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListingToolbarControls from "@/components/listing-toolbar/ListingToolbarControls.vue";
 import { Button } from "@/components/ui/button";
 import {
@@ -422,8 +356,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { InputGroupAddon, InputGroupButton } from "@/components/ui/input-group";
-import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import { useCommandCenter } from "@/composables/useCommandCenter";
@@ -771,7 +703,8 @@ const supportsGridActions = computed(() =>
 );
 const showSearch = ref(false);
 const searchHasFocus = ref(false);
-const searchInputRef = ref<InstanceType<typeof SearchInput>>();
+const searchInputRef = ref<InstanceType<typeof ListingSearch>>();
+const searchRowRef = ref<InstanceType<typeof ListingSearchRow>>();
 const listingMediaType = computed(() => MEDIA_TYPE_BY_ITEMTYPE[props.itemtype]);
 const searchLabel = computed(() => {
   const mediaType = listingMediaType.value;
@@ -881,7 +814,7 @@ const closeSearch = function () {
 };
 const focusSearch = function () {
   nextTick(() => {
-    searchInputRef.value?.focus();
+    (store.mobileLayout ? searchRowRef : searchInputRef).value?.focus();
   });
 };
 const toggleSearch = function () {
@@ -1443,32 +1376,6 @@ const searchAvailable = computed(() => {
 const showSearchInput = computed(() => {
   return searchAvailable.value && showSearch.value && expanded.value;
 });
-
-// the field stays on screen while it closes, and its icon waits for it to go
-const searchSlotShown = ref(false);
-const searchButtonRef = ref<InstanceType<typeof Button>>();
-// focus was in the field as it closed, so it goes to the icon that replaces it
-let refocusSearchButton = false;
-
-const onSearchSlotLeave = (el: Element) => {
-  refocusSearchButton = el.contains(document.activeElement);
-};
-const onSearchSlotLeft = () => {
-  searchSlotShown.value = false;
-  if (!refocusSearchButton) return;
-  refocusSearchButton = false;
-  nextTick(() =>
-    (searchButtonRef.value?.$el as HTMLElement | undefined)?.focus(),
-  );
-};
-
-// a phone drops the inline field without letting it finish closing
-watch(
-  () => store.mobileLayout,
-  (mobile) => {
-    if (mobile) searchSlotShown.value = false;
-  },
-);
 
 const searchButtonCloses = computed(
   () => showSearchInput.value && !store.mobileLayout,
@@ -2521,35 +2428,6 @@ async function selectEveryItem() {
 </script>
 
 <style scoped>
-.listing-search-slot {
-  --listing-search-width: clamp(0px, calc(100vw - 560px), 280px);
-  display: flex;
-  width: var(--listing-search-width);
-}
-
-.listing-search-enter-active,
-.listing-search-leave-active {
-  overflow: hidden;
-  transition: width 320ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.listing-search-enter-from,
-.listing-search-leave-to {
-  width: 0;
-}
-
-.listing-search--inline {
-  font-size: 0.9375rem;
-  font-weight: 400;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .listing-search-enter-active,
-  .listing-search-leave-active {
-    transition: none;
-  }
-}
-
 .disc-header {
   display: flex;
   align-items: flex-end;

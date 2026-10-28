@@ -34,12 +34,12 @@ import {
 } from "@/views/classical/images";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { useMenuFilter } from "@/views/classical/menuFilter";
+import { useListFilter } from "@/views/classical/menuFilter";
 import {
   useClassicalListing,
   useClassicalPreferences,
 } from "@/views/classical/listing";
-import { Drama, Users } from "@lucide/vue";
+import { Users } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
@@ -49,7 +49,7 @@ const ITEMTYPE = "performers";
 
 const { t } = useI18n();
 
-// The roles the filter offers, in menu order, with their names.
+// The roles the filter offers, in panel order, with their names.
 const ROLE_LABELS = {
   [ArtistRole.CONDUCTOR]: "classical_role.conductors",
   [ArtistRole.ORCHESTRA]: "classical_role.orchestras",
@@ -69,17 +69,19 @@ const { preferences, save } = useClassicalPreferences(ITEMTYPE);
 const search = ref(preferences.search ?? "");
 watch(search, (value) => save("search", value));
 
-const roleFilter = useMenuFilter({
+const roleFilter = useListFilter({
   itemtype: ITEMTYPE,
   key: "roleFilter",
+  id: "role",
   label: "classical_filter_role",
-  icon: Drama,
+  placeholder: "classical_filter_any_role",
+  layout: "checkboxes",
   values: Object.keys(ROLE_LABELS) as Array<keyof typeof ROLE_LABELS>,
-  valueLabel: (role) => ROLE_LABELS[role],
+  valueLabel: (role) => t(ROLE_LABELS[role]),
   present: () => performers.value.flatMap((p) => p.roles),
 });
 
-// The full list is fetched once; the menu filters narrow it client-side.
+// The full list is fetched once; the filters narrow it client-side.
 const { viewMode, favoritesOnly, gridSize, loading, reload } =
   useClassicalListing({
     itemtype: ITEMTYPE,
@@ -92,7 +94,7 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       text: search,
       placeholder: () => t("classical_filter_performers_placeholder"),
     },
-    filters: () => [roleFilter.menuItem.value],
+    filters: () => [roleFilter.filter.value],
   });
 
 // Built once per load, so filtering and redrawing reuse the folded name and

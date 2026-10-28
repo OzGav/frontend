@@ -78,7 +78,7 @@ const { viewMode, favoritesOnly, gridSize, loading, reload } =
       text: search,
       placeholder: () => t("classical_filter_composers_placeholder"),
     },
-    filters: () => [periodFilter.menuItem.value, countryFilter.menuItem.value],
+    filters: () => [periodFilter.filter.value, countryFilter.filter.value],
   });
 
 onMounted(reload);

@@ -192,11 +192,8 @@ const { loading, reload } = useClassicalListing({
     text: search,
     placeholder: () => t("classical_filter_works_placeholder"),
   },
-  filters: () => [
-    periodFilter.menuItem.value,
-    workTypeFilter.menuItem.value,
-    yearFilterItem.value,
-  ],
+  filters: () => [periodFilter.filter.value, workTypeFilter.filter.value],
+  menuItems: () => [yearFilterItem.value],
   load: async (sort) => {
     works.value = (await getWorks(sort)).map(
       ({ work, recording_count, part_names, period }) => {

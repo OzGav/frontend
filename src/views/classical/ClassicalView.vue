@@ -2,6 +2,7 @@
   <section class="classical-view classical-typography">
     <Toolbar
       v-if="!fullBleedContent"
+      ref="toolbar"
       :icon="Piano"
       :title="$t('classical')"
       :menu-items="menu?.items"
@@ -42,99 +43,44 @@
         </TabsList>
       </Tabs>
       <template v-if="menu" #append>
-        <Button
-          v-if="search && !searchButtonCloses && !searchSlotShown"
-          ref="searchButton"
-          variant="ghost"
-          size="icon-lg"
-          :title="$t('search')"
-          :aria-label="$t('search')"
-          :aria-expanded="search.open"
-          @click="search.toggle"
-        >
-          <Search class="size-[22px]" />
-        </Button>
-        <Transition
-          v-if="search && !store.mobileLayout"
-          name="listing-search"
-          @before-enter="searchSlotShown = true"
-          @before-leave="onSearchSlotLeave"
-          @after-leave="onSearchSlotLeft"
-        >
-          <!-- the input follows the slot's edge as it opens, and the padding
-               keeps its 3px focus ring inside the clipped area. It grows out
-               of the search icon's width and shrinks back to it, so the
-               controls beside it do not jump -->
-          <div
-            v-if="search.open"
-            class="listing-search-slot -m-[3px] box-content p-[3px] [&.listing-search-enter-from]:w-10 [&.listing-search-leave-to]:w-10"
-          >
-            <SearchInput
-              :ref="search.bindInput"
-              :model-value="search.text"
-              class="listing-search listing-search--inline"
-              :placeholder="search.placeholder"
-              :aria-label="search.placeholder"
-              @update:model-value="search.setText"
-              @keydown.esc="search.close"
-            >
-              <!-- the search icon gives way to the field, so it closes here -->
-              <template #append>
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    class="text-muted-foreground"
-                    :title="$t('close')"
-                    :aria-label="$t('close')"
-                    @click="search.close"
-                  >
-                    <X />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </template>
-            </SearchInput>
-          </div>
-        </Transition>
-        <ListingToolbarControls
-          :sort-options="menu.sort.options"
-          :sort-by="menu.sort.sortBy"
-          :view-mode="menu.sort.viewMode ?? ''"
-          :show-view-modes="!!menu.sort.viewMode"
-          :views="CLASSICAL_VIEWS"
-          :filters="menu.filters"
-          :active-filter-count="activeFilters"
-          :compact="store.mobileLayout"
-          @sort-by="menu.sort.setSort"
-          @view-mode="menu.sort.setViewMode"
-          @clear-filters="menu.clearFilters"
-        />
+        <div ref="controls" class="flex items-center">
+          <ListingSearch
+            v-if="search"
+            ref="searchField"
+            :model-value="search.text"
+            :open="search.open"
+            :placeholder="search.placeholder"
+            :narrow="compactControls"
+            @update:model-value="search.setText"
+            @toggle="toggleSearch"
+            @close="search.close"
+          />
+          <ListingToolbarControls
+            :sort-options="menu.sort.options"
+            :sort-by="menu.sort.sortBy"
+            :view-mode="menu.sort.viewMode ?? ''"
+            :show-view-modes="!!menu.sort.viewMode"
+            :views="CLASSICAL_VIEWS"
+            :filters="menu.filters"
+            :active-filter-count="activeFilters"
+            :compact="store.mobileLayout || compactControls"
+            @sort-by="menu.sort.setSort"
+            @view-mode="menu.sort.setViewMode"
+            @clear-filters="menu.clearFilters"
+          />
+        </div>
       </template>
     </Toolbar>
-    <div
-      v-if="!fullBleedContent && search?.open && store.mobileLayout"
-      class="mx-2.5 mt-2.5 flex items-center gap-1"
-    >
-      <SearchInput
-        :ref="search.bindInput"
-        :model-value="search.text"
-        clearable
-        class="listing-search listing-search--row min-w-0 flex-1"
-        :placeholder="search.placeholder"
-        :aria-label="search.placeholder"
-        @update:model-value="search.setText"
-        @keydown.esc="search.close"
-      />
-      <Button
-        variant="ghost"
-        size="icon"
-        class="size-10 shrink-0"
-        :aria-label="$t('close')"
-        :title="$t('close')"
-        @click="search.close"
-      >
-        <X class="size-[22px]" />
-      </Button>
-    </div>
+    <ListingSearchRow
+      v-if="!fullBleedContent && search"
+      ref="searchRow"
+      :model-value="search.text"
+      :open="search.open"
+      :placeholder="search.placeholder"
+      :narrow="compactControls"
+      @update:model-value="search.setText"
+      @close="search.close"
+    />
     <v-divider v-if="!fullBleedContent" />
     <div
       class="classical-tab-content"
@@ -147,11 +93,10 @@
 </template>
 
 <script setup lang="ts">
+import ListingSearch from "@/components/listing-toolbar/ListingSearch.vue";
+import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListingToolbarControls from "@/components/listing-toolbar/ListingToolbarControls.vue";
 import Toolbar from "@/components/Toolbar.vue";
-import { Button } from "@/components/ui/button";
-import { InputGroupAddon, InputGroupButton } from "@/components/ui/input-group";
-import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";
@@ -167,7 +112,7 @@ import {
   CLASSICAL_VIEWS,
   type ClassicalMenu,
 } from "@/views/classical/listing";
-import { Feather, Music3, Piano, Search, Users, X } from "@lucide/vue";
+import { Feather, Music3, Piano, Users } from "@lucide/vue";
 import { unrefElement, useResizeObserver } from "@vueuse/core";
 import { computed, nextTick, provide, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -185,34 +130,21 @@ const activeFilters = computed(() =>
   activeFilterCount(menu.value?.filters ?? []),
 );
 
-// the field stays on screen while it closes, and its icon waits for it to go
-const searchSlotShown = ref(false);
-const searchButton =
-  useTemplateRef<InstanceType<typeof Button>>("searchButton");
-// focus was in the field as it closed, so it goes to the icon that replaces it
-let refocusSearchButton = false;
+const searchField = useTemplateRef("searchField");
+const searchRow = useTemplateRef("searchRow");
 
-const onSearchSlotLeave = (el: Element) => {
-  refocusSearchButton = el.contains(document.activeElement);
+// opening the field from its icon puts the cursor in it
+const toggleSearch = () => {
+  const opening = !search.value?.open;
+  search.value?.toggle();
+  if (!opening) return;
+  nextTick(() =>
+    (store.mobileLayout || compactControls.value
+      ? searchRow
+      : searchField
+    ).value?.focus(),
+  );
 };
-const onSearchSlotLeft = () => {
-  searchSlotShown.value = false;
-  if (!refocusSearchButton) return;
-  refocusSearchButton = false;
-  nextTick(() => (searchButton.value?.$el as HTMLElement | undefined)?.focus());
-};
-
-// a phone drops the inline field without letting it finish closing
-watch(
-  () => store.mobileLayout,
-  (mobile) => {
-    if (mobile) searchSlotShown.value = false;
-  },
-);
-
-const searchButtonCloses = computed(
-  () => !!search.value?.open && !store.mobileLayout,
-);
 
 const activeTab = computed<ClassicalTab>(() => {
   const segment = route.path.split("/")[2];
@@ -256,6 +188,44 @@ const fitTabLabels = () => {
 useResizeObserver(tabs, fitTabLabels);
 // the serif font widens the labels once it has loaded
 document.fonts?.ready.then(fitTabLabels);
+
+// When the toolbar runs out of room, with the tabs already down to their
+// icons, the sort and filter buttons shrink to icons as on a phone, until the
+// toolbar is again as wide as they need.
+const toolbar = useTemplateRef("toolbar");
+const controls = useTemplateRef("controls");
+const compactControls = ref(false);
+let controlsWidth = 0;
+
+const toolbarContent = () =>
+  (
+    unrefElement(toolbar) as HTMLElement | undefined
+  )?.querySelector<HTMLElement>(".v-toolbar__content") ?? undefined;
+
+const fitControls = () => {
+  const el = toolbarContent();
+  if (!el) return;
+  if (compactControls.value) {
+    if (el.clientWidth < controlsWidth) return;
+    compactControls.value = false;
+    nextTick(fitControls);
+    return;
+  }
+  if (el.scrollWidth <= el.clientWidth) return;
+  controlsWidth = el.scrollWidth;
+  compactControls.value = true;
+};
+
+// an open field that no longer fits moves to the row, taking the cursor along
+watch(compactControls, (compact) => {
+  if (compact && search.value?.open) nextTick(() => searchRow.value?.focus());
+});
+
+// the controls widen as the search field opens, so they are watched as well
+useResizeObserver(
+  () => [toolbarContent(), unrefElement(controls)],
+  fitControls,
+);
 
 // reka-ui's Tabs only emits update:modelValue on a value change, so clicking
 // the tab already active wouldn't navigate. Drive navigation from a direct
@@ -385,35 +355,6 @@ const goToTab = useClassicalTabNavigation();
 
 .icons-only .classical-tab-trigger {
   padding: 0.3rem 0.5rem;
-}
-
-.listing-search-slot {
-  --listing-search-width: clamp(0px, calc(100vw - 560px), 280px);
-  display: flex;
-  width: var(--listing-search-width);
-}
-
-.listing-search-enter-active,
-.listing-search-leave-active {
-  overflow: hidden;
-  transition: width 320ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.listing-search-enter-from,
-.listing-search-leave-to {
-  width: 0;
-}
-
-.listing-search--inline {
-  font-size: 0.9375rem;
-  font-weight: 400;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .listing-search-enter-active,
-  .listing-search-leave-active {
-    transition: none;
-  }
 }
 
 .classical-tab-content {

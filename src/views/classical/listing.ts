@@ -33,7 +33,6 @@ import {
   computed,
   inject,
   markRaw,
-  nextTick,
   onUnmounted,
   ref,
   toRaw,
@@ -76,8 +75,6 @@ interface ClassicalMenuSearch {
   toggle: () => void;
   // clears the filter as it closes it
   close: () => void;
-  // the template ref for the box, so opening it can focus it
-  bindInput: (input: unknown) => void;
 }
 
 export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
@@ -196,7 +193,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
 
   // a kept filter opens with the tab, so it shows what narrows the list
   const searchOpen = ref(!!options.search?.text.value);
-  let searchInput: { focus: () => void } | null = null;
 
   const toggleSearch = () => {
     if (searchOpen.value) {
@@ -204,7 +200,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       return;
     }
     searchOpen.value = true;
-    nextTick(() => searchInput?.focus());
   };
 
   const closeSearch = () => {
@@ -287,9 +282,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       },
       toggle: toggleSearch,
       close: closeSearch,
-      bindInput: (input: unknown) => {
-        searchInput = input as { focus: () => void } | null;
-      },
     },
     sort: {
       options: sort.options.value,

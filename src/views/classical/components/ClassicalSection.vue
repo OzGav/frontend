@@ -19,6 +19,8 @@
         <slot name="controls"></slot>
       </div>
     </div>
+    <!-- under the heading, e.g. a phone's search field -->
+    <slot name="below-head"></slot>
     <slot></slot>
   </section>
 </template>

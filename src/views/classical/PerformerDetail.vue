@@ -11,15 +11,31 @@
       :title="$t('works_performed')"
       :meta="works.length ? workCountLabel(filteredWorks.length) : undefined"
     >
-      <template v-if="works.length" #controls>
-        <div class="works-controls">
-          <WorksFilterInput v-model="worksFilter" />
+      <template v-if="works.length" #append>
+        <div class="ms-auto flex items-center">
+          <SectionSearch
+            ref="searchField"
+            v-model="worksFilter"
+            :open="searchOpen"
+            :placeholder="$t('classical_filter_works_placeholder')"
+            @toggle="toggleSearch"
+            @close="closeSearch"
+          />
           <ToolbarOverflowMenu
             v-if="worksMenu.length"
             :items="worksMenu"
             :active="worksMenuActive"
           />
         </div>
+      </template>
+      <template v-if="works.length" #below-head>
+        <ListingSearchRow
+          ref="searchRow"
+          v-model="worksFilter"
+          :open="searchOpen"
+          :placeholder="$t('classical_filter_works_placeholder')"
+          @close="closeSearch"
+        />
       </template>
       <div v-if="loading">
         <ListViewSkeleton v-for="n in 4" :key="n" />
@@ -109,6 +125,7 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
@@ -134,7 +151,7 @@ import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
-import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
+import SectionSearch from "@/views/classical/components/SectionSearch.vue";
 import {
   UNKNOWN_WORK_TYPE,
   worksMenuItems,
@@ -147,6 +164,7 @@ import {
 } from "@/views/classical/favorites";
 import { recordingCountLabel, workCountLabel } from "@/views/classical/labels";
 import { playTracks } from "@/views/classical/playback";
+import { useSectionSearch } from "@/views/classical/sectionSearch";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
 import { computed, ref, watch } from "vue";
@@ -167,6 +185,13 @@ useDetailItemUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
 const worksFilter = ref("");
+const {
+  open: searchOpen,
+  field: searchField,
+  row: searchRow,
+  toggle: toggleSearch,
+  close: closeSearch,
+} = useSectionSearch(worksFilter);
 const typeFilter = ref<string[]>([]);
 const restoreWorksFilter = useBackFilter(
   () => ({ text: worksFilter.value, types: typeFilter.value }),
@@ -289,7 +314,7 @@ const load = async (id: string) => {
   works.value = [];
   recordings.value = [];
   loading.value = true;
-  worksFilter.value = "";
+  closeSearch();
   typeFilter.value = [];
   restoreWorksFilter();
   try {
@@ -333,13 +358,6 @@ watch(
   padding: 0;
   display: flex;
   flex-direction: column;
-}
-
-.works-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
 }
 
 .performer-work-row {

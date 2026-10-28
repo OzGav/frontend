@@ -47,7 +47,7 @@ import { toast } from "vue-sonner";
 /** The toolbar menu a classical page hands to the Classical view. */
 export interface ClassicalMenu {
   items: ToolBarMenuItem[];
-  // a filter is narrowing the list, shown as a dot on the menu button
+  // a filter in the menu is narrowing the list, shown as a dot on its button
   active: boolean;
   // the page's text filter, opened from its toolbar button
   search?: ClassicalMenuSearch;
@@ -156,9 +156,12 @@ interface ClassicalListingOptions extends Omit<
   load: (sort: ClassicalSort) => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
-  // the tab's own filters, shown in its menu; read as the menu is built, so
+  // the tab's own filters, shown in the Filters panel after the favourites
+  // filter, with undefined for one left out; read as the panel is built, so
   // their state must exist before this is called
-  filters?: () => ToolBarMenuItem[];
+  filters?: () => Array<ListingFilter | undefined>;
+  // the tab's own menu entries, shown before refresh
+  menuItems?: () => ToolBarMenuItem[];
   // adds a text filter, opened from a toolbar button
   search?: { text: Ref<string>; placeholder: () => string };
 }
@@ -166,10 +169,10 @@ interface ClassicalListingOptions extends Omit<
 /**
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
  * optionally, the favourites filter, view mode, cover size and the tab's own
- * filters. The settings are kept per user like those of the other library
- * listings, the menu, text filter, sort and filters show in the Classical
- * view's toolbar while the tab is open, and going back to the tab returns it
- * to where it was scrolled.
+ * filters and menu entries. The settings are kept per user like those of the
+ * other library listings, the menu, text filter, sort and filters show in the
+ * Classical view's toolbar while the tab is open, and going back to the tab
+ * returns it to where it was scrolled.
  */
 export function useClassicalListing(options: ClassicalListingOptions) {
   const { preferences: prefs, save } = useClassicalPreferences(
@@ -258,12 +261,15 @@ export function useClassicalListing(options: ClassicalListingOptions) {
         },
       });
     }
+    for (const filter of options.filters?.() ?? []) {
+      if (filter) list.push(filter);
+    }
     return list;
   });
 
   const items = computed<ToolBarMenuItem[]>(() => {
     const list: ToolBarMenuItem[] = [];
-    if (options.filters) list.push(...options.filters());
+    if (options.menuItems) list.push(...options.menuItems());
     list.push({
       label: "tooltip.refresh",
       icon: RefreshCw,

@@ -177,7 +177,6 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
           to: yearTo.value,
           earliest: composedBounds.value.earliest,
           latest: composedBounds.value.latest,
-          unlabelled: true,
           "onUpdate:from": (value: string) => (yearFrom.value = value),
           "onUpdate:to": (value: string) => (yearTo.value = value),
         },

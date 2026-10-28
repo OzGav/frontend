@@ -102,8 +102,8 @@ watch(
 </script>
 
 <style scoped>
-/* As wide as the Classical toolbar's search box, on a section heading line;
-   sized here, as the search box itself fills what it is given. */
+/* As wide as the other Classical section search boxes, on a section heading
+   line; sized here, as the search box itself fills what it is given. */
 .recordings-filter-root--input {
   flex-shrink: 0;
   width: var(--classical-search-width);

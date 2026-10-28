@@ -265,7 +265,8 @@ const goToTab = useClassicalTabNavigation();
 
 <style scoped>
 .classical-view {
-  /* every Classical search box is this wide, narrowing with the window */
+  /* the section search boxes of the detail pages are this wide, narrowing
+     with the window */
   --classical-search-width: clamp(160px, calc(100vw - 640px), 260px);
   display: flex;
   flex-direction: column;

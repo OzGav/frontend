@@ -129,7 +129,7 @@ export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
 ];
 
 /** The classical lists the server offers sort choices for. */
-export type ClassicalListingType =
+type ClassicalListingType =
   | ListingType.CLASSICAL_COMPOSERS
   | ListingType.CLASSICAL_PERFORMERS
   | ListingType.CLASSICAL_WORKS

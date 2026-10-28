@@ -46,7 +46,6 @@ import {
   type Work,
 } from "@/plugins/api/interfaces";
 import { isPhoneSizedScreen } from "@/plugins/breakpoint";
-import { $t } from "@/plugins/i18n";
 import ClassicalSectionLinks from "@/views/classical/components/ClassicalSectionLinks.vue";
 import { artistShowInfoEntry } from "@/views/classical/menu";
 import type { ClassicalTab } from "@/views/classical/tabs";

@@ -1,5 +1,5 @@
 <template>
-  <div class="composers-tab">
+  <div class="flex flex-col gap-3">
     <ClassicalArtistGrid
       v-if="gridItems.length || loading"
       :items="gridItems"
@@ -85,11 +85,3 @@ const gridItems = useArtistGridItems({
     countryFilter.matches(c.country ?? UNKNOWN_COUNTRY),
 });
 </script>
-
-<style scoped>
-.composers-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-</style>

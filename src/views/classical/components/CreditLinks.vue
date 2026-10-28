@@ -1,9 +1,10 @@
 <template>
+  <!-- Several names share one row, so the underline shows which one is hovered. -->
   <template v-for="(a, i) in artists" :key="`${a.id}|${a.instrument ?? ''}`">
     <template v-if="i">{{ separator }}</template>
     <router-link
       :to="`/classical/performers/${a.id}`"
-      class="credit-link"
+      class="text-inherit no-underline [&:focus-visible]:underline [&:hover]:underline"
       @click.stop
       >{{ a.name }}</router-link
     >
@@ -21,16 +22,3 @@ defineProps<{
   separator: string;
 }>();
 </script>
-
-<style scoped>
-.credit-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Several names share one row, so the underline shows which one is hovered. */
-.credit-link:hover,
-.credit-link:focus-visible {
-  text-decoration: underline;
-}
-</style>

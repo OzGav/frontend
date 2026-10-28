@@ -1,6 +1,6 @@
 <template>
-  <div class="recording-title">
-    <div class="recording-credits">
+  <div class="min-w-0 flex-1">
+    <div class="text-[0.95rem] font-semibold">
       <span v-if="credits.conductors.length" class="conductor">
         <CreditLinks :artists="credits.conductors" separator=", " />
       </span>
@@ -13,13 +13,18 @@
       <span v-if="credits.leadPerformers.length" class="performers">
         <CreditLinks :artists="credits.leadPerformers" separator=", " />
       </span>
-      <span v-if="recording.year" class="year"> ({{ recording.year }}) </span>
+      <span
+        v-if="recording.year"
+        class="ml-[0.25rem] font-normal text-muted-foreground"
+      >
+        ({{ recording.year }})
+      </span>
       <!-- notes after the year, e.g. the movements covered -->
       <slot></slot>
     </div>
     <span
       v-if="credits.performers.length && !credits.leadPerformers.length"
-      class="performer-credits"
+      class="mt-[0.1rem] block text-[0.85rem] font-normal text-muted-foreground"
     >
       <CreditLinks :artists="credits.performers" separator=" · " />
     </span>
@@ -40,29 +45,3 @@ const props = defineProps<{
 
 const credits = computed(() => recordingCredits(props.recording));
 </script>
-
-<style scoped>
-.recording-title {
-  flex: 1;
-  min-width: 0;
-}
-
-.recording-credits {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.year {
-  color: var(--muted-foreground, #888);
-  font-weight: 400;
-  margin-left: 0.25rem;
-}
-
-.performer-credits {
-  display: block;
-  font-weight: 400;
-  font-size: 0.85rem;
-  color: var(--muted-foreground, #888);
-  margin-top: 0.1rem;
-}
-</style>

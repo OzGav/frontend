@@ -15,23 +15,23 @@
         @sort-by="setSort"
       />
     </template>
-    <ul class="other-tracks-list">
+    <ul class="m-0 flex list-none flex-col p-0">
       <ClassicalPlayRow
         v-for="t in tracks"
         :key="t.item_id"
         tag="li"
-        class="other-track-row"
+        class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem] [--play-row-inset:0.25rem]"
         :label="`${$t('play')} ${t.name}`"
         @click="onRowClick(t, $event)"
         @menu="(e: Event) => $emit('menu-track', t, e)"
         @play="(e: Event) => $emit('play-track', t, e)"
       >
-        <div class="other-track-main">
-          <span class="other-track-title">{{ t.name }}</span>
+        <div class="flex min-w-0 flex-1 flex-col gap-[0.1rem]">
+          <span class="truncate text-[0.95rem] font-medium">{{ t.name }}</span>
           <router-link
             v-if="t.album"
             :to="`/albums/library/${t.album.item_id}`"
-            class="other-track-album"
+            class="truncate text-[0.8rem] text-muted-foreground no-underline"
             @click.stop
           >
             {{ t.album.name }}
@@ -127,47 +127,3 @@ const onRowClick = (track: Track, evt: MouseEvent) => {
   handleMediaItemClick(track, x, y);
 };
 </script>
-
-<style scoped>
-.other-tracks-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.other-track-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding-block: 0.5rem;
-  --play-row-inset: 0.25rem;
-  cursor: pointer;
-}
-
-.other-track-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.other-track-title {
-  font-weight: 500;
-  font-size: 0.95rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.other-track-album {
-  font-size: 0.8rem;
-  color: var(--muted-foreground, #888);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

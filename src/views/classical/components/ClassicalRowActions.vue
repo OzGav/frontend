@@ -2,10 +2,14 @@
   <!-- Now playing / source / favourite / menu affordances for a list row, matching
        the existing ListviewItem layout. Click handlers stop propagation so
        they don't trigger the row's primary action. -->
-  <div class="row-actions">
+  <div class="flex shrink-0 items-center gap-[0.1rem]">
     <NowPlayingBadge v-if="playing" :show-badge="getBreakpointValue('bp7')" />
     <!-- kept on phones, where it tells a whole act from a single aria -->
-    <span v-if="duration" class="track-duration">
+    <!-- spaced as the standard list rows space their duration -->
+    <span
+      v-if="duration"
+      class="mr-[12px] ml-[16px] text-[0.875rem] whitespace-nowrap tabular-nums opacity-70 max-[540px]:mx-[4px]"
+    >
       {{ formatDuration(duration) }}
     </span>
     <ProviderIcon
@@ -16,7 +20,7 @@
     />
     <div
       v-if="getBreakpointValue('bp3') && !$vuetify.display.mobile"
-      class="favorite-button-wrapper"
+      class="mx-[10px]"
     >
       <FavouriteButton v-if="favoriteItem" :item="favoriteItem" />
       <!-- a row of several tracks gets the same heart, liking or clearing them all -->
@@ -100,32 +104,3 @@ defineEmits<{
   (e: "menu", evt: Event): void;
 }>();
 </script>
-
-<style scoped>
-/* as the standard list rows space their duration */
-.track-duration {
-  font-size: 0.875rem;
-  opacity: 0.7;
-  margin-left: 16px;
-  margin-right: 12px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 539px) {
-  .track-duration {
-    margin-inline: 4px;
-  }
-}
-
-.favorite-button-wrapper {
-  margin-inline: 10px;
-}
-
-.row-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.1rem;
-  flex-shrink: 0;
-}
-</style>

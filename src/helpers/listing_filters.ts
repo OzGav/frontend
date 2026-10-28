@@ -52,11 +52,27 @@ export interface ListingChoiceFilter {
   select: (value: string) => void;
 }
 
+/** A filter drawn by a control of the page's own, such as a year range. */
+export interface ListingCustomFilter {
+  kind: "custom";
+  id: string;
+  label: string;
+  component: Component;
+  // bound to the component, with on-prefixed handlers for its events
+  props: Record<string, unknown>;
+  // the narrowings the control puts on the listing
+  activeCount: number;
+  clear: () => void;
+}
+
 export type ListingFilter =
-  ListingToggleFilter | ListingMultiFilter | ListingChoiceFilter;
+  | ListingToggleFilter
+  | ListingMultiFilter
+  | ListingChoiceFilter
+  | ListingCustomFilter;
 
 /** How many narrowings the filters put on the listing: one per active
- * toggle, picked value or narrowing choice. */
+ * toggle, picked value or narrowing choice, plus those of custom filters. */
 export function activeFilterCount(filters: ListingFilter[]): number {
   return filters.reduce((count, filter) => {
     switch (filter.kind) {
@@ -72,6 +88,8 @@ export function activeFilterCount(filters: ListingFilter[]): number {
               filter.selected !== filter.unfiltered,
           )
         );
+      case "custom":
+        return count + filter.activeCount;
     }
   }, 0);
 }

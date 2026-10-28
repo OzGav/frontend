@@ -4,10 +4,10 @@
   <div
     class="year-range"
     role="group"
-    :aria-labelledby="labelId"
+    :aria-labelledby="unlabelled ? undefined : labelId"
     :class="{ 'year-range--active': isActive }"
   >
-    <span :id="labelId" class="year-range-label">
+    <span v-if="!unlabelled" :id="labelId" class="year-range-label">
       {{ $t("classical_date_range_label") }}
     </span>
     <div class="year-range-fields">
@@ -61,6 +61,8 @@ const props = defineProps<{
   /** Earliest and latest year present in the list, shown as placeholders. */
   earliest?: number;
   latest?: number;
+  // for a place that already heads the control with its own label
+  unlabelled?: boolean;
 }>();
 
 const from = defineModel<string>("from", { required: true });
@@ -104,7 +106,7 @@ const clear = () => {
   gap: 0.35rem 0.6rem;
   /* as tall as the standard search box beside it, growing only when it wraps */
   min-height: 2.25rem;
-  padding: 0 0.4rem 0 0.7rem;
+  padding: 0 0.15rem 0 0.7rem;
   border-radius: 8px;
   background: var(--muted, rgba(255, 255, 255, 0.05));
   border: 1px solid var(--border, #3d3d3d);
@@ -120,13 +122,17 @@ const clear = () => {
   white-space: nowrap;
 }
 
+/* the boxes share any room the control is stretched to */
 .year-range-fields {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 0.35rem;
 }
 
 .year-input {
+  flex: 1 1 4.25rem;
+  min-width: 0;
   width: 4.25rem;
   height: 1.75rem;
   padding: 0 0.4rem;

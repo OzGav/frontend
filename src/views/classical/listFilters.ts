@@ -1,9 +1,11 @@
+import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import type { ListingMultiFilter } from "@/helpers/listing_filters";
 import { Period, WorkType } from "@/plugins/api/interfaces";
 import { countryLabel, periodLabel } from "@/views/classical/labels";
 import { useClassicalPreferences } from "@/views/classical/listing";
 import { $t } from "@/plugins/i18n";
-import { computed, shallowRef } from "vue";
+import { Shapes } from "@lucide/vue";
+import { computed, shallowRef, type Ref } from "vue";
 
 interface ListFilterOptions<T extends string> {
   // the tab the choice is stored under
@@ -150,6 +152,43 @@ export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
     valueLabel: (type) => $t(workTypeChoiceLabel(type)),
     present: types,
   });
+}
+
+/**
+ * The entries of a works list's menu: a Type sub menu ticking the types to
+ * show, left out while a single type would filter nothing.
+ *
+ * :param types: The types of the listed works, UNKNOWN_WORK_TYPE for those
+ *   without one.
+ * :param chosen: The ticked types; empty shows every work.
+ */
+export function worksMenuItems(
+  types: string[],
+  chosen: Ref<string[]>,
+): ToolBarMenuItem[] {
+  const present = new Set(types);
+  // a ticked type stays listed so it can be cleared even when no work has it
+  const offered = workTypeChoices().filter(
+    (t) => present.has(t) || chosen.value.includes(t),
+  );
+  if (offered.length < 2 && !chosen.value.length) return [];
+  return [
+    {
+      label: "classical_type",
+      icon: Shapes,
+      active: chosen.value.length > 0,
+      closeOnContentClick: false,
+      subItems: offered.map((type) => ({
+        label: workTypeChoiceLabel(type),
+        selected: chosen.value.includes(type),
+        action: () => {
+          chosen.value = chosen.value.includes(type)
+            ? chosen.value.filter((t) => t !== type)
+            : [...chosen.value, type];
+        },
+      })),
+    },
+  ];
 }
 
 /** The choice for composers without a country in the country filter. */

@@ -50,19 +50,11 @@
       </Button>
 
       <!-- overflow menu with (remaining) items if on mobile -->
-      <OverflowMenu v-if="overflowItems.length" :items="overflowItems">
-        <Button
-          variant="ghost"
-          size="icon-lg"
-          :title="$t('menu')"
-          :aria-label="$t('menu')"
-        >
-          <span class="relative inline-flex">
-            <EllipsisVertical class="size-[22px]" />
-            <span v-if="menuActive" :class="ACTIVE_DOT_CLASS"></span>
-          </span>
-        </Button>
-      </OverflowMenu>
+      <ToolbarOverflowMenu
+        v-if="overflowItems.length"
+        :items="overflowItems"
+        :active="menuActive"
+      />
     </template>
   </v-toolbar>
 </template>
@@ -71,7 +63,7 @@
 import { $t } from "@/plugins/i18n";
 import { ACTIVE_DOT_CLASS } from "@/constants";
 import MenuItemIcon from "@/components/MenuItemIcon.vue";
-import OverflowMenu from "@/components/OverflowMenu.vue";
+import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { Button } from "@/components/ui/button";
 import {
   menuItemLabel,
@@ -79,7 +71,6 @@ import {
 } from "@/helpers/context_menu_item";
 import { eventbus } from "@/plugins/eventbus";
 import { store } from "@/plugins/store";
-import { EllipsisVertical } from "@lucide/vue";
 import { getBreakpointValue } from "../plugins/breakpoint";
 
 import type { Component } from "vue";

@@ -131,7 +131,7 @@ import OtherTracksSection from "@/views/classical/components/OtherTracksSection.
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
 import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterButton.vue";
-import { UNKNOWN_WORK_TYPE } from "@/views/classical/menuFilter";
+import { UNKNOWN_WORK_TYPE } from "@/views/classical/listFilters";
 import { coPerformerNames } from "@/views/classical/credits";
 import {
   allLiked,

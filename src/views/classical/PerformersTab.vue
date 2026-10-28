@@ -34,7 +34,7 @@ import {
 } from "@/views/classical/images";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { useListFilter } from "@/views/classical/menuFilter";
+import { useListFilter } from "@/views/classical/listFilters";
 import {
   useClassicalListing,
   useClassicalPreferences,

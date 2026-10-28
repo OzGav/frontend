@@ -29,7 +29,7 @@ import {
 } from "@/views/classical/trackMenuEntries";
 import type { Router } from "vue-router";
 
-export interface ClassicalMenuContext {
+interface ClassicalMenuContext {
   router: Router;
   work: Work | ItemMapping;
   composer?: ItemMapping | Artist;

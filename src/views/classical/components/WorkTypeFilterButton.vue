@@ -42,7 +42,7 @@ import {
 import {
   workTypeChoiceLabel,
   workTypeChoices,
-} from "@/views/classical/menuFilter";
+} from "@/views/classical/listFilters";
 import { ChevronDown, Shapes } from "@lucide/vue";
 import { computed } from "vue";
 

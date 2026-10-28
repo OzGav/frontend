@@ -103,7 +103,7 @@ const { ready, sort, menuItem } = useClassicalSort({
   onChange: () => load(),
 });
 
-// The sort entry the standard listings show in their toolbar menu.
+// The section's menu holds just its sort.
 const menuItems = computed<ContextMenuItem[]>(() => [menuItem.value]);
 
 let loadCount = 0;

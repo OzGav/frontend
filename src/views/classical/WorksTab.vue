@@ -89,7 +89,7 @@ import {
   UNKNOWN_WORK_TYPE,
   usePeriodFilter,
   useWorkTypeFilter,
-} from "@/views/classical/menuFilter";
+} from "@/views/classical/listFilters";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";

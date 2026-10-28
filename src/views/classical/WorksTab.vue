@@ -129,9 +129,6 @@ const works = ref<WorkRow[]>([]);
 
 const { preferences, save } = useClassicalPreferences(ITEMTYPE);
 
-const search = ref(preferences.search ?? "");
-watch(search, (value) => save("search", value));
-
 // Placeholder years, so the boxes advertise the span the library actually covers.
 const composedBounds = computed(() =>
   yearBounds(works.value.map((w) => w.year_composed)),
@@ -186,13 +183,12 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
     : undefined,
 );
 
-const { loading, reload } = useClassicalListing({
+const { loading, reload, search } = useClassicalListing({
   itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_WORKS,
   exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
   labels: { [SortField.YEAR]: "year_composed" },
   search: {
-    text: search,
     placeholder: () => t("classical_filter_works_placeholder"),
   },
   filters: () => [

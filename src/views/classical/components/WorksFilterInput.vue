@@ -19,7 +19,8 @@ const model = defineModel<string>({ required: true });
 </script>
 
 <style scoped>
-/* As wide as the Classical toolbar's search box, on a section heading line. */
+/* As wide as the other Classical section search boxes, on a section heading
+   line. */
 .works-filter-input {
   flex-shrink: 0;
   width: var(--classical-search-width);

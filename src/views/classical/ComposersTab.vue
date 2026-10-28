@@ -38,7 +38,7 @@ import {
   UNKNOWN_COUNTRY,
   useCountryFilter,
   usePeriodFilter,
-} from "@/views/classical/menuFilter";
+} from "@/views/classical/listFilters";
 import { Feather } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";

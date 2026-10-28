@@ -16,17 +16,15 @@
       :loading="loading"
       :artist-id="id"
     >
-      <li
+      <ClassicalPlayRow
         v-for="w in filtered"
         :key="w.item_id"
-        class="composer-work-row classical-play-row"
+        tag="li"
+        class="composer-work-row"
+        :label="`${$t('play')} ${w.name}`"
         @click="navigateOnRowClick($event, router, workLink(w.item_id))"
+        @play="(e: Event) => playWork(w.item_id, e)"
       >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playWork(w.item_id, e)"
-        />
         <!-- the details on their own line, under the title -->
         <span class="composer-work-text">
           <router-link :to="workLink(w.item_id)" class="composer-work-link">
@@ -37,12 +35,7 @@
             {{ workDetails(w) }}
           </span>
         </span>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${w.name}`"
-          @play="(e: Event) => playWork(w.item_id, e)"
-        />
-      </li>
+      </ClassicalPlayRow>
     </WorksSection>
 
     <OtherTracksSection
@@ -67,8 +60,8 @@ import { normalizeForFilter } from "@/helpers/utils";
 import { navigateOnRowClick } from "@/views/classical/listing";
 import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksSection from "@/views/classical/components/WorksSection.vue";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
@@ -195,10 +188,7 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
 
 <style scoped>
 .composer-work-row {
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding: 0.5rem 0 0.5rem 7px;
-  margin-left: -7px;
-  border-radius: 4px;
+  padding-block: 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -211,14 +201,6 @@ const onMenuOtherTrack = (t: Track, evt: Event) => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-}
-
-.composer-work-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
 }
 
 .composer-work-link {

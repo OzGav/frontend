@@ -46,12 +46,13 @@
       :aria-label="$t('classical_date_range_clear')"
       @click="clear"
     >
-      <v-icon icon="mdi-close" size="14" />
+      <X class="size-3.5" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { X } from "@lucide/vue";
 import { computed, useId } from "vue";
 
 defineOptions({ name: "YearRangeFilter" });

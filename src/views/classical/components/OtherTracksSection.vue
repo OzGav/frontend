@@ -16,21 +16,16 @@
       />
     </template>
     <ul class="other-tracks-list">
-      <li
+      <ClassicalPlayRow
         v-for="t in tracks"
         :key="t.item_id"
-        v-hold="(e: TouchEvent) => onHold(e, t)"
-        class="other-track-row classical-play-row"
-        @click.capture="swallowClickAfterHold"
+        tag="li"
+        class="other-track-row"
+        :label="`${$t('play')} ${t.name}`"
         @click="onRowClick(t, $event)"
-        @contextmenu.prevent="$emit('menu-track', t, $event)"
-        @touchstart.passive="onTouchStart"
+        @menu="(e: Event) => $emit('menu-track', t, e)"
+        @play="(e: Event) => $emit('play-track', t, e)"
       >
-        <RowPlayButton
-          side="start"
-          :label="`${$t('play')} ${t.name}`"
-          @play="(e: Event) => $emit('play-track', t, e)"
-        />
         <div class="other-track-main">
           <span class="other-track-title">{{ t.name }}</span>
           <router-link
@@ -42,36 +37,30 @@
             {{ t.album.name }}
           </router-link>
         </div>
-        <RowPlayButton
-          side="end"
-          :label="`${$t('play')} ${t.name}`"
-          @play="(e: Event) => $emit('play-track', t, e)"
-        />
-        <ClassicalRowActions
-          :name="t.name"
-          :playing="isTrackPlaying(t)"
-          :duration="t.duration"
-          :source-item="t"
-          :favorite-item="t"
-          @menu="(e: Event) => $emit('menu-track', t, e)"
-        />
-      </li>
+        <template #actions>
+          <ClassicalRowActions
+            :name="t.name"
+            :playing="isTrackPlaying(t)"
+            :duration="t.duration"
+            :source-item="t"
+            :favorite-item="t"
+            @menu="(e: Event) => $emit('menu-track', t, e)"
+          />
+        </template>
+      </ClassicalPlayRow>
     </ul>
   </ClassicalSection>
 </template>
 
 <script setup lang="ts">
 import LibrarySortControls from "@/components/LibrarySortControls.vue";
-import {
-  getEventPosition,
-  useHoldToOpenMenu,
-} from "@/composables/useHoldToOpenMenu";
+import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import { ListingType, type Track } from "@/plugins/api/interfaces";
 import { getOtherTracks } from "@/services/classical";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { isRowControlClick, useClassicalSort } from "@/views/classical/listing";
 import { isTrackPlaying } from "@/views/classical/playback";
@@ -85,7 +74,7 @@ const props = defineProps<{
   asComposer?: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: "play-track", track: Track, evt: Event): void;
   (e: "menu-track", track: Track, evt: Event): void;
 }>();
@@ -93,10 +82,6 @@ const emit = defineEmits<{
 const tracks = ref<Track[]>([]);
 
 useOwnFavorites(() => tracks.value);
-
-const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
-  (evt: Event, track: Track) => emit("menu-track", track, evt),
-);
 
 const {
   ready,
@@ -156,19 +141,9 @@ const onRowClick = (track: Track, evt: MouseEvent) => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  /* like the standard rows, the highlight starts 7px before the play slot */
-  padding: 0.5rem 0.25rem 0.5rem 7px;
-  margin-left: calc(0.25rem - 7px);
-  border-radius: 4px;
+  padding-block: 0.5rem;
+  --play-row-inset: 0.25rem;
   cursor: pointer;
-}
-
-.other-track-row:hover {
-  /* matches the hover overlay of the standard list rows */
-  background: rgba(
-    var(--v-theme-on-surface),
-    calc(var(--v-hover-opacity) * var(--v-theme-overlay-multiplier))
-  );
 }
 
 .other-track-main {

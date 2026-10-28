@@ -15,8 +15,12 @@
     >
       <template v-if="works.length" #controls>
         <div class="works-controls">
-          <WorkTypeFilterButton v-model="typeFilter" :types="workTypes" />
           <WorksFilterInput v-model="worksFilter" />
+          <ToolbarOverflowMenu
+            v-if="worksMenu.length"
+            :items="worksMenu"
+            :active="worksMenuActive"
+          />
         </div>
       </template>
       <div v-if="loading">
@@ -66,6 +70,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
 import {
@@ -83,8 +88,10 @@ import ClassicalSection from "@/views/classical/components/ClassicalSection.vue"
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import WorksFilterInput from "@/views/classical/components/WorksFilterInput.vue";
-import WorkTypeFilterButton from "@/views/classical/components/WorkTypeFilterButton.vue";
-import { UNKNOWN_WORK_TYPE } from "@/views/classical/listFilters";
+import {
+  UNKNOWN_WORK_TYPE,
+  worksMenuItems,
+} from "@/views/classical/listFilters";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
   countryLabel,
@@ -150,6 +157,8 @@ const restoreWorksFilter = useBackFilter(
 const workTypes = computed(() =>
   works.value.map((w) => w.work_type ?? UNKNOWN_WORK_TYPE),
 );
+const worksMenu = computed(() => worksMenuItems(workTypes.value, typeFilter));
+const worksMenuActive = computed(() => worksMenu.value.some((i) => i.active));
 
 const filteredWorks = computed(() => {
   const q = normalizeForFilter(worksFilter.value.trim());

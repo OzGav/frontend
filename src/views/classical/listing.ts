@@ -15,7 +15,6 @@ import {
   type SortOptionInfo,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
-import { store } from "@/plugins/store";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
 import {
@@ -26,8 +25,6 @@ import {
   LayoutGrid,
   LayoutList,
   RefreshCw,
-  Search,
-  X,
 } from "@lucide/vue";
 import {
   computed,
@@ -59,6 +56,8 @@ interface ClassicalMenuSearch {
   placeholder: string;
   open: boolean;
   setText: (text: string) => void;
+  // opens the box, or closes it as close does
+  toggle: () => void;
   // clears the filter as it closes it
   close: () => void;
   // the template ref for the box, so opening it can focus it
@@ -174,23 +173,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
     searchOpen.value = false;
   };
 
-  const searchItem = (): ToolBarMenuItem => {
-    const filtering = !!options.search?.text.value;
-    // on a phone the box opens on its own row with its own close button
-    const closes = searchOpen.value && !store.mobileLayout;
-    return {
-      label: closes
-        ? "close"
-        : filtering
-          ? "tooltip.search_filter_active"
-          : "tooltip.search",
-      icon: closes ? X : Search,
-      active: filtering && !closes,
-      overflowAllowed: false,
-      action: toggleSearch,
-    };
-  };
-
   const viewModeItem = (): ToolBarMenuItem => ({
     label: "tooltip.view_mode_current",
     labelArgs: [$t(VIEW_MODE_LABELS[viewMode.value])],
@@ -228,7 +210,6 @@ export function useClassicalListing(options: ClassicalListingOptions) {
 
   const items = computed<ToolBarMenuItem[]>(() => {
     const list: ToolBarMenuItem[] = [];
-    if (options.search) list.push(searchItem());
     if (options.views) {
       list.push({
         label: "tooltip.filter_favorites",
@@ -268,6 +249,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       setText: (text: string) => {
         if (options.search) options.search.text.value = text;
       },
+      toggle: toggleSearch,
       close: closeSearch,
       bindInput: (input: unknown) => {
         searchInput = input as { focus: () => void } | null;

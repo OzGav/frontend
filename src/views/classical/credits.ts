@@ -26,7 +26,7 @@ export interface CreditedArtist {
  * without repeats. With instruments, each credit's instrument is kept, so an
  * artist playing two instruments appears once per instrument.
  */
-export function creditedArtists(
+function creditedArtists(
   credits: Credit[],
   roles: readonly ArtistRole[],
   withInstruments = false,

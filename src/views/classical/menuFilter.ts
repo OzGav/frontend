@@ -6,7 +6,7 @@ import { $t } from "@/plugins/i18n";
 import { Globe, Hourglass, Shapes } from "@lucide/vue";
 import { computed, shallowRef, type Component } from "vue";
 
-export interface MenuFilterOptions<T extends string> {
+interface MenuFilterOptions<T extends string> {
   // the tab the choice is stored under
   itemtype: string;
   // the preference the choice is stored as

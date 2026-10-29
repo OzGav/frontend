@@ -19,7 +19,7 @@
         @click="
           navigateOnRowClick($event, router, `/classical/works/${w.item_id}`)
         "
-        @play="(e: Event) => playWork(w.item_id, e)"
+        @play="(e: Event) => playWork(w.work, e)"
       >
         <div class="flex min-w-0 flex-col text-inherit no-underline">
           <span
@@ -78,7 +78,12 @@
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { ListingCustomFilter } from "@/helpers/listing_filters";
 import { normalizeForFilter } from "@/helpers/utils";
-import { ListingType, SortField, type Period } from "@/plugins/api/interfaces";
+import {
+  ListingType,
+  SortField,
+  type Period,
+  type Work,
+} from "@/plugins/api/interfaces";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
@@ -114,6 +119,8 @@ const { t } = useI18n();
 
 // Flattened to the fields the rows show and filter on.
 interface WorkRow {
+  // what the play button plays
+  work: Work;
   item_id: string;
   name: string;
   // tells apart works sharing a title, e.g. 1888 version
@@ -220,6 +227,7 @@ const { loading, reload, search } = useClassicalListing({
         const composer = work.composers[0]?.name ?? "";
         const catalogNumber = work.catalog_numbers[0] ?? "";
         return {
+          work,
           item_id: work.item_id,
           name: work.name,
           version: work.version,

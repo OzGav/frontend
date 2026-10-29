@@ -19,10 +19,10 @@
         <TabsList class="w-full h-auto">
           <TabsTrigger
             value="composers"
-            class="classical-tab-trigger min-w-0 overflow-hidden"
+            :class="TAB_TRIGGER_CLASS"
             @click="goToTab('composers')"
           >
-            <Feather class="shrink-0" />
+            <Feather class="size-[1.05rem] shrink-0" />
             <span
               class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
               >{{ $t("composers") }}</span
@@ -30,10 +30,10 @@
           </TabsTrigger>
           <TabsTrigger
             value="works"
-            class="classical-tab-trigger min-w-0 overflow-hidden"
+            :class="TAB_TRIGGER_CLASS"
             @click="goToTab('works')"
           >
-            <Music3 class="shrink-0" />
+            <Music3 class="size-[1.05rem] shrink-0" />
             <span
               class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
               >{{ $t("works") }}</span
@@ -41,10 +41,10 @@
           </TabsTrigger>
           <TabsTrigger
             value="performers"
-            class="classical-tab-trigger min-w-0 overflow-hidden"
+            :class="TAB_TRIGGER_CLASS"
             @click="goToTab('performers')"
           >
-            <Users class="shrink-0" />
+            <Users class="size-[1.05rem] shrink-0" />
             <span
               class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
               >{{ $t("performers") }}</span
@@ -128,6 +128,10 @@ import { computed, nextTick, provide, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
 
 defineOptions({ name: "ClassicalView" });
+
+// a little larger than TabsTrigger's text-sm, keeping its line height
+const TAB_TRIGGER_CLASS =
+  "classical-tab-trigger min-w-0 overflow-hidden text-[0.95rem] leading-[calc(1.25/0.875)]";
 
 const route = useRoute();
 
@@ -297,18 +301,6 @@ const goToTab = useClassicalTabNavigation();
    internal padding so the trailing space matches the leading icon gap. */
 .classical-toolbar :deep(.v-toolbar-title__placeholder) {
   padding-right: 2rem;
-}
-
-/* Pin icon size and font size against TabsTrigger's baked-in defaults
-   (text-sm and [&_svg]:size-4). */
-:deep(.classical-tab-trigger svg) {
-  width: 1.05rem !important;
-  height: 1.05rem !important;
-}
-
-:deep(.classical-tab-trigger),
-:deep(.classical-tab-trigger span) {
-  font-size: 0.95rem !important;
 }
 
 @media (max-width: 768px) {

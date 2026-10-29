@@ -16,11 +16,9 @@
       v-if="work?.movements?.length"
       :key="work.item_id"
       v-model="selectedMovements"
-      v-model:selected-arias="selectedArias"
       :movements="work.movements"
       :counts="movementCounts"
-      :arias="arias"
-      :aria-counts="ariaCounts"
+      :part-entries="partEntries"
       :from-library="!work.movements_from_musicbrainz"
     />
 
@@ -69,14 +67,10 @@
         @menu="onMenuMovement"
       />
       <RecordingGroupList
-        v-else-if="
-          !selectedMovements.length &&
-          !selectedArias.length &&
-          displayedRecordings.length
-        "
+        v-else-if="!selectedMovements.length && displayedRecordings.length"
         :groups="recordingGroups"
-        :movements="work?.movements"
-        :act-movements-of="actMovementsOf"
+        :movements="ownMovements"
+        :act-movements-of="partEntriesOf"
         @menu-recording="onMenuRecording"
         @menu-movement="onMenuMovement"
       />
@@ -116,19 +110,20 @@ import RelatedWorksSection from "@/views/classical/components/RelatedWorksSectio
 import SectionSearch from "@/views/classical/components/SectionSearch.vue";
 import WorkHeroMeta from "@/views/classical/components/WorkHeroMeta.vue";
 import WorkMovements from "@/views/classical/components/WorkMovements.vue";
-import { useActArias } from "@/views/classical/actArias";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { recordingCountLabel } from "@/views/classical/labels";
+import {
+  recordingCountLabel,
+  shortMovementName,
+} from "@/views/classical/labels";
 import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
 import {
   groupByMovement,
   groupByPart,
-  movementLineage,
-  movementRows,
   type MovementGroup,
   type RecordingGroup,
 } from "@/views/classical/recordingGroups";
 import { useRecordingsFilter } from "@/views/classical/recordingsFilter";
+import { useWorkParts } from "@/views/classical/workParts";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -162,64 +157,42 @@ const {
   clearPerformer,
   displayedRecordings,
   selectedMovements,
-  selectedArias,
 } = useRecordingsFilter(props, work, recordings);
 
 const composerMapping = computed(() => work.value?.composers[0]);
 
-const lineage = computed(() => movementLineage(work.value?.movements ?? []));
-
-const lineageOf = (n: number) => lineage.value.get(n) ?? [n];
+const { lineageOf, partEntries, ownMovements, rowsOf, partEntriesOf } =
+  useWorkParts(work, displayedRecordings);
 
 // How many shown recordings have each movement, by movement number; an act
-// counts the recordings of its arias too.
+// counts the recordings of its arias too, and an aria those with its tracks.
 const movementCounts = computed(() => {
   const counts: Record<number, number> = {};
   for (const r of displayedRecordings.value)
     for (const n of new Set((r.movement_numbers ?? []).flatMap(lineageOf)))
       counts[n] = (counts[n] ?? 0) + 1;
+  for (const m of work.value?.movements ?? [])
+    if (partEntries.value.has(m.number)) counts[m.number] = rowsOf(m).length;
   return counts;
 });
 
-const { arias, ariaCounts, ariaRows, actMovementsOf } = useActArias(
-  work,
-  displayedRecordings,
-);
-
-// Each chosen movement in movement order, followed by its chosen arias, with
-// their tracks from each shown recording in the list's order.
+// Each chosen movement in movement order, an aria under its act, with their
+// tracks from each shown recording in the list's order.
 const movementGroups = computed<MovementGroup[]>(() =>
   (work.value?.movements ?? [])
-    .flatMap((movement) => [
-      ...(selectedMovements.value.includes(movement.number)
-        ? [
-            {
-              key: `movement-${movement.number}`,
-              name: movement.name,
-              rows: movementRows(
-                displayedRecordings.value,
-                movement.number,
-                lineageOf,
-              ),
-            },
-          ]
-        : []),
-      ...arias.value
-        .filter(
-          (a) =>
-            a.act === movement.number && selectedArias.value.includes(a.key),
-        )
-        .map((a) => ({
-          key: `aria-${a.key}`,
-          name: a.name,
-          rows: ariaRows(a),
-        })),
-    ])
+    .filter((m) => selectedMovements.value.includes(m.number))
+    .map((m) => ({
+      key: `movement-${m.number}`,
+      name: partEntries.value.has(m.number)
+        ? shortMovementName(m.name)
+        : m.name,
+      rows: rowsOf(m),
+    }))
     .filter((g) => g.rows.length),
 );
 
 const shownCount = computed(() =>
-  selectedMovements.value.length || selectedArias.value.length
+  selectedMovements.value.length
     ? new Set(
         movementGroups.value.flatMap((g) =>
           g.rows.map((row) => row.recording.key),
@@ -235,7 +208,7 @@ const recordingGroups = computed<RecordingGroup[]>(() => {
   if (!w) return [];
   return w.movements?.some((m) => m.work_id)
     ? groupByMovement(
-        w.movements,
+        ownMovements.value,
         w.item_id,
         displayedRecordings.value,
         lineageOf,

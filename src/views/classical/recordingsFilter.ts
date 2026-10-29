@@ -18,7 +18,7 @@ interface WorkRoute {
 
 /**
  * The filters of a work's recordings: the search, the performer, the year
- * recorded and the chosen movements and arias. They start afresh for each
+ * recorded and the chosen movements. They start afresh for each
  * work the page opens, unless the user went back to it, and a performer in
  * the route shows that performer's recordings alone.
  *
@@ -56,9 +56,6 @@ export function useRecordingsFilter(
   // The chosen movements, which replace the recordings list with those
   // movements from each shown recording.
   const selectedMovements = ref<number[]>([]);
-
-  // The chosen arias of an opera's acts, by key.
-  const selectedArias = ref<string[]>([]);
 
   const recordedBounds = computed(() =>
     yearBounds(recordings.value.map((r) => r.year)),
@@ -145,7 +142,6 @@ export function useRecordingsFilter(
       yearFrom: yearFrom.value,
       yearTo: yearTo.value,
       movements: selectedMovements.value,
-      arias: selectedArias.value,
     }),
     (saved) => {
       query.value = saved.query;
@@ -153,7 +149,6 @@ export function useRecordingsFilter(
       yearFrom.value = saved.yearFrom;
       yearTo.value = saved.yearTo;
       selectedMovements.value = saved.movements;
-      selectedArias.value = saved.arias;
     },
   );
 
@@ -166,7 +161,6 @@ export function useRecordingsFilter(
       closeSearch();
       performerArtistId.value = null;
       selectedMovements.value = [];
-      selectedArias.value = [];
       restoreFilter();
     },
     { immediate: true },
@@ -201,6 +195,5 @@ export function useRecordingsFilter(
     clearPerformer,
     displayedRecordings,
     selectedMovements,
-    selectedArias,
   };
 }

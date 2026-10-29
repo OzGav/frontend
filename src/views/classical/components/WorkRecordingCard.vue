@@ -115,7 +115,7 @@ const props = defineProps<{
   recording: Recording;
   // the work's movements, to name those the recording covers
   movements?: WorkMovement[];
-  // the own numbers of the act it is of, to count those it holds
+  // the entries listed under the act it is of, to count those it holds
   actMovements?: WorkMovement[];
 }>();
 

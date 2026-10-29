@@ -4,7 +4,7 @@
       <!-- hugs the title, past the gap the section puts after it -->
       <span class="ml-[-8px] text-[22px] font-bold" aria-hidden="true">*</span>
     </template>
-    <template v-if="model.length || selectedArias.length" #append>
+    <template v-if="model.length" #append>
       <Button variant="ghost" size="sm" @click="clear">
         {{ $t("clear") }}
       </Button>
@@ -70,9 +70,12 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import type { WorkMovement } from "@/plugins/api/interfaces";
-import type { ActAria } from "@/views/classical/actArias";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
-import { LONG_MOVEMENT_LIST } from "@/views/classical/labels";
+import {
+  LONG_MOVEMENT_LIST,
+  shortMovementName,
+} from "@/views/classical/labels";
+import { movementLineage } from "@/views/classical/recordingGroups";
 import { Check } from "@lucide/vue";
 import { computed, ref } from "vue";
 
@@ -84,101 +87,95 @@ const props = defineProps<{
   counts: Record<number, number>;
   // the list was built from the library's tracks, so may miss movements
   fromLibrary?: boolean;
-  // the arias recordings hold, listed under their act
-  arias?: ActAria[];
-  // the number of shown recordings with each aria, by its key
-  ariaCounts?: Record<string, number>;
+  // the numbers of the entries listed under the work's parts, e.g. the arias
+  // of an opera's acts
+  partEntries?: Set<number>;
 }>();
 
 // the chosen movement numbers; empty shows the recordings list
 const model = defineModel<number[]>({ required: true });
-// the keys of the chosen arias
-const selectedArias = defineModel<string[]>("selectedArias", {
-  default: () => [],
-});
 
 // the arias an act shows until the list is expanded
 const FOLDED_ARIAS = 3;
 
 const expanded = ref(false);
 
+const lineage = computed(() => movementLineage(props.movements));
+
+const isAria = (n: number | null | undefined) =>
+  n != null && (props.partEntries?.has(n) ?? false);
+
+const own = computed(() => props.movements.filter((m) => !isAria(m.number)));
+const arias = computed(() => props.movements.filter((m) => isAria(m.number)));
+
 // A long list shows only its first few movements until expanded; a chosen one
 // always shows, and a shown one brings its parent.
 const folded = computed(() => {
-  if (props.movements.length <= LONG_MOVEMENT_LIST) return props.movements;
+  if (own.value.length <= LONG_MOVEMENT_LIST) return own.value;
   const kept = new Set<number>(model.value);
-  for (const m of props.movements.slice(0, LONG_MOVEMENT_LIST))
-    kept.add(m.number);
-  for (const m of props.movements)
+  for (const m of own.value.slice(0, LONG_MOVEMENT_LIST)) kept.add(m.number);
+  for (const m of own.value)
     if (kept.has(m.number) && m.parent != null) kept.add(m.parent);
-  return props.movements.filter((m) => kept.has(m.number));
+  return own.value.filter((m) => kept.has(m.number));
 });
 
 // An act shows only its first few arias until expanded; a chosen one always
 // shows, and a piece shows with its number.
 const foldedArias = computed(() => {
-  const arias = props.arias ?? [];
-  const kept = new Set(
-    arias
-      .filter(
-        (a) =>
-          a.parent == null &&
-          (selectedArias.value.includes(a.key) ||
-            arias
-              .filter((other) => other.act === a.act && other.parent == null)
-              .indexOf(a) < FOLDED_ARIAS),
-      )
-      .map((a) => a.key),
-  );
-  return arias.filter(
+  const seen = new Map<number, number>();
+  const kept = new Set<number>();
+  for (const a of arias.value) {
+    // a piece sits under a number, a number under its act
+    if (isAria(a.parent)) continue;
+    const index = seen.get(a.parent!) ?? 0;
+    seen.set(a.parent!, index + 1);
+    if (index < FOLDED_ARIAS || model.value.includes(a.number))
+      kept.add(a.number);
+  }
+  return arias.value.filter(
     (a) =>
-      kept.has(a.key) ||
-      selectedArias.value.includes(a.key) ||
-      (a.parent != null && kept.has(`${a.act}-${a.parent}`)),
+      kept.has(a.number) ||
+      model.value.includes(a.number) ||
+      (a.parent != null && kept.has(a.parent)),
   );
 });
 
 const hasHidden = computed(
   () =>
-    folded.value.length < props.movements.length ||
-    foldedArias.value.length < (props.arias ?? []).length,
+    folded.value.length < own.value.length ||
+    foldedArias.value.length < arias.value.length,
 );
 
-const shown = computed(() => (expanded.value ? props.movements : folded.value));
+const shown = computed(() => (expanded.value ? own.value : folded.value));
 
 const shownArias = computed(() =>
-  expanded.value ? (props.arias ?? []) : foldedArias.value,
+  expanded.value ? arias.value : foldedArias.value,
 );
+
+const entryRow = (m: WorkMovement, name: string, depth: number) => ({
+  key: `movement-${m.number}`,
+  name,
+  depth,
+  count: props.counts[m.number] ?? 0,
+  selected: model.value.includes(m.number),
+  toggle: () => (model.value = toggled(model.value, m.number)),
+});
 
 // each shown movement followed by its arias
 const groups = computed(() =>
   shown.value.map((m) => [
-    {
-      key: `movement-${m.number}`,
-      name: m.name,
-      depth: m.parent != null ? 1 : 0,
-      count: props.counts[m.number] ?? 0,
-      selected: model.value.includes(m.number),
-      toggle: () => (model.value = toggled(model.value, m.number)),
-    },
+    entryRow(m, m.name, m.parent != null ? 1 : 0),
     ...shownArias.value
-      .filter((a) => a.act === m.number)
-      .map((a) => ({
-        key: `aria-${a.key}`,
-        name: a.name,
-        // a piece sits under its number
-        depth: a.parent != null ? 2 : 1,
-        count: props.ariaCounts?.[a.key] ?? 0,
-        selected: selectedArias.value.includes(a.key),
-        toggle: () =>
-          (selectedArias.value = toggled(selectedArias.value, a.key)),
-      })),
+      .filter((a) => lineage.value.get(a.number)?.at(-1) === m.number)
+      // a piece sits under its number
+      .map((a) =>
+        entryRow(a, shortMovementName(a.name), isAria(a.parent) ? 2 : 1),
+      ),
   ]),
 );
 
 const clear = () => {
   model.value = [];
-  selectedArias.value = [];
 };
 
 function toggled<T>(list: T[], value: T): T[] {

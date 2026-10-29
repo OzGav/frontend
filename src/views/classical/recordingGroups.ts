@@ -1,9 +1,10 @@
-import type {
-  ItemMapping,
-  Recording,
-  Track,
-  Work,
-  WorkMovement,
+import {
+  ExternalID,
+  type ItemMapping,
+  type Recording,
+  type Track,
+  type Work,
+  type WorkMovement,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 
@@ -60,21 +61,34 @@ export function movementLineage(
  * :param recordings: The recordings to take the tracks from.
  * :param number: The movement's number.
  * :param lineageOf: A movement number with those of the movements above it.
+ * :param mbid: The movement's MusicBrainz work id, whose tracks a recording
+ *   without a track numbered as the movement offers instead.
  */
 export function movementRows(
   recordings: Recording[],
   number: number,
   lineageOf: (number: number) => number[],
+  mbid?: string | null,
 ): MovementRow[] {
   return recordings
-    .map((recording) => ({
-      recording,
-      tracks: recording.tracks.filter(
+    .map((recording) => {
+      const numbered = recording.tracks.filter(
         (t) =>
           t.movement_number != null &&
           lineageOf(t.movement_number).includes(number),
-      ),
-    }))
+      );
+      return {
+        recording,
+        tracks:
+          numbered.length || !mbid
+            ? numbered
+            : recording.tracks.filter((t) =>
+                t.external_ids.some(
+                  ([type, id]) => type === ExternalID.MB_WORK && id === mbid,
+                ),
+              ),
+      };
+    })
     .filter((row) => row.tracks.length);
 }
 

@@ -105,12 +105,13 @@ export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
  *
  * :param recording: The recording, with the movements it covers.
  * :param movements: The work's movements.
- * :param actMovements: The act's own numbers, for a recording of some of them.
+ * :param actMovements: The entries listed under the act, for a recording of
+ *   some of its numbers.
  */
 export function movementCoverageLabel(
   recording: Recording,
   movements: WorkMovement[],
-  actMovements?: WorkMovement[],
+  actMovements: WorkMovement[] = [],
 ): string {
   if (recording.complete) return "";
   const covered = new Set(recording.movement_numbers);
@@ -126,19 +127,16 @@ export function movementCoverageLabel(
       ? movements.find((m) => m.number === numbers[0])
       : undefined;
   const parts = recording.part_movements ?? [];
-  if (single && parts.length)
-    // the act's own numbers are fetched after the page, so the act shows alone
-    // until they are in
-    return actMovements?.length
+  if (single && parts.length) {
+    // a number's pieces are not numbers of the act
+    const total = actMovements.filter((m) => m.parent === single.number).length;
+    return total
       ? $t("classical_movement_parts", {
           movement: single.name,
-          // a number's pieces are not numbers of the act
-          parts: heldCount(
-            parts.length,
-            actMovements.filter((m) => m.parent == null).length,
-          ),
+          parts: heldCount(parts.length, total),
         })
       : single.name;
+  }
   if (single?.work_id)
     return $t("classical_movement_complete", { movement: single.name });
   return heldCount(

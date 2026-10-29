@@ -85,7 +85,7 @@ const props = defineProps<{ id: string }>();
 
 const router = useRouter();
 
-// Flattened to the fields the rows show and sort on.
+// Flattened to the fields the rows show and filter on.
 interface WorkRow {
   // what the play button plays
   work: Work;
@@ -144,28 +144,19 @@ const load = async (id: string) => {
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
-    // Sort by catalog number so Op./BWV/K. order is preserved; empty catalogs last.
-    works.value = list
-      .map(({ work, recording_count, part_names }) => ({
-        work,
-        item_id: work.item_id,
-        name: work.name,
-        version: work.version,
-        catalog_number: work.catalog_numbers[0] ?? "",
-        work_type: work.work_type,
-        recording_count,
-        haystack: normalizeForFilter(
-          [work.name, ...work.catalog_numbers, ...(part_names ?? [])].join(" "),
-        ),
-      }))
-      .sort((a, b) => {
-        const ac = a.catalog_number;
-        const bc = b.catalog_number;
-        if (!ac && !bc) return 0;
-        if (!ac) return 1;
-        if (!bc) return -1;
-        return ac.localeCompare(bc, undefined, { numeric: true });
-      });
+    // the server lists a composer's works in catalogue order
+    works.value = list.map(({ work, recording_count, part_names }) => ({
+      work,
+      item_id: work.item_id,
+      name: work.name,
+      version: work.version,
+      catalog_number: work.catalog_numbers[0] ?? "",
+      work_type: work.work_type,
+      recording_count,
+      haystack: normalizeForFilter(
+        [work.name, ...work.catalog_numbers, ...(part_names ?? [])].join(" "),
+      ),
+    }));
     artistItem.value = artist;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does

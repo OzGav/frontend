@@ -1084,6 +1084,8 @@ export interface MediaItemMetadata {
   collections?: MediaItemCollection[] | null;
   life_span?: LifeSpan | null;
   artist_entity_type?: ArtistEntityType | null;
+  // ISO 3166-1 code of the country the artist is from, e.g. PL
+  country?: string | null;
 }
 
 interface _MediaItemBase {

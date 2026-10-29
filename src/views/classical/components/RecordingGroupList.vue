@@ -53,8 +53,8 @@ defineProps<{
   groups: RecordingGroup[];
   // the work's movements, to name those each recording covers
   movements?: WorkMovement[];
-  // the own numbers of the act a recording is of
-  actMovementsOf: (recording: Recording) => WorkMovement[] | undefined;
+  // the entries listed under the act a recording is of
+  actMovementsOf: (recording: Recording) => WorkMovement[];
 }>();
 
 const emit = defineEmits<{

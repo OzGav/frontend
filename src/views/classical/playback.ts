@@ -2,15 +2,9 @@ import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { showPlayMenuForMediaItem } from "@/layouts/default/ItemContextMenu.vue";
 import { handlePlayBtnClick } from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
-import {
-  PlaybackState,
-  type Recording,
-  type Track,
-  type Work,
-} from "@/plugins/api/interfaces";
+import { PlaybackState, type Track, type Work } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
-import { getWork, getWorkRecordings } from "@/services/classical";
 import { toast } from "vue-sonner";
 
 /**
@@ -32,32 +26,13 @@ export function playTracks(tracks: Track[], evt?: Event): void {
 }
 
 /**
- * Play a work: its first recording in the server's order. A work with parts,
- * such as an opera, without a recording of its own plays the first recording
- * of each part, in the work's order.
+ * Play a work the way the standard play buttons play an album: its first
+ * recording, or for a work with parts, such as an opera, without a recording of
+ * its own, the first recording of each part.
  */
-export async function playWork(workId: string, evt?: Event): Promise<void> {
-  let work: Work;
-  let recordings: Recording[];
-  try {
-    [work, recordings] = await Promise.all([
-      getWork(workId),
-      getWorkRecordings(workId),
-    ]);
-  } catch (err) {
-    onPlayError(err as Error);
-    return;
-  }
-  const own = recordings.find((r) => r.work.item_id === workId);
-  const picked = own
-    ? [own]
-    : (work.parts ?? []).flatMap(
-        (part) => recordings.find((r) => r.work.item_id === part.item_id) ?? [],
-      );
-  playTracks(
-    picked.flatMap((r) => r.tracks),
-    evt,
-  );
+export function playWork(work: Work, evt?: Event): void {
+  const { x, y } = evt ? getEventPosition(evt) : { x: 0, y: 0 };
+  handlePlayBtnClick(work, x, y);
 }
 
 /** Whether the active player is playing this track, decided as the standard rows do. */

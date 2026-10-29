@@ -59,11 +59,7 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
-import {
-  getClassicalArtist,
-  getComposer,
-  getComposerWorks,
-} from "@/services/classical";
+import { getClassicalArtist, getComposerWorks } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import { navigateOnRowClick } from "@/views/classical/listing";
 import { useBackScroll } from "@/views/classical/backScroll";
@@ -106,14 +102,14 @@ const artistItem = ref<Artist | undefined>();
 
 useDetailItemUpdates(artistItem);
 
-const country = ref<string | null>();
-
 // e.g. Romantic · 1810–1849 · Poland
 const heroMeta = computed(() =>
   [
     artistItem.value?.period ? periodLabel(artistItem.value.period) : "",
     lifeYearsLabel(artistItem.value?.metadata.life_span),
-    country.value ? countryLabel(country.value) : "",
+    artistItem.value?.metadata.country
+      ? countryLabel(artistItem.value.metadata.country)
+      : "",
   ]
     .filter(Boolean)
     .join(" · "),
@@ -137,15 +133,12 @@ const workDetails = (w: WorkRow) =>
 const load = async (id: string) => {
   // the previous composer must not stay actionable under the new route
   artistItem.value = undefined;
-  country.value = undefined;
   works.value = [];
   loading.value = true;
   try {
-    const [artist, list, composer] = await Promise.all([
+    const [artist, list] = await Promise.all([
       getClassicalArtist(id),
       getComposerWorks(id),
-      // only the header's country needs it
-      getComposer(id).catch(() => undefined),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
@@ -171,7 +164,6 @@ const load = async (id: string) => {
         return ac.localeCompare(bc, undefined, { numeric: true });
       });
     artistItem.value = artist;
-    country.value = composer?.country;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does
     return;

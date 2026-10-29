@@ -92,12 +92,10 @@ import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
-import api from "@/plugins/api";
+import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import {
-  EventType,
   ImageType,
   type Artist,
-  type EventMessage,
   type Recording,
   type Track,
   type Work,
@@ -131,13 +129,10 @@ import {
   type RecordingGroup,
 } from "@/views/classical/recordingGroups";
 import { useRecordingsFilter } from "@/views/classical/recordingsFilter";
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorkDetail" });
-
-// waits out the burst of updates a refresh of the work's tree sends
-const ITEM_UPDATE_DELAY_MS = 2000;
 
 const props = defineProps<{
   id: string;
@@ -299,22 +294,9 @@ watch(
 // A refresh reloads the whole tree of works, so a part's page updates too. The
 // update carries the work alone, so once the updates stop the page fetches its
 // movements and recordings again, keeping the filters.
-let updateTimer: ReturnType<typeof setTimeout> | undefined;
-const unsubUpdates = api.subscribe(
-  EventType.MEDIA_ITEM_UPDATED,
-  (evt: EventMessage) => {
-    const uri = work.value?.uri;
-    if (!uri || evt.object_id !== uri) return;
-    clearTimeout(updateTimer);
-    updateTimer = setTimeout(() => {
-      // the page may have moved on to another work meanwhile
-      if (work.value?.uri === uri) fetchPage(props.id);
-    }, ITEM_UPDATE_DELAY_MS);
-  },
-);
-onBeforeUnmount(() => {
-  clearTimeout(updateTimer);
-  unsubUpdates();
+useDetailItemUpdates(work, {
+  keepItem: true,
+  onUpdate: () => fetchPage(props.id),
 });
 
 // On a work with parts, the menu leads to the recording's part and its composer.

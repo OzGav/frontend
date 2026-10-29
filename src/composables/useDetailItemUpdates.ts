@@ -20,6 +20,11 @@ export interface DetailItemUpdatesOptions {
   providerItem?: { itemId: string; provider: string };
   /** Called after the item was replaced by an update. */
   onUpdate?: () => void;
+  /**
+   * Leaves the item as it is and only calls onUpdate, for a page that fetches
+   * more than an update carries.
+   */
+  keepItem?: boolean;
 }
 
 /**
@@ -48,7 +53,8 @@ export function useDetailItemUpdates<T extends MediaItem>(
     pending = undefined;
     // the page may have moved on to another item meanwhile
     if (!matches(updatedItem)) return;
-    item.value = keepOwnFavorite(updatedItem, item.value) as T;
+    if (!options.keepItem)
+      item.value = keepOwnFavorite(updatedItem, item.value) as T;
     options.onUpdate?.();
   };
 

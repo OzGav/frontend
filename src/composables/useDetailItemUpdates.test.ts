@@ -65,6 +65,17 @@ describe("useDetailItemUpdates", () => {
     expect(onUpdate).toHaveBeenCalledOnce();
   });
 
+  it("only calls onUpdate when told to keep the item", () => {
+    const onUpdate = vi.fn();
+    const { item } = setup(artist(), { onUpdate, keepItem: true });
+
+    emit(EventType.MEDIA_ITEM_UPDATED, artist({ name: "Renamed" }));
+    vi.runAllTimers();
+
+    expect(item.value?.name).toBe("Artist");
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
   it("ignores an update of another item", () => {
     const onUpdate = vi.fn();
     const { item } = setup(artist(), { onUpdate });

@@ -23,7 +23,7 @@
         class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
         :label="`${$t('play')} ${w.name}`"
         @click="navigateOnRowClick($event, router, workLink(w.item_id))"
-        @play="(e: Event) => playWork(w.item_id, e)"
+        @play="(e: Event) => playWork(w.work, e)"
       >
         <!-- the details on their own line, under the title; title and details
              keep a shared baseline, centred against the play slot -->
@@ -58,7 +58,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import type { Artist, Track, WorkType } from "@/plugins/api/interfaces";
+import type { Artist, Track, Work, WorkType } from "@/plugins/api/interfaces";
 import { getClassicalArtist, getComposerWorks } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import { navigateOnRowClick } from "@/views/classical/listing";
@@ -87,6 +87,8 @@ const router = useRouter();
 
 // Flattened to the fields the rows show and sort on.
 interface WorkRow {
+  // what the play button plays
+  work: Work;
   item_id: string;
   name: string;
   // tells apart works sharing a title, e.g. 1888 version
@@ -145,6 +147,7 @@ const load = async (id: string) => {
     // Sort by catalog number so Op./BWV/K. order is preserved; empty catalogs last.
     works.value = list
       .map(({ work, recording_count, part_names }) => ({
+        work,
         item_id: work.item_id,
         name: work.name,
         version: work.version,

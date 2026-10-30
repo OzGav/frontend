@@ -60,7 +60,7 @@ interface ClassicalMenuSearch {
   text: string;
   placeholder: string;
   open: boolean;
-  setText: (text: string) => void;
+  setText: (text?: string) => void;
   // opens the box, or closes it as close does
   toggle: () => void;
   // clears the filter as it closes it
@@ -270,7 +270,7 @@ export function useClassicalListing(options: ClassicalListingOptions) {
       text: search.value,
       placeholder: options.search.placeholder(),
       open: searchOpen.value,
-      setText: (text: string) => {
+      setText: (text = "") => {
         search.value = text;
       },
       toggle: toggleSearch,

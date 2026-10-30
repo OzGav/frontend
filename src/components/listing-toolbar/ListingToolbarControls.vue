@@ -40,7 +40,7 @@ defineProps<{
   viewMode: string;
   // off where the page picks the view itself
   showViewModes: boolean;
-  gridControls: GridSizeControls;
+  gridControls?: GridSizeControls;
   // the views it offers, the library ones unless given
   views?: readonly ListingViewOption[];
   filters: ListingFilter[];

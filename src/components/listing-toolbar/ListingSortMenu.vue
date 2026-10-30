@@ -120,7 +120,7 @@ const props = withDefaults(
     // a phone has room for the icon only
     compact: boolean;
   }>(),
-  { views: () => VIEW_MODES },
+  { viewMode: undefined, views: () => VIEW_MODES, gridControls: undefined },
 );
 
 const emit = defineEmits<{

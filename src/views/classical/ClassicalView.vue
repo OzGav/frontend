@@ -177,8 +177,10 @@ const tabs = useTemplateRef("tabs");
 const iconsOnly = ref(false);
 let labelsWidth = 0;
 
+const tabsElement = () => tabs.value?.$el as HTMLElement | undefined;
+
 const fitTabLabels = () => {
-  const el = unrefElement(tabs) as HTMLElement | undefined;
+  const el = tabsElement();
   if (!el) return;
   const width = el.clientWidth;
   if (iconsOnly.value) {
@@ -199,7 +201,7 @@ const fitTabLabels = () => {
   iconsOnly.value = true;
 };
 
-useResizeObserver(tabs, fitTabLabels);
+useResizeObserver(tabsElement, fitTabLabels);
 // the serif font widens the labels once it has loaded
 document.fonts?.ready.then(fitTabLabels);
 
@@ -212,9 +214,9 @@ const compactControls = ref(false);
 let controlsWidth = 0;
 
 const toolbarContent = () =>
-  (
-    unrefElement(toolbar) as HTMLElement | undefined
-  )?.querySelector<HTMLElement>(".v-toolbar__content") ?? undefined;
+  (toolbar.value?.$el as HTMLElement | undefined)?.querySelector<HTMLElement>(
+    ".v-toolbar__content",
+  ) ?? undefined;
 
 const fitControls = () => {
   const el = toolbarContent();

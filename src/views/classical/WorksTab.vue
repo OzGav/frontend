@@ -45,7 +45,7 @@
                   w.year_composed,
                   w.recordings_label,
                 ].filter(Boolean)"
-                :key="detail"
+                :key="String(detail)"
               >
                 · {{ detail }}
               </template>

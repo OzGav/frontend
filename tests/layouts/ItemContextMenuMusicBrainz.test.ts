@@ -99,6 +99,7 @@ describe("the context menu of a MusicBrainz release", () => {
       (entry) => entry.label === "show_info",
     );
 
+    expect(showInfo).toBeDefined();
     showInfo?.action?.();
 
     expect(openMusicBrainzItem).toHaveBeenCalledWith(release);

@@ -4,7 +4,7 @@
     class="ed-card ma-tap"
     role="button"
     tabindex="0"
-    :aria-busy="resolving"
+    :aria-busy="resolving || undefined"
     :class="{
       'ed-card--unavailable': !isAvailable && !notInLibrary,
       'ed-card--not-in-library': notInLibrary,
@@ -62,7 +62,7 @@
         <ClockFading v-else :size="16" />
       </span>
       <slot name="art-overlay"></slot>
-      <ArtworkSpinner v-if="resolving" :size="32" />
+      <ArtworkSpinner v-if="resolving" spinner-class="size-8" />
       <div
         v-if="showCheckboxes"
         class="ed-card__select"

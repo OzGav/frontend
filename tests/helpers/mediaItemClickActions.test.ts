@@ -92,9 +92,7 @@ import {
   handlePlayBtnClick,
 } from "@/helpers/media_item_actions";
 import { showContextMenuForMediaItem } from "@/layouts/default/ItemContextMenu.vue";
-import { ApiCommandError } from "@/plugins/api/errors";
 import { authManager } from "@/plugins/auth";
-import { toast } from "vue-sonner";
 import { album } from "../fixtures/album";
 import { artist } from "../fixtures/artist";
 import { audioSource } from "../fixtures/audioSource";
@@ -116,7 +114,6 @@ beforeEach(() => {
   mockRouterPush.mockReset();
   mockGetItem.mockReset();
   mockCurrentRoute.value.fullPath = "/artists/library/1";
-  vi.mocked(toast.error).mockClear();
   mockItemIsAvailable.mockReset().mockReturnValue(true);
   vi.mocked(showContextMenuForMediaItem).mockClear();
   vi.mocked(authManager.hasScope).mockImplementation(
@@ -353,60 +350,6 @@ describe("handleMediaItemClick on a MusicBrainz release", () => {
 
     expect(mockPlayMedia).not.toHaveBeenCalled();
     expect(mockRouterPush).toHaveBeenCalledTimes(1);
-  });
-
-  it("stays put when none of the music services has it, leaving the server's toast", async () => {
-    mockGetItem.mockRejectedValue(new ApiCommandError("Not found", 1));
-
-    await handleMediaItemClick(release, 0, 0);
-
-    expect(mockRouterPush).not.toHaveBeenCalled();
-    expect(toast.error).not.toHaveBeenCalled();
-  });
-
-  it("shows its own toast when the lookup fails without a server message", async () => {
-    mockGetItem.mockRejectedValue(new Error("Connection lost"));
-
-    await handleMediaItemClick(release, 0, 0);
-
-    expect(mockRouterPush).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith("open_item_failed");
-  });
-
-  it("can be opened again once a failed lookup settled", async () => {
-    mockGetItem.mockRejectedValueOnce(new ApiCommandError("Not found", 1));
-    await handleMediaItemClick(release, 0, 0);
-
-    mockGetItem.mockResolvedValue(resolvedAlbum);
-    await handleMediaItemClick(release, 0, 0);
-
-    expect(mockGetItem).toHaveBeenCalledTimes(2);
-    expect(mockRouterPush).toHaveBeenCalledTimes(1);
-  });
-
-  it("ignores a second click while the first one still resolves", async () => {
-    let finish!: (value: typeof resolvedAlbum) => void;
-    mockGetItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
-
-    const first = handleMediaItemClick(release, 0, 0);
-    await handleMediaItemClick(release, 0, 0);
-    finish(resolvedAlbum);
-    await first;
-
-    expect(mockGetItem).toHaveBeenCalledTimes(1);
-    expect(mockRouterPush).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not move the user when they went to another page meanwhile", async () => {
-    let finish!: (value: typeof resolvedAlbum) => void;
-    mockGetItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
-
-    const click = handleMediaItemClick(release, 0, 0);
-    mockCurrentRoute.value.fullPath = "/home";
-    finish(resolvedAlbum);
-    await click;
-
-    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 });
 

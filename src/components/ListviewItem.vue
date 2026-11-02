@@ -4,7 +4,7 @@
     link
     :show-menu-btn="showMenu"
     :menu-button-label="menuButtonLabel"
-    :aria-busy="resolving"
+    :aria-busy="resolving || undefined"
     :class="{
       unavailable: !isAvailable && !notInLibrary,
       'not-in-library': notInLibrary,
@@ -72,7 +72,11 @@
                 alt=""
               />
             </div>
-            <ArtworkSpinner v-if="resolving" class="rounded" :size="20" />
+            <ArtworkSpinner
+              v-if="resolving"
+              class="rounded"
+              spinner-class="size-5"
+            />
           </div>
         </template>
         <!-- ===== DESKTOP (hover-capable): blue play reveals on hover ===== -->
@@ -131,7 +135,11 @@
                   alt=""
                 />
               </div>
-              <ArtworkSpinner v-if="resolving" class="rounded" :size="20" />
+              <ArtworkSpinner
+                v-if="resolving"
+                class="rounded"
+                spinner-class="size-5"
+              />
               <span v-if="showPlay" class="listitem-play-blue">
                 <Play
                   :size="16"

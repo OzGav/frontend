@@ -1,10 +1,12 @@
 // Shared handlers for the click/play/menu interactions on a media item,
 // dispatching to the details views and the item context menu.
+import { useResolvingItems } from "@/composables/useResolvingItems";
 import {
   showContextMenuForMediaItem,
   showPlayMenuForMediaItem,
 } from "@/layouts/default/ItemContextMenu.vue";
 import { api } from "@/plugins/api";
+import { ApiCommandError } from "@/plugins/api/errors";
 import { isMusicBrainzItem, itemIsAvailable } from "@/plugins/api/helpers";
 import {
   BrowseFolder,
@@ -132,16 +134,9 @@ export const handleMediaItemClick = async function (
   parentItem?: MediaItemType,
 ) {
   // a MusicBrainz release has nothing to play: the server resolves it to the
-  // same album on one of the user's music services when its page opens
+  // same album on one of the user's music services, whose page then opens
   if (isMusicBrainzItem(item)) {
-    router.push({
-      name: item.media_type,
-      params: {
-        itemId: item.item_id,
-        provider: item.provider,
-      },
-    });
-    return;
+    return openMusicBrainzItem(item);
   }
 
   // open menu when item is unavailable so the user has a way to remove/refresh the item
@@ -229,6 +224,36 @@ export const handleMenuBtnClick = function (
     sortField,
     sortDirection,
   );
+};
+
+/**
+ * Open the page of the item on one of the user's music services that this
+ * MusicBrainz item resolves to.
+ *
+ * The user stays where they are while it resolves and when none of their
+ * services has it. A repeated click while it resolves does nothing, and
+ * nothing opens when the user moved to another page meanwhile.
+ */
+const openMusicBrainzItem = async function (
+  item: MediaItemTypeOrItemMapping,
+): Promise<void> {
+  const { isResolving, markResolving } = useResolvingItems();
+  if (isResolving(item.uri)) return;
+  const startPath = router.currentRoute.value.fullPath;
+  try {
+    const resolved = await markResolving(
+      item.uri,
+      api.getItem(item.media_type, item.item_id, item.provider),
+    );
+    if (router.currentRoute.value.fullPath !== startPath) return;
+    router.push({
+      name: resolved.media_type,
+      params: { itemId: resolved.item_id, provider: resolved.provider },
+    });
+  } catch (err) {
+    // a server error is already on screen as the api's own toast
+    if (!(err instanceof ApiCommandError)) toast.error($t("open_item_failed"));
+  }
 };
 
 /**

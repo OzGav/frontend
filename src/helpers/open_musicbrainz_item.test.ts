@@ -39,7 +39,7 @@ const resolvedAlbum = album({ item_id: "sp-1", provider: "spotify" });
 beforeEach(() => {
   mockGetItem.mockReset();
   mockRouterPush.mockReset();
-  mockCurrentRoute.value.fullPath = "/artists/library/1";
+  mockCurrentRoute.value = { fullPath: "/artists/library/1" };
   vi.mocked(toast.error).mockClear();
 });
 
@@ -107,7 +107,20 @@ describe("openMusicBrainzItem", () => {
     mockGetItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
 
     const opening = openMusicBrainzItem(release);
-    mockCurrentRoute.value.fullPath = "/home";
+    mockCurrentRoute.value = { fullPath: "/home" };
+    finish(resolvedAlbum);
+    await opening;
+
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it("does not move the user when they left and came back meanwhile", async () => {
+    let finish!: (value: typeof resolvedAlbum) => void;
+    mockGetItem.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+
+    const opening = openMusicBrainzItem(release);
+    mockCurrentRoute.value = { fullPath: "/home" };
+    mockCurrentRoute.value = { fullPath: "/artists/library/1" };
     finish(resolvedAlbum);
     await opening;
 

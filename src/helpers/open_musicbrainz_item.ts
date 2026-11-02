@@ -19,13 +19,14 @@ export const openMusicBrainzItem = async function (
 ): Promise<void> {
   const { isResolving, markResolving } = useResolvingItems();
   if (isResolving(item.uri)) return;
-  const startPath = router.currentRoute.value.fullPath;
+  // every navigation, back to the same page included, makes a new route
+  const startRoute = router.currentRoute.value;
   try {
     const resolved = await markResolving(
       item.uri,
       api.getItem(item.media_type, item.item_id, item.provider),
     );
-    if (router.currentRoute.value.fullPath !== startPath) return;
+    if (router.currentRoute.value !== startRoute) return;
     router.push({
       name: resolved.media_type,
       params: { itemId: resolved.item_id, provider: resolved.provider },

@@ -116,7 +116,7 @@ import {
   useOwnFavorites,
 } from "@/views/classical/favorites";
 import { recordingCountLabel } from "@/views/classical/labels";
-import { playTracks } from "@/views/classical/playback";
+import { playRecording, playTracks } from "@/views/classical/playback";
 import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
 import { computed, ref, watch } from "vue";
@@ -205,7 +205,7 @@ const toggleWorkFavorite = (workId: string) => {
 };
 
 const onPlayWork = (workId: string, evt: Event) => {
-  playTracks(tracksByWork.value[workId] ?? [], evt);
+  playRecording(tracksByWork.value[workId] ?? [], evt);
 };
 
 // A "Works performed" row really points at this performer's recordings of

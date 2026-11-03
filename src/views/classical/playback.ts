@@ -1,8 +1,16 @@
 import { getEventPosition } from "@/composables/useHoldToOpenMenu";
-import { showPlayMenuForMediaItem } from "@/layouts/default/ItemContextMenu.vue";
+import {
+  getDefaultEnqueueOptionFor,
+  showPlayMenuForMediaItem,
+} from "@/layouts/default/ItemContextMenu.vue";
 import { handlePlayBtnClick } from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
-import { PlaybackState, type Track, type Work } from "@/plugins/api/interfaces";
+import {
+  MediaType,
+  PlaybackState,
+  type Track,
+  type Work,
+} from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
 import { toast } from "vue-sonner";
@@ -20,6 +28,28 @@ export function playTracks(tracks: Track[], evt?: Event): void {
   }
   if (store.activePlayer?.available) {
     api.playMedia(tracks.map((t) => t.uri)).catch(onPlayError);
+    return;
+  }
+  showPlayMenuForMediaItem(tracks, undefined, x, y).catch(onPlayError);
+}
+
+/**
+ * Play a recording's tracks the way the standard play buttons play an album,
+ * with the queue option set for albums, straight away on an available player,
+ * otherwise through the player menu opened at the click.
+ */
+export function playRecording(tracks: Track[], evt?: Event): void {
+  if (!tracks.length) return;
+  const { x, y } = evt ? getEventPosition(evt) : { x: 0, y: 0 };
+  if (store.activePlayer?.available) {
+    getDefaultEnqueueOptionFor(MediaType.ALBUM)
+      .then((option) =>
+        api.playMedia(
+          tracks.map((t) => t.uri),
+          option,
+        ),
+      )
+      .catch(onPlayError);
     return;
   }
   showPlayMenuForMediaItem(tracks, undefined, x, y).catch(onPlayError);

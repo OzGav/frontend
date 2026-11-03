@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
-import { playTracks } from "@/views/classical/playback";
+import { playRecording, playTracks } from "@/views/classical/playback";
 import type { RecordingGroup } from "@/views/classical/recordingGroups";
 
 defineOptions({ name: "RecordingGroupList" });
@@ -63,7 +63,7 @@ const emit = defineEmits<{
 }>();
 
 const playRecording = (r: Recording, evt: Event) => {
-  playTracks(r.tracks, evt);
+  playRecording(r.tracks, evt);
 };
 
 const playMovement = (m: Track, evt: Event) => {

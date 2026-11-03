@@ -1748,27 +1748,34 @@ export const getPlaybackContextMenuItems = async function (
 const LIVE_SOURCE_MEDIA_TYPES = [MediaType.RADIO, MediaType.AUDIO_SOURCE];
 
 /**
- * The configured default enqueue option for the given item's media type, or
- * undefined for a role that may not read it: a play command without an option
- * gets the same default from the server.
+ * The configured default enqueue option for the given media type, or undefined
+ * for a role that may not read it: a play command without an option gets the
+ * same default from the server.
  *
- * Only "play" and "replace" are configurable, so either way the item starts
+ * Only "play" and "replace" are configurable, so either way the media starts
  * playing right away.
  */
-const getDefaultEnqueueOption = async function (
-  item: MediaItemTypeOrItemMapping,
+export const getDefaultEnqueueOptionFor = async function (
+  mediaType: MediaType,
 ): Promise<QueueOption | undefined> {
   // the server's own defaults apply to a role that may not read the core settings
   if (!authManager.hasScope(Scope.CONFIG_CORE_READ)) {
     return undefined;
   }
-  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(item.media_type)
+  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(mediaType)
     ? "default_enqueue_option_live_sources"
-    : `default_enqueue_option_${item.media_type}`;
+    : `default_enqueue_option_${mediaType}`;
   return (await api.getCoreConfigValue(
     "player_queues",
     configKey,
   )) as QueueOption;
+};
+
+/** The configured default enqueue option for the given item's media type. */
+const getDefaultEnqueueOption = function (
+  item: MediaItemTypeOrItemMapping,
+): Promise<QueueOption | undefined> {
+  return getDefaultEnqueueOptionFor(item.media_type);
 };
 
 /**

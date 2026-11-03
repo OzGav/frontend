@@ -36,7 +36,7 @@ export interface ClassicalSort {
 
 /** Whether the library holds any classical tracks the user can see. */
 export function hasClassicalContent(): Promise<boolean> {
-  return api.sendCommand("music/has_classical_content");
+  return api.sendCommand("music/classical/has_content");
 }
 
 /**

@@ -27,7 +27,7 @@
         :recording="r"
         :movements="movements"
         :act-movements="actMovementsOf(r)"
-        @play-recording="playRecording"
+        @play-recording="onPlayRecording"
         @play-movement="playMovement"
         @menu-recording="
           (rec: Recording, e: Event) => emit('menu-recording', rec, e)
@@ -62,7 +62,7 @@ const emit = defineEmits<{
   (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
 }>();
 
-const playRecording = (r: Recording, evt: Event) => {
+const onPlayRecording = (r: Recording, evt: Event) => {
   playRecording(r.tracks, evt);
 };
 

@@ -1,6 +1,6 @@
 import HostCard from "@/components/ai-radio/HostCard.vue";
 import { useHosts } from "@/composables/ai-radio/useHosts";
-import type { AIRadioHost } from "@/plugins/api/interfaces";
+import { ImageType, type AIRadioHost } from "@/plugins/api/interfaces";
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -54,9 +54,9 @@ const passthroughStub = { template: "<div><slot /></div>" };
 // reach the card's root click handler; stopping propagation here matches that.
 const contentStub = { template: "<div @click.stop><slot /></div>" };
 
-function mountCard() {
+function mountCard(props: { host: AIRadioHost } = { host }) {
   return mount(HostCard, {
-    props: { host },
+    props,
     global: {
       stubs: {
         DropdownMenu: passthroughStub,
@@ -126,5 +126,33 @@ describe("HostCard", () => {
     await onConfirm?.();
 
     expect(toast.error).toHaveBeenCalledWith("Host is used by 1 station");
+  });
+});
+
+describe("HostCard picture", () => {
+  it("shows the host's announcer picture", () => {
+    const wrapper = mountCard({
+      host: {
+        ...host,
+        image: {
+          type: ImageType.THUMB,
+          path: "/plugins/ai_radio/air_female.jpg",
+          provider: "builtin",
+          remotely_accessible: false,
+          proxy_id: "abc123",
+        },
+      },
+    });
+
+    expect(wrapper.find("img").attributes("src")).toContain(
+      "/imageproxy/abc123",
+    );
+  });
+
+  it("shows the headset icon for a host without a picture", () => {
+    const wrapper = mountCard();
+
+    expect(wrapper.find("img").exists()).toBe(false);
+    expect(wrapper.find(".host-card__icon").exists()).toBe(true);
   });
 });

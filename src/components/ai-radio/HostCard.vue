@@ -8,7 +8,13 @@
     @keydown.space.self.prevent="emit('edit', host.id)"
   >
     <div class="host-card__art">
-      <Headset class="host-card__icon" />
+      <img
+        v-if="imageUrl"
+        :src="imageUrl"
+        alt=""
+        class="absolute inset-0 size-full object-cover"
+      />
+      <Headset v-else class="host-card__icon" />
 
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -55,12 +61,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useHosts } from "@/composables/ai-radio/useHosts";
 import { errorMessage } from "@/helpers/ai_radio";
+import { getMediaItemImageUrl } from "@/helpers/utils";
 import type { AIRadioHost } from "@/plugins/api/interfaces";
 import { eventbus } from "@/plugins/eventbus";
 import { $t } from "@/plugins/i18n";
 import { Headset, MoreVertical } from "@lucide/vue";
 import { computed } from "vue";
 import { toast } from "vue-sonner";
+
+// the size of the picture fetched for a tile, in pixels
+const TILE_IMAGE_SIZE = 256;
 
 const props = defineProps<{
   host: AIRadioHost;
@@ -73,6 +83,12 @@ const emit = defineEmits<{
 const { deletingHostId, deleteHost } = useHosts();
 
 const isDeleting = computed(() => deletingHostId.value === props.host.id);
+
+const imageUrl = computed(() =>
+  props.host.image
+    ? getMediaItemImageUrl(props.host.image, TILE_IMAGE_SIZE)
+    : "",
+);
 
 function onDelete() {
   eventbus.emit("deleteConfirmationDialog", {

@@ -2276,6 +2276,8 @@ export interface AIRadioHost {
   // language: "" means follow the server language
   language: string;
   announcer: AIRadioAnnouncer;
+  // the announcer's picture; sent with a saved host only, never saved back
+  image?: MediaItemImage;
   // options: free-form key/value pairs passed straight through to the TTS engine
   options: Record<string, unknown>;
   section_ids: string[];

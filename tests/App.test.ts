@@ -190,6 +190,10 @@ vi.mock("@/plugins/store", () => ({
   store: storeMock,
 }));
 
+vi.mock("@/services/classical", () => ({
+  hasClassicalContent: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock("@/helpers/connection_identity", () => ({
   createLocalConnectionIdentity: () => "local:http://music-assistant.test",
   createRemoteConnectionIdentity: () => "remote:REMOTE",

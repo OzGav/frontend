@@ -106,6 +106,7 @@ describe("CustomizeHost save", () => {
       instructions: "",
       tts_engine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       section_ids: [],
       section_order: [],
@@ -155,6 +156,7 @@ describe("CustomizeHost save", () => {
       instructions: "",
       tts_engine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       section_ids: [],
       section_order: [],
@@ -184,6 +186,7 @@ describe("CustomizeHost save", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 1).map((s) => ({ ...s })),
     };
@@ -208,5 +211,32 @@ describe("CustomizeHost save", () => {
       expect(listIndex).toBeGreaterThan(saveIndex);
     }
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps an edited host's announcer when saving it", async () => {
+    const { host, sections } = compileHost({
+      id: "rick",
+      name: "Rick",
+      instructions: "Persona.",
+      ttsEngine: "",
+      language: "",
+      announcer: "female",
+      options: {},
+      segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 1).map((s) => ({ ...s })),
+    });
+    sendCommand.mockImplementation(async (command) => {
+      if (command === "ai_radio/hosts/get") return host;
+      if (command === "ai_radio/sections/list") return sections;
+      return [];
+    });
+    const wrapper = mount(CustomizeHost, { props: { hostId: host.id } });
+    await flushPromises();
+
+    await save(wrapper);
+
+    const saveCall = sendCommand.mock.calls.find(
+      ([command]) => command === "ai_radio/hosts/save",
+    );
+    expect((saveCall?.[1]?.host as AIRadioHost).announcer).toBe("female");
   });
 });

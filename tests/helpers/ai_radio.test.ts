@@ -112,6 +112,7 @@ describe("compileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 2).map((s) => ({ ...s })),
     };
@@ -135,6 +136,7 @@ describe("compileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 2).map((s) => ({ ...s })),
     });
@@ -155,6 +157,7 @@ describe("compileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: [{ ...GENERIC_SEGMENT_TEMPLATES[0], id: "rick_intro" }],
     };
@@ -171,6 +174,7 @@ describe("compileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: [
         {
@@ -201,6 +205,7 @@ describe("decompileHost", () => {
       instructions: "Persona.",
       ttsEngine: "engine-1",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 2).map((s) => ({ ...s })),
     };
@@ -222,6 +227,7 @@ describe("decompileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: GENERIC_SEGMENT_TEMPLATES.slice(0, 2).map((s) => ({ ...s })),
     };
@@ -251,6 +257,7 @@ describe("decompileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: [{ ...artistFactTemplate }], // every_n_songs n: 3
     };
@@ -284,6 +291,7 @@ describe("decompileHost", () => {
       instructions: "Persona.",
       tts_engine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       section_ids: [legacySection.id, mergeSection.id],
       section_order: [
@@ -326,6 +334,7 @@ describe("decompileHost", () => {
       instructions: "Persona.",
       ttsEngine: "",
       language: "",
+      announcer: "neutral",
       options: {},
       segments: round.segments,
     });
@@ -351,6 +360,7 @@ describe("allowPost", () => {
     instructions: "Persona.",
     ttsEngine: "",
     language: "",
+    announcer: "neutral",
     options: {},
     segments: [{ ...artistFactTemplate, allowPost }],
   });

@@ -2264,6 +2264,9 @@ export interface AIRadioSectionOrderRule {
   flow: AIRadioFlowItem[];
 }
 
+/** The picture shown for a host's clips and shows in the queue. */
+export type AIRadioAnnouncer = "neutral" | "male" | "female";
+
 export interface AIRadioHost {
   id: string;
   name: string;
@@ -2272,6 +2275,7 @@ export interface AIRadioHost {
   tts_engine: string;
   // language: "" means follow the server language
   language: string;
+  announcer: AIRadioAnnouncer;
   // options: free-form key/value pairs passed straight through to the TTS engine
   options: Record<string, unknown>;
   section_ids: string[];

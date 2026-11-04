@@ -113,6 +113,30 @@
             </Select>
           </div>
 
+          <div class="flex flex-col gap-1.5">
+            <FieldLabel
+              html-for="customize-host-announcer"
+              :label="$t('providers.ai_radio.fields.announcer')"
+              :description="
+                $t('providers.ai_radio.field_descriptions.announcer')
+              "
+            />
+            <Select v-model="draft.announcer">
+              <SelectTrigger id="customize-host-announcer" class="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="announcer in ANNOUNCERS"
+                  :key="announcer"
+                  :value="announcer"
+                >
+                  {{ $t(`providers.ai_radio.announcers.${announcer}`) }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Accordion type="single" collapsible class="md:col-span-2">
             <AccordionItem value="advanced" class="border-b-0 border-t">
               <AccordionTrigger>
@@ -256,6 +280,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useHosts } from "@/composables/ai-radio/useHosts";
 import { useShows } from "@/composables/ai-radio/useShows";
 import {
+  ANNOUNCERS,
   compileHost,
   deepClone,
   decompileHost,
@@ -396,6 +421,7 @@ function newHostDraft(): HostDraft {
     instructions: GENERIC_HOST_INSTRUCTIONS,
     ttsEngine: "",
     language: "",
+    announcer: "neutral",
     options: {},
     segments: deepClone(GENERIC_HOST_SEGMENTS),
   };

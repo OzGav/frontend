@@ -42,6 +42,7 @@ const host: AIRadioHost = {
   instructions: "Be upbeat.",
   tts_engine: "",
   language: "",
+  announcer: "neutral",
   options: {},
   section_ids: [],
   section_order: [],

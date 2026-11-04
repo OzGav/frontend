@@ -1,5 +1,6 @@
 import type {
   AIRadioAlternativeChoice,
+  AIRadioAnnouncer,
   AIRadioFlowItem,
   AIRadioHost,
   AIRadioOptionalGuards,
@@ -14,6 +15,13 @@ import { $t } from "@/plugins/i18n";
 // Sentinel for "no selection" in shadcn Select components, which do not
 // allow SelectItem values to be empty strings.
 export const NONE_SELECT_VALUE = "__none__";
+
+// in the order the host editor offers them
+export const ANNOUNCERS: readonly AIRadioAnnouncer[] = [
+  "neutral",
+  "male",
+  "female",
+];
 
 export const deepClone = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -357,6 +365,7 @@ export interface HostDraft {
   ttsEngine: string;
   // language: "" = follow the server language
   language: string;
+  announcer: AIRadioAnnouncer;
   // options: free-form key/value pairs passed straight through to the TTS engine
   options: Record<string, unknown>;
   segments: ShowSegment[];
@@ -390,6 +399,7 @@ export const compileHost = (draft: HostDraft): CompiledHost => {
       instructions: draft.instructions,
       tts_engine: draft.ttsEngine,
       language: draft.language,
+      announcer: draft.announcer,
       options: draft.options,
       section_ids: sections.map((section) => section.id),
       section_order: sectionOrder,
@@ -542,6 +552,7 @@ export const decompileHost = (
     instructions: host.instructions,
     ttsEngine: host.tts_engine,
     language: host.language,
+    announcer: host.announcer,
     options: host.options,
     segments,
     presetId: host.preset_id,

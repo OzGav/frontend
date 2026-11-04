@@ -26,6 +26,7 @@ const makeDraft = (overrides: Partial<HostDraft> = {}): HostDraft => ({
   instructions: "Persona.",
   ttsEngine: "",
   language: "",
+  announcer: "neutral",
   options: {},
   segments: [],
   ...overrides,
@@ -37,6 +38,7 @@ const makeHost = (overrides: Partial<AIRadioHost> = {}): AIRadioHost => ({
   instructions: "Persona.",
   tts_engine: "",
   language: "",
+  announcer: "neutral",
   options: {},
   section_ids: [],
   section_order: [],
@@ -193,6 +195,14 @@ describe("options field round-trip", () => {
   it("carries a host's options through decompileHost", () => {
     const draft = decompileHost(makeHost({ options: { speed: 0.9 } }), []);
     expect(draft.options).toEqual({ speed: 0.9 });
+  });
+});
+
+describe("announcer round-trip", () => {
+  it("keeps a host's announcer through decompileHost then compileHost", () => {
+    const host = makeHost({ announcer: "male" });
+    const { host: compiled } = compileHost(decompileHost(host, []));
+    expect(compiled.announcer).toBe("male");
   });
 });
 

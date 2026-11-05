@@ -118,9 +118,6 @@ export interface Props {
   blurBackdrop?: boolean;
   // a light blur for a real picture, so the artwork and text in front stand out
   softenBackdrop?: boolean;
-  // leaves out the overflow menu, for items the server cannot act on or pages
-  // that show the item's menu elsewhere
-  hideMenu?: boolean;
   height?: number;
   phoneHeight?: number;
   // off for a page with a fixed layout, which leaves "Edit rows" out of the menu
@@ -133,7 +130,6 @@ const props = withDefaults(defineProps<Props>(), {
   backdrop: undefined,
   blurBackdrop: false,
   softenBackdrop: false,
-  hideMenu: false,
   height: 440,
   phoneHeight: 340,
   editableRows: true,
@@ -227,7 +223,7 @@ useEscapeBack(backButtonClick);
 
 /** Build the item's own menu entries. */
 async function buildMenu(item?: MediaItemType) {
-  if (!item || props.hideMenu) {
+  if (!item) {
     builtMenu.value = undefined;
     return;
   }

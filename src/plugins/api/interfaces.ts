@@ -1352,6 +1352,8 @@ export interface Credit {
   role: ArtistRole;
   // only meaningful for soloists and other performers
   instrument: string | null;
+  // the instrument as shown after the name, empty when nothing should show
+  instrument_label?: string;
   // ordering within a role group
   position: number;
 }

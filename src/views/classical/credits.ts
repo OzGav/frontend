@@ -3,7 +3,6 @@ import {
   type Credit,
   type Recording,
 } from "@/plugins/api/interfaces";
-import { instrumentLabel } from "@/views/classical/labels";
 
 /** Performing roles, in the order credits are ranked for display. */
 export const PERFORMER_ROLES: readonly ArtistRole[] = [
@@ -109,9 +108,7 @@ function creditedArtists(
   const artists: CreditedArtist[] = [];
   for (const c of credits) {
     if (!roles.includes(c.role)) continue;
-    const instrument =
-      (withInstruments && instrumentLabel(c.instrument, c.artist.name)) ||
-      undefined;
+    const instrument = (withInstruments && c.instrument_label) || undefined;
     const key = `${c.artist.item_id}|${instrument ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);

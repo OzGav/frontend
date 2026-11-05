@@ -71,7 +71,13 @@ describe("classicalMenuEntries", () => {
   it("names a performer alone when their name already says the instrument", () => {
     expect(
       performerEntries([
-        credit("q", "Brodsky Quartet", ArtistRole.ENSEMBLE, "string quartet"),
+        credit(
+          "q",
+          "Brodsky Quartet",
+          ArtistRole.ENSEMBLE,
+          "string quartet",
+          "",
+        ),
       ]),
     ).toEqual([
       [

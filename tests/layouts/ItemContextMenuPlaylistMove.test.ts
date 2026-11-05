@@ -29,6 +29,8 @@ const { apiMock, authMock, storeMock, mockEventbusEmit, toastMock } =
       providers: {} as Record<string, unknown>,
       getProvider: vi.fn(),
       getLibraryItem: vi.fn(),
+      // the classical entries fetch the full track; none comes back
+      getTrack: vi.fn(async () => undefined),
       movePlaylistTracks: vi.fn(),
       removePlaylistTracks: vi.fn(),
       subscribe: vi.fn(),

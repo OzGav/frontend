@@ -106,7 +106,7 @@ import RecordingCredits from "@/views/classical/components/RecordingCredits.vue"
 import { openTrackOnRowClick } from "@/views/classical/rowClick";
 import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
-import { movementCoverageLabel, trackLabel } from "@/views/classical/labels";
+import { movementCoverageLabel } from "@/views/classical/labels";
 import {
   isTrackPlaying,
   playRecording,
@@ -123,8 +123,6 @@ const props = defineProps<{
   recording: Recording;
   // the work's movements, to name those the recording covers
   movements?: WorkMovement[];
-  // the entries listed under the act it is of, to name its tracks
-  actMovements?: WorkMovement[];
 }>();
 
 defineEmits<{
@@ -155,15 +153,8 @@ const coverage = computed(() =>
   movementCoverageLabel(props.recording.coverage, props.movements ?? []),
 );
 
-// the work's, its parent's and the page's act names, which a track never goes by
-const workNames = computed(() => [
-  props.recording.work.name,
-  ...(props.recording.parent_work ? [props.recording.parent_work.name] : []),
-  ...(props.movements ?? []).filter((m) => m.work_id).map((m) => m.name),
-]);
-
 const trackName = (track: Track) =>
-  trackLabel(track, workNames.value, props.actMovements);
+  props.recording.track_names?.[track.uri] ?? track.name;
 
 // each album once, also when the library holds it twice under one name and year
 const albums = computed(() => {

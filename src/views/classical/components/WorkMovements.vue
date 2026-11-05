@@ -177,7 +177,7 @@ const groups = computed(() =>
       .filter((a) => lineage.value.get(a.number)?.at(-1) === m.number)
       // a piece sits under its number
       .map((a) =>
-        entryRow(a, shortMovementName(a.name), isAria(a.parent) ? 2 : 1),
+        entryRow(a, shortMovementName(a), isAria(a.parent) ? 2 : 1),
       ),
   ]),
 );

@@ -1,13 +1,11 @@
 import { normalizeForFilter } from "@/helpers/text_filter";
 import {
-  ExternalID,
   RecordingCoverageKind,
   type ArtistRole,
   type ClassicalLinkProgress,
   type LifeSpan,
   type Period,
   type RecordingCoverage,
-  type Track,
   type WorkMovement,
   type WorkType,
 } from "@/plugins/api/interfaces";
@@ -130,57 +128,12 @@ export function movementCoverageLabel(
 }
 
 /**
- * A track's name in a recording's track list: its movement name, else its own
- * title without the work's name in front, else the names of the movements its
- * MusicBrainz work ids point to. Never just the name of its work or act.
- *
- * :param track: The track.
- * :param workNames: The names of the work and act it is of, e.g. Act I.
- * :param movements: The movements it may hold, e.g. its act's numbers.
+ * A movement's short name, its quoted words after the score's number, e.g.
+ * XXXIX. Erbarme dich, mein Gott, with an excerpt marked.
  */
-export function trackLabel(
-  track: Track,
-  workNames: string[],
-  movements: WorkMovement[] = [],
-): string {
-  const folded = workNames.map((w) => w.toLowerCase());
-  const isWorkName = (text: string) => folded.includes(text.toLowerCase());
-  if (track.movement_name && !isWorkName(track.movement_name))
-    return track.movement_name;
-  const prefix = workNames.find((w) =>
-    track.name.toLowerCase().startsWith(w.toLowerCase()),
-  );
-  const title = (prefix ? track.name.slice(prefix.length) : track.name)
-    .replace(/^[\s:,.–—-]+/, "")
-    .trim();
-  if (title && !isWorkName(title)) return title;
-  const held = movements
-    .filter(
-      (m) =>
-        m.mbid &&
-        track.external_ids.some(
-          ([type, id]) => type === ExternalID.MB_WORK && id === m.mbid,
-        ),
-    )
-    .map((m) => m.name);
-  return held.join(", ") || track.name;
-}
-
-/**
- * A movement's name shortened to its quoted parts, keeping the score's number
- * in front and an excerpt marked, e.g. XXXIX. Erbarme dich, mein Gott for
- * XXXIX. Aria (Alto) "Erbarme dich, mein Gott", or LX. Sehet, Jesus hat die
- * Hand – Wohin? for a name quoting two. A name without quotes stays whole.
- */
-export function shortMovementName(name: string): string {
-  const quoted = [...name.matchAll(QUOTED)];
-  if (!quoted.length) return name;
-  const words = quoted
-    .map((q) => q.slice(1).find((part) => part !== undefined)!)
-    .join(" – ");
-  const number = name.match(SCORE_NUMBER)?.[1] ?? name.match(SCENE)?.[1];
-  const short = number ? `${number}. ${words}` : words;
-  return EXCERPT.test(name) ? `${short} (excerpt)` : short;
+export function shortMovementName(movement: WorkMovement): string {
+  const name = movement.short_name ?? movement.name;
+  return movement.excerpt ? $t("classical_movement_excerpt", { name }) : name;
 }
 
 /** Movement lists longer than this are folded. */
@@ -198,20 +151,6 @@ let regionNames: { locale: string; names: Intl.DisplayNames } | undefined;
 const HISTORICAL_COUNTRIES: Partial<Record<string, string>> = {
   SU: "classical_country_soviet_union",
 };
-
-// the score's number leading a name, e.g. XXXIX., IVa., 36a. or no. 6:; the
-// "." or ":" keeps a word such as Il from passing for one
-const SCORE_NUMBER =
-  /^((?:[IVXLCDM]+|\d+)[a-z]?|(?:no\.|No\.|Nr\.|N°)\s*\d+[a-z]?)[.:]/;
-
-// a scene leading a name, e.g. Scene V. or Scene I before its quoted words
-const SCENE = /^((?:Scene|Scène|Szene|Scena|Bild)\s+(?:[IVXLCDM]+|\d+))[.:\s]/;
-
-// a name marked as an excerpt at its end
-const EXCERPT = /\s\(excerpt\)$/i;
-
-// a quoted part of a name, e.g. “Che gelida manina!” or « Salut ! »
-const QUOTED = /“([^”]+)”|«\s*([^»]+?)\s*»|"([^"]+)"/g;
 
 // the words of a name, folded for comparing, e.g. ["brodsky", "quartet"]
 function words(text: string): string[] {

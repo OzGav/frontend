@@ -4,6 +4,7 @@ import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { normalizeGridSize } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
 import { $t } from "@/plugins/i18n";
+import type { SortOptionInfo } from "@/plugins/api/interfaces";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
 import {

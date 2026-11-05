@@ -3,7 +3,7 @@
 
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import api from "@/plugins/api";
-import type { Credit, Track } from "@/plugins/api/interfaces";
+import type { ArtistRole, Credit, Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
 import { creditedComposer, PERFORMER_ROLES } from "@/views/classical/credits";
 import { instrumentLabel, roleLabel } from "@/views/classical/labels";

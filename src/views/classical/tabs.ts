@@ -14,10 +14,12 @@ export const CLASSICAL_DEFAULT_TAB: ClassicalTab = "composers";
 
 const CLASSICAL_LAST_TAB_KEY = "frontend.classical.last_tab";
 
+/** Whether a value names a Classical tab. */
 export function isClassicalTab(value: unknown): value is ClassicalTab {
   return CLASSICAL_TABS.some(({ tab }) => tab === value);
 }
 
+/** The Classical tab last opened, or the default tab before any. */
 export function getLastVisitedClassicalTab(): ClassicalTab {
   const stored = localStorage.getItem(CLASSICAL_LAST_TAB_KEY);
   return isClassicalTab(stored) ? stored : CLASSICAL_DEFAULT_TAB;

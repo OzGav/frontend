@@ -134,9 +134,9 @@ const foldedArias = computed(() => {
   const kept = new Set<number>();
   for (const a of arias.value) {
     // a piece sits under a number, a number under its act
-    if (isAria(a.parent)) continue;
-    const index = seen.get(a.parent!) ?? 0;
-    seen.set(a.parent!, index + 1);
+    if (a.parent == null || isAria(a.parent)) continue;
+    const index = seen.get(a.parent) ?? 0;
+    seen.set(a.parent, index + 1);
     if (index < FOLDED_ARIAS || model.value.includes(a.number))
       kept.add(a.number);
   }

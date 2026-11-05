@@ -95,21 +95,6 @@ export async function openOtherTrackMenu(
   emit(items, evt);
 }
 
-/**
- * The standard artist menu for a composer or performer, without play entries
- * and led by Show info, which opens the artist's normal page.
- */
-async function classicalArtistMenuItems(
-  artist: Artist,
-  router: Router,
-): Promise<ContextMenuItem[]> {
-  const items = await getContextMenuItems([artist]);
-  const showInfo =
-    items.find((i) => i.label === "show_info") ??
-    artistShowInfoEntry(artist, router);
-  return [showInfo, ...items.filter((i) => i.label !== "show_info")];
-}
-
 /** Show info for a composer or performer, opening the artist's normal page. */
 export function artistShowInfoEntry(
   artist: Artist,
@@ -201,4 +186,19 @@ function emit(
     posY: y,
     showPlayMenuHeader,
   });
+}
+
+/**
+ * The standard artist menu for a composer or performer, without play entries
+ * and led by Show info, which opens the artist's normal page.
+ */
+async function classicalArtistMenuItems(
+  artist: Artist,
+  router: Router,
+): Promise<ContextMenuItem[]> {
+  const items = await getContextMenuItems([artist]);
+  const showInfo =
+    items.find((i) => i.label === "show_info") ??
+    artistShowInfoEntry(artist, router);
+  return [showInfo, ...items.filter((i) => i.label !== "show_info")];
 }

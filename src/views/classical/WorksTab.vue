@@ -39,14 +39,7 @@
             <template v-if="w.period_label"> · {{ w.period_label }}</template>
             <!-- on phones the columns join this line, under the title -->
             <template v-if="mobile">
-              <template
-                v-for="detail in [
-                  w.catalog_number,
-                  w.year_composed,
-                  w.recordings_label,
-                ].filter(Boolean)"
-                :key="String(detail)"
-              >
+              <template v-for="detail in phoneDetails(w)" :key="String(detail)">
                 · {{ detail }}
               </template>
             </template>
@@ -152,6 +145,9 @@ const router = useRouter();
 
 // as narrow as a phone, where the columns join the title's line
 const mobile = computed(() => !getBreakpointValue("bp2"));
+
+const phoneDetails = (w: WorkRow) =>
+  [w.catalog_number, w.year_composed, w.recordings_label].filter(Boolean);
 
 // The play column leads on hover screens and trails on touch screens; on
 // phones the title takes the width.

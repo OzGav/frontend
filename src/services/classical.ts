@@ -16,6 +16,12 @@ import type {
   Work,
 } from "@/plugins/api/interfaces";
 
+/** The sort a classical list is fetched in; left out, the server default. */
+export interface ClassicalSort {
+  sort_field?: SortField;
+  sort_direction?: SortDirection;
+}
+
 /**
  * How much of the classical library the server still has to look up on
  * MusicBrainz. Fails quietly, leaving the caller to treat it as unknown.
@@ -26,12 +32,6 @@ export function getLinkProgress(): Promise<ClassicalLinkProgress> {
     {},
     { suppressGlobalError: true },
   );
-}
-
-/** The sort a classical list is fetched in; left out, the server default. */
-export interface ClassicalSort {
-  sort_field?: SortField;
-  sort_direction?: SortDirection;
 }
 
 /** Whether the library holds any classical tracks the user can see. */
@@ -75,12 +75,14 @@ export async function getClassicalRoles(artistId: string): Promise<{
   }
 }
 
+/** Every composer in the library, in the given sort. */
 export function getComposers(
   sort: ClassicalSort = {},
 ): Promise<ClassicalComposer[]> {
   return api.sendCommand("music/classical/composers", { ...sort, limit: 0 });
 }
 
+/** The works of a composer. */
 export function getComposerWorks(
   composerId: string,
 ): Promise<ClassicalWorkEntry[]> {
@@ -90,12 +92,14 @@ export function getComposerWorks(
   });
 }
 
+/** Every work in the library, in the given sort. */
 export function getWorks(
   sort: ClassicalSort = {},
 ): Promise<ClassicalWorkEntry[]> {
   return api.sendCommand("music/classical/works", { ...sort, limit: 0 });
 }
 
+/** One work, with its parts and arrangements filled in. */
 export function getWork(id: string): Promise<Work> {
   return api.sendCommand("music/classical/work", { item_id: id });
 }

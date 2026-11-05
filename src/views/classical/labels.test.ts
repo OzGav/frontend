@@ -1,10 +1,14 @@
-import { shortMovementName } from "@/views/classical/labels";
+import { countryLabel, shortMovementName } from "@/views/classical/labels";
 import { describe, expect, it, vi } from "vitest";
+
+const { i18nMock } = vi.hoisted(() => ({
+  i18nMock: { global: { locale: { value: "en" } } },
+}));
 
 vi.mock("@/plugins/i18n", () => ({
   $t: (key: string) => key,
   canonicalizeLocale: (locale: string) => locale,
-  i18n: { global: { locale: { value: "en" } } },
+  i18n: i18nMock,
 }));
 
 describe("shortMovementName", () => {
@@ -73,5 +77,14 @@ describe("shortMovementName", () => {
     ["Tanz der Lehrbuben (excerpt)", "Tanz der Lehrbuben (excerpt)"],
   ])("keeps the excerpt mark of %s", (name, shown) => {
     expect(shortMovementName(name)).toBe(shown);
+  });
+});
+
+describe("countryLabel", () => {
+  it("names a country in the user's language, following a change of language", () => {
+    expect(countryLabel("PL")).toBe("Poland");
+    i18nMock.global.locale.value = "de";
+    expect(countryLabel("PL")).toBe("Polen");
+    i18nMock.global.locale.value = "en";
   });
 });

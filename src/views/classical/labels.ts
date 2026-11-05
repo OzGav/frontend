@@ -43,11 +43,13 @@ export function periodLabel(period: Period): string {
 
 /** The name of a country in the user's language, e.g. Poland for PL. */
 export function countryLabel(code: string): string {
-  return (
-    new Intl.DisplayNames([canonicalizeLocale(i18n.global.locale.value)], {
-      type: "region",
-    }).of(code) ?? code
-  );
+  const locale = canonicalizeLocale(i18n.global.locale.value);
+  if (regionNames?.locale !== locale)
+    regionNames = {
+      locale,
+      names: new Intl.DisplayNames([locale], { type: "region" }),
+    };
+  return regionNames.names.of(code) ?? code;
 }
 
 /** A recording count with its noun, e.g. 3 recordings. */
@@ -206,6 +208,9 @@ export const LONG_MOVEMENT_LIST = 8;
 function heldCount(count: number, total: number): string {
   return $t("classical_movements_of", { count, total });
 }
+
+// the region names of the locale last asked for, built once rather than per name
+let regionNames: { locale: string; names: Intl.DisplayNames } | undefined;
 
 // the score's number leading a name, e.g. XXXIX., IVa., 36a. or no. 6:; the
 // "." or ":" keeps a word such as Il from passing for one

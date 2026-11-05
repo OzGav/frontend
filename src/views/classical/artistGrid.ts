@@ -1,9 +1,9 @@
 import { normalizeForFilter } from "@/helpers/text_filter";
 import type {
+  Artist,
   ClassicalComposer,
   ClassicalPerformer,
 } from "@/plugins/api/interfaces";
-import type { ClassicalArtistGridItem } from "@/views/classical/components/ClassicalArtistGrid.vue";
 import {
   cardImage,
   LIST_IMAGE_SIZE,
@@ -12,6 +12,22 @@ import {
   WIDE_IMAGE_SIZE,
 } from "@/views/classical/images";
 import { computed, type Ref } from "vue";
+
+/** A composer or performer as the grid shows it. */
+export interface ClassicalArtistGridItem {
+  id: string;
+  // the artist the item's menu acts on
+  artist: Artist;
+  name: string;
+  link: string;
+  wideImage?: string;
+  squareImage?: string;
+  listImage?: string;
+  // a performer's role, the first line below the name
+  role?: string;
+  // text below the name, one line each in the picture views
+  lines: string[];
+}
 
 interface ArtistGridOptions<T> {
   rows: () => T[];

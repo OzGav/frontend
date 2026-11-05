@@ -67,11 +67,7 @@
           <ClassicalRowActions
             :name="w.work.name"
             :source-item="tracksByWork[w.work.item_id]?.[0]"
-            :favorite="
-              tracksByWork[w.work.item_id]?.length
-                ? allLiked(tracksByWork[w.work.item_id])
-                : undefined
-            "
+            :favorite="likedByWork[w.work.item_id]"
             @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
             @menu="(e: Event) => onMenuWork(w, e)"
           />
@@ -150,6 +146,14 @@ const tracksByWork = computed(() => {
   const byWork: Record<string, Track[]> = {};
   for (const [workId, list] of Object.entries(recordingsByWork.value))
     byWork[workId] = list.flatMap((r) => r.tracks);
+  return byWork;
+});
+
+// Whether every track of each work is liked, by work id; absent without tracks.
+const likedByWork = computed(() => {
+  const byWork: Record<string, boolean | undefined> = {};
+  for (const [workId, tracks] of Object.entries(tracksByWork.value))
+    byWork[workId] = tracks.length ? allLiked(tracks) : undefined;
   return byWork;
 });
 

@@ -1271,7 +1271,6 @@
     "classical_n_recordings": "{count} recording | {count} recordings",
     "classical_n_works": "{count} work | {count} works",
     "classical_n_albums": "{count} album | {count} albums",
-    "classical_n_tracks": "{count} track | {count} tracks",
     "classical_n_composers": "{count} composer | {count} composers",
     "classical_two_items": "{first} and {second}",
     "classical_link_progress": "Linking with MusicBrainz: {items} still to check. Tracks under Other tracks move into their works as this progresses.",

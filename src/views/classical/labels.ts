@@ -71,7 +71,7 @@ export function linkProgressLabel(progress: ClassicalLinkProgress): string {
   const items = main.length
     ? main
     : [
-        ...counted("classical_n_tracks", progress.recordings),
+        ...counted("n_tracks", progress.recordings),
         ...counted("classical_n_composers", progress.composers),
       ];
   if (!items.length) return "";

@@ -13,7 +13,7 @@
       <Tabs
         ref="tabs"
         :model-value="activeTab"
-        class="min-w-[8rem] flex-[1_1_auto] pr-[0.75rem] max-[769px]:pr-0"
+        class="group min-w-[8rem] flex-[1_1_auto] pr-[0.75rem] max-[769px]:pr-0"
         :class="{ 'icons-only': iconsOnly }"
       >
         <TabsList class="w-full h-auto">
@@ -24,7 +24,7 @@
           >
             <Feather class="size-[1.05rem] shrink-0" />
             <span
-              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
               >{{ $t("composers") }}</span
             >
           </TabsTrigger>
@@ -35,7 +35,7 @@
           >
             <Music3 class="size-[1.05rem] shrink-0" />
             <span
-              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
               >{{ $t("works") }}</span
             >
           </TabsTrigger>
@@ -46,7 +46,7 @@
           >
             <Users class="size-[1.05rem] shrink-0" />
             <span
-              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap"
+              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
               >{{ $t("performers") }}</span
             >
           </TabsTrigger>
@@ -311,9 +311,5 @@ const goToTab = useClassicalTabNavigation();
   .classical-toolbar :deep(.v-toolbar-title__placeholder) {
     padding-right: 0.5rem;
   }
-}
-
-.icons-only .classical-tab-label {
-  display: none;
 }
 </style>

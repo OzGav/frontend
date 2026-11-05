@@ -30,10 +30,11 @@
           <!-- the hover matches the overlay of the standard list rows -->
           <button
             type="button"
-            class="flex w-full cursor-pointer items-baseline gap-[0.4rem] rounded-[4px] border-0 bg-[transparent] p-[0.3rem_0.5rem_0.3rem_0] text-left [font:inherit] disabled:cursor-default disabled:opacity-50 [&:hover:not(:disabled)]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]"
-            :class="
-              row.selected ? 'text-[color:var(--primary)]' : 'text-inherit'
-            "
+            class="flex w-full cursor-pointer items-baseline gap-[0.4rem] rounded-[4px] border-0 bg-[transparent] p-[0.3rem_0.5rem_0.3rem_0] text-left [font:inherit] disabled:pointer-events-none disabled:opacity-50"
+            :class="[
+              ROW_HOVER_CLASS,
+              row.selected ? 'text-[color:var(--primary)]' : 'text-inherit',
+            ]"
             :aria-pressed="row.selected"
             :disabled="!row.count && !row.selected"
             @click="row.toggle"
@@ -41,7 +42,9 @@
             <span class="inline-flex w-[16px] flex-none self-center">
               <Check v-if="row.selected" :size="16" />
             </span>
-            <span class="movement-name text-[0.95rem]">{{ row.name }}</span>
+            <span :class="[MOVEMENT_TITLE_CLASS, 'text-[0.95rem]']">{{
+              row.name
+            }}</span>
             <span class="text-[0.875rem] text-muted-foreground"
               >({{ row.count }})</span
             >
@@ -76,6 +79,10 @@ import {
   shortMovementName,
 } from "@/views/classical/labels";
 import { movementLineage } from "@/views/classical/recordingGroups";
+import {
+  MOVEMENT_TITLE_CLASS,
+  ROW_HOVER_CLASS,
+} from "@/views/classical/styles";
 import { Check } from "@lucide/vue";
 import { computed, ref } from "vue";
 
@@ -184,17 +191,3 @@ function toggled<T>(list: T[], value: T): T[] {
     : [...list, value];
 }
 </script>
-
-<style scoped>
-.movement-name {
-  font-family: var(
-    --font-classical-serif,
-    "Roboto Serif",
-    ui-serif,
-    Georgia,
-    serif
-  );
-  font-optical-sizing: auto;
-  font-style: italic;
-}
-</style>

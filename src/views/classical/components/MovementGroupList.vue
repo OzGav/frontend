@@ -10,8 +10,10 @@
           :label="`${$t('play')} ${g.name}`"
           @play="(e: Event) => playGroup(g.rows, e)"
         />
+        <!-- in the movements' own italic, as the Movements section lists them -->
         <h3
-          class="movement-heading-title m-0 min-w-0 flex-1 text-[1.05rem] font-semibold"
+          class="m-0 min-w-0 flex-1 text-[1.05rem] font-semibold"
+          :class="MOVEMENT_TITLE_CLASS"
         >
           {{ g.name }}
         </h3>
@@ -42,6 +44,7 @@ import type {
   MovementGroup,
   MovementRow,
 } from "@/views/classical/recordingGroups";
+import { MOVEMENT_TITLE_CLASS } from "@/views/classical/styles";
 
 defineOptions({ name: "MovementGroupList" });
 
@@ -60,18 +63,3 @@ const playGroup = (rows: MovementRow[], evt: Event) => {
   );
 };
 </script>
-
-<style scoped>
-/* in the movements' own italic, as the Movements section lists them */
-.movement-heading-title {
-  font-family: var(
-    --font-classical-serif,
-    "Roboto Serif",
-    ui-serif,
-    Georgia,
-    serif
-  );
-  font-optical-sizing: auto;
-  font-style: italic;
-}
-</style>

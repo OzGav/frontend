@@ -7,7 +7,8 @@
   <component
     :is="tag"
     v-hold="onRowHold"
-    class="classical-play-row ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]"
+    class="classical-play-row ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px]"
+    :class="ROW_HOVER_CLASS"
     @click.capture="swallowClickAfterHold"
     @contextmenu="onContextMenu"
     @touchstart.passive="onTouchStart"
@@ -32,6 +33,7 @@
 <script setup lang="ts">
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 
 defineOptions({ name: "ClassicalPlayRow" });
 

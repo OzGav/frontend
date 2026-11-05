@@ -120,6 +120,7 @@ import {
   type ClassicalViewMode,
 } from "@/views/classical/listing";
 import { openArtistMenu } from "@/views/classical/menu";
+import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
 import { useElementSize } from "@vueuse/core";
 import { computed, ref, type Component } from "vue";
@@ -242,7 +243,7 @@ const LAYOUTS: Record<ClassicalViewMode, CardLayout> = {
   // Multi-column list, laid out like an artist's top tracks.
   list: {
     grid: "auto-rows-[56px] grid-cols-[repeat(3,minmax(0,1fr))] gap-[0_16px] max-[769px]:m-0 max-[769px]:grid-cols-[minmax(0,1fr)]",
-    card: "h-[56px] items-center gap-[12px] p-[0_8px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]",
+    card: `h-[56px] items-center gap-[12px] p-[0_8px] ${ROW_HOVER_CLASS}`,
     link: "flex-1 items-center gap-[12px]",
     thumb: "size-[40px] flex-none rounded-[6px]",
     meta: "flex-1",

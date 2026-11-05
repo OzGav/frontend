@@ -7,7 +7,8 @@
       <router-link
         v-if="composerMapping"
         :to="`/classical/composers/${composerMapping.item_id}`"
-        class="font-[family-name:var(--font-classical-serif)] font-semibold text-inherit no-underline [font-optical-sizing:auto]"
+        class="font-semibold text-inherit no-underline"
+        :class="CLASSICAL_SERIF_CLASS"
       >
         {{ composerMapping.name }}
       </router-link>
@@ -35,6 +36,7 @@
 <script setup lang="ts">
 import { WorkType, type Artist, type Work } from "@/plugins/api/interfaces";
 import { periodLabel, workTypeLabel } from "@/views/classical/labels";
+import { CLASSICAL_SERIF_CLASS } from "@/views/classical/styles";
 import { Music } from "@lucide/vue";
 import { computed } from "vue";
 

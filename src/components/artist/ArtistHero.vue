@@ -60,7 +60,7 @@ import { isPhoneSizedScreen } from "@/plugins/breakpoint";
 import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
 import { Orbit, Shuffle } from "@lucide/vue";
-import { useClassicalArtistLinks } from "@/views/classical/artistLinks";
+import { useClassicalArtistLinks } from "@/composables/useClassicalArtistLinks";
 import { computed } from "vue";
 
 export interface Props {

@@ -22,8 +22,8 @@ import type {
 import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { eventbus } from "@/plugins/eventbus";
 import { Info } from "@lucide/vue";
-import { creditedComposer } from "@/views/classical/credits";
-import { classicalMenuEntries } from "@/views/classical/trackMenuEntries";
+import { creditedComposer } from "@/helpers/classical_credits";
+import { classicalMenuEntries } from "@/helpers/classical_track_menu";
 import type { Router } from "vue-router";
 
 interface ClassicalMenuContext {

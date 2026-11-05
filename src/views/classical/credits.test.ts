@@ -1,12 +1,7 @@
 import { ArtistRole } from "@/plugins/api/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { credit, recording } from "../../../tests/fixtures/recording";
-import {
-  coPerformerNames,
-  creditedComposer,
-  recordingCredits,
-  recordingName,
-} from "./credits";
+import { coPerformerNames, recordingCredits, recordingName } from "./credits";
 
 vi.mock("@/plugins/i18n", () => ({
   $t: (key: string) => key,
@@ -100,19 +95,5 @@ describe("coPerformerNames", () => {
       "Conductor",
       "Soloist",
     ]);
-  });
-});
-
-describe("creditedComposer", () => {
-  it("finds the first composer credit", () => {
-    const composer = creditedComposer([
-      credit("c", "Conductor", ArtistRole.CONDUCTOR),
-      credit("m", "Mozart", ArtistRole.COMPOSER),
-    ]);
-    expect(composer?.name).toBe("Mozart");
-  });
-
-  it("is absent without one", () => {
-    expect(creditedComposer([])).toBeUndefined();
   });
 });

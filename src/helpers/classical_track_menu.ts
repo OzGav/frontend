@@ -5,8 +5,11 @@ import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import api from "@/plugins/api";
 import type { ArtistRole, Credit, Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
-import { creditedComposer, PERFORMER_ROLES } from "@/views/classical/credits";
-import { roleLabel } from "@/views/classical/labels";
+import {
+  creditedComposer,
+  PERFORMER_ROLES,
+  roleLabel,
+} from "@/helpers/classical_credits";
 import type { Router } from "vue-router";
 
 // ranks a role outside PERFORMER_ROLES after all of them

@@ -91,7 +91,7 @@
       @update:model-value="search.setText"
       @close="search.close"
     />
-    <v-divider v-if="!fullBleedContent" />
+    <Separator v-if="!fullBleedContent" />
     <div
       class="min-h-0 flex-1"
       :class="fullBleedContent ? 'p-0' : 'p-[0.75rem_1rem_1rem]'"
@@ -107,6 +107,7 @@ import ListingSearch from "@/components/listing-toolbar/ListingSearch.vue";
 import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListingToolbarControls from "@/components/listing-toolbar/ListingToolbarControls.vue";
 import Toolbar from "@/components/Toolbar.vue";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";

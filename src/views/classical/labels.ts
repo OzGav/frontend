@@ -1,4 +1,3 @@
-import { normalizeForFilter } from "@/helpers/text_filter";
 import {
   RecordingCoverageKind,
   type ArtistRole,
@@ -14,20 +13,6 @@ import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
 /** The display name of a classical credit role, e.g. Conductor. */
 export function roleLabel(role: ArtistRole): string {
   return $t(`classical_artist_role.${role}`);
-}
-
-/**
- * A credit's instrument as shown after the performer's name, with a voice
- * named alone, e.g. tenor for "tenor vocals". Empty for plain vocals and when
- * the name already says it, e.g. string quartet for Brodsky Quartet.
- */
-export function instrumentLabel(
-  instrument: string | null | undefined,
-  name: string,
-): string {
-  const label = (instrument ?? "").replace(/\s*\bvocals$/i, "").trim();
-  const lastWord = words(label).at(-1);
-  return lastWord && words(name).includes(lastWord) ? "" : label;
 }
 
 /** The display name of a work type, e.g. Song cycle. */
@@ -151,10 +136,3 @@ let regionNames: { locale: string; names: Intl.DisplayNames } | undefined;
 const HISTORICAL_COUNTRIES: Partial<Record<string, string>> = {
   SU: "classical_country_soviet_union",
 };
-
-// the words of a name, folded for comparing, e.g. ["brodsky", "quartet"]
-function words(text: string): string[] {
-  return normalizeForFilter(text)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
-}

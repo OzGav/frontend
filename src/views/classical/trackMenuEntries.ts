@@ -6,7 +6,7 @@ import api from "@/plugins/api";
 import type { ArtistRole, Credit, Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
 import { creditedComposer, PERFORMER_ROLES } from "@/views/classical/credits";
-import { instrumentLabel, roleLabel } from "@/views/classical/labels";
+import { roleLabel } from "@/views/classical/labels";
 import type { Router } from "vue-router";
 
 // ranks a role outside PERFORMER_ROLES after all of them
@@ -32,8 +32,8 @@ export async function classicalTrackEntries(
   router: Router,
 ): Promise<ContextMenuItem[]> {
   if (track.is_classical === false) return [];
-  // credits only come with the full track
-  const fullTrack = track.credits
+  // lists send no credits, only the full track does
+  const fullTrack = track.credits?.length
     ? track
     : await api
         .getTrack(track.item_id, "library", undefined, {
@@ -147,9 +147,7 @@ function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
   const aggregates: AggregatedCredit[] = [];
   for (const [artistId, entries] of map) {
     entries.sort((a, b) => rolePriority(a.role) - rolePriority(b.role));
-    const parts = entries.map(
-      (e) => instrumentLabel(e.instrument, e.artist.name) || roleLabel(e.role),
-    );
+    const parts = entries.map((e) => e.instrument_label || roleLabel(e.role));
     aggregates.push({
       artistId,
       name: entries[0].artist.name,

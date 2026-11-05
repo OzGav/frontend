@@ -6,12 +6,12 @@
     <!-- Column tracks live on the list, and the rows borrow them through
          subgrid, so catalog, year and count line up all the way down. -->
     <ul
-      v-else-if="filteredWorks.length"
+      v-else-if="works.length"
       class="m-0 grid list-none gap-x-[0.75rem] p-0"
       :class="listColumns"
     >
       <ClassicalPlayRow
-        v-for="w in filteredWorks"
+        v-for="w in works"
         :key="w.item_id"
         tag="li"
         class="col-[1/-1] grid cursor-pointer grid-cols-subgrid items-baseline py-[0.5rem] [--play-row-inset:0.25rem]"
@@ -63,38 +63,42 @@
         </template>
       </ClassicalPlayRow>
     </ul>
-    <ClassicalEmpty v-else :filtered="works.length > 0" />
+    <ClassicalEmpty v-else :filtered="filtered" />
+    <LoadMoreSentinel v-if="hasMore" :loading="loadingMore" @more="loadMore" />
   </div>
 </template>
 
 <script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { ListingCustomFilter } from "@/helpers/listing_filters";
-import { normalizeForFilter } from "@/helpers/text_filter";
 import {
   ListingType,
   SortField,
-  type Period,
+  type ClassicalWorkFilters,
   type Work,
 } from "@/plugins/api/interfaces";
 import { getBreakpointValue } from "@/plugins/breakpoint";
-import { getWorks } from "@/services/classical";
+import { getWorkFilters, getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
+import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
-import { useClassicalListing } from "@/views/classical/listing";
+import {
+  CLASSICAL_TYPING_DEBOUNCE_MS,
+  useClassicalListing,
+} from "@/views/classical/listing";
 import { useClassicalPreferences } from "@/views/classical/preferences";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
 import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
 import {
-  UNKNOWN_WORK_TYPE,
   usePeriodFilter,
   useWorkTypeFilter,
 } from "@/views/classical/listFilters";
 import { playWork } from "@/views/classical/playback";
 import { isTouch } from "@/composables/touchScreen";
-import { useYearRange, yearBounds } from "@/views/classical/yearRange";
-import { computed, markRaw, onMounted, ref, watch } from "vue";
+import { useYearRange } from "@/views/classical/yearRange";
+import { refDebounced } from "@vueuse/core";
+import { computed, markRaw, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
@@ -106,7 +110,7 @@ const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
 
 const { t } = useI18n();
 
-// Flattened to the fields the rows show and filter on.
+// Flattened to the fields the rows show.
 interface WorkRow {
   // what the play button plays
   work: Work;
@@ -116,29 +120,23 @@ interface WorkRow {
   version: string;
   composer: string;
   composer_id?: string;
-  period?: Period | null;
   period_label: string;
-  // UNKNOWN_WORK_TYPE when the work has no type
-  work_type: string;
   catalog_number: string;
   year_composed?: number | null;
   recordings_label: string;
-  // composer, title, catalog number and part names folded for the filter
-  haystack: string;
 }
 
 const works = ref<WorkRow[]>([]);
+const choices = ref<ClassicalWorkFilters>();
 
 const { preferences, save } = useClassicalPreferences(ITEMTYPE);
 
-// Placeholder years, so the boxes advertise the span the library actually covers.
-const composedBounds = computed(() =>
-  yearBounds(works.value.map((w) => w.year_composed)),
-);
-
 // Year filtering and sorting only make sense once some work has a year.
 const hasComposedYears = computed(
-  () => composedBounds.value.earliest !== undefined,
+  () =>
+    choices.value !== undefined &&
+    (choices.value.earliest_year !== null ||
+      choices.value.latest_year !== null),
 );
 
 const router = useRouter();
@@ -161,23 +159,24 @@ const listColumns = computed(() => {
     : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]";
 });
 
-const periodFilter = usePeriodFilter(ITEMTYPE, () =>
-  works.value.map((w) => w.period),
+const periodFilter = usePeriodFilter(
+  ITEMTYPE,
+  () => choices.value?.periods ?? [],
 );
 
-const workTypeFilter = useWorkTypeFilter(ITEMTYPE, () =>
-  works.value.map((w) => w.work_type),
-);
+const workTypeFilter = useWorkTypeFilter(ITEMTYPE, () => choices.value);
 
 const {
   from: yearFrom,
   to: yearTo,
+  bounds: years,
   isActive: yearActive,
-  matches: matchesYear,
   clear: clearYears,
 } = useYearRange();
 yearFrom.value = preferences.yearFrom ?? "";
 yearTo.value = preferences.yearTo ?? "";
+// made after the kept years are set, so the first load already has them
+const typedYears = refDebounced(years, CLASSICAL_TYPING_DEBOUNCE_MS);
 watch(yearFrom, (value) => save("yearFrom", value));
 watch(yearTo, (value) => save("yearTo", value));
 
@@ -192,8 +191,9 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
         props: {
           from: yearFrom.value,
           to: yearTo.value,
-          earliest: composedBounds.value.earliest,
-          latest: composedBounds.value.latest,
+          // the boxes' placeholders, the span the library covers
+          earliest: choices.value?.earliest_year ?? undefined,
+          latest: choices.value?.latest_year ?? undefined,
           "onUpdate:from": (value: string) => (yearFrom.value = value),
           "onUpdate:to": (value: string) => (yearTo.value = value),
         },
@@ -203,59 +203,45 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
     : undefined,
 );
 
-const { loading, reload, search } = useClassicalListing({
-  itemtype: ITEMTYPE,
-  listing: ListingType.CLASSICAL_WORKS,
-  exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
-  labels: { [SortField.YEAR]: "year_composed" },
-  search: {
-    placeholder: () => t("classical_filter_works_placeholder"),
-  },
-  filters: () => [
-    periodFilter.filter.value,
-    workTypeFilter.filter.value,
-    yearFilter.value,
-  ],
-  items: works,
-  load: async (sort) =>
-    (await getWorks(sort)).map(
-      ({ work, recording_count, part_names, period }) => {
-        const composer = work.composers[0]?.name ?? "";
-        const catalogNumber = work.catalog_numbers[0] ?? "";
-        return {
-          work,
-          item_id: work.item_id,
-          name: work.name,
-          version: work.version,
-          composer,
-          composer_id: work.composers[0]?.item_id,
-          period,
-          period_label: period ? periodLabel(period) : "",
-          work_type: work.work_type ?? UNKNOWN_WORK_TYPE,
-          catalog_number: catalogNumber,
-          year_composed: work.composition_year,
-          recordings_label: recordingCountLabel(recording_count),
-          haystack: normalizeForFilter(
-            [composer, work.name, catalogNumber, ...(part_names ?? [])].join(
-              " ",
-            ),
-          ),
-        };
-      },
-    ),
-});
-
-onMounted(reload);
-
-const filteredWorks = computed(() => {
-  const q = normalizeForFilter(search.value.trim());
-  return works.value.filter(
-    (w) =>
-      (!q || w.haystack.includes(q)) &&
-      periodFilter.matches(w.period) &&
-      workTypeFilter.matches(w.work_type) &&
-      // kept years must not narrow the list while the boxes are hidden
-      (!hasComposedYears.value || matchesYear(w.year_composed)),
-  );
-});
+const { loading, loadingMore, hasMore, loadMore, filtered } =
+  useClassicalListing({
+    itemtype: ITEMTYPE,
+    listing: ListingType.CLASSICAL_WORKS,
+    exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
+    labels: { [SortField.YEAR]: "year_composed" },
+    search: {
+      placeholder: () => t("classical_filter_works_placeholder"),
+    },
+    filters: () => [
+      periodFilter.filter.value,
+      workTypeFilter.filter.value,
+      yearFilter.value,
+    ],
+    items: works,
+    query: () => ({
+      period: periodFilter.selected.value,
+      ...workTypeFilter.query.value,
+      // kept years must not narrow the list once the boxes are known to be
+      // hidden; until then they apply, so the first page is already narrowed
+      ...(choices.value && !hasComposedYears.value
+        ? {}
+        : { year_from: typedYears.value.low, year_to: typedYears.value.high }),
+    }),
+    loadFilterChoices: async () => {
+      choices.value = await getWorkFilters();
+    },
+    load: async (query) =>
+      (await getWorks(query)).map(({ work, recording_count, period }) => ({
+        work,
+        item_id: work.item_id,
+        name: work.name,
+        version: work.version,
+        composer: work.composers[0]?.name ?? "",
+        composer_id: work.composers[0]?.item_id,
+        period_label: period ? periodLabel(period) : "",
+        catalog_number: work.catalog_numbers[0] ?? "",
+        year_composed: work.composition_year,
+        recordings_label: recordingCountLabel(recording_count),
+      })),
+  });
 </script>

@@ -24,9 +24,10 @@ describe("useYearRange", () => {
   });
 
   it("reads the bounds low to high whichever box holds which", () => {
-    const { from, to, matches } = useYearRange();
+    const { from, to, bounds, matches } = useYearRange();
     from.value = "1900";
     to.value = "1800";
+    expect(bounds.value).toEqual({ low: 1800, high: 1900 });
     expect(matches(1850)).toBe(true);
     expect(matches(1950)).toBe(false);
   });

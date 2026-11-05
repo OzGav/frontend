@@ -9,26 +9,31 @@
       :loading="loading"
       :placeholder-icon="Feather"
     />
-    <ClassicalEmpty v-else :filtered="composers.length > 0" />
+    <ClassicalEmpty v-else :filtered="filtered" />
+    <LoadMoreSentinel v-if="hasMore" :loading="loadingMore" @more="loadMore" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ListingType, type ClassicalComposer } from "@/plugins/api/interfaces";
-import { getComposers } from "@/services/classical";
+import {
+  ListingType,
+  type ClassicalComposer,
+  type ClassicalComposerFilters,
+} from "@/plugins/api/interfaces";
+import { getComposerFilters, getComposers } from "@/services/classical";
 import { useArtistGridItems } from "@/views/classical/artistGrid";
 import ClassicalArtistGrid from "@/views/classical/components/ClassicalArtistGrid.vue";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import { periodLabel, workCountLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { useClassicalListing } from "@/views/classical/listing";
 import {
-  UNKNOWN_COUNTRY,
   useCountryFilter,
   usePeriodFilter,
 } from "@/views/classical/listFilters";
 import { Feather } from "@lucide/vue";
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "ComposersTab" });
@@ -36,39 +41,49 @@ defineOptions({ name: "ComposersTab" });
 const { t } = useI18n();
 
 const composers = ref<ClassicalComposer[]>([]);
+const choices = ref<ClassicalComposerFilters>();
 
 useOwnFavorites(() => composers.value.map((row) => row.artist));
 
 const ITEMTYPE = "composers";
 
-const periodFilter = usePeriodFilter(ITEMTYPE, () =>
-  composers.value.map((c) => c.artist.period),
+const periodFilter = usePeriodFilter(
+  ITEMTYPE,
+  () => choices.value?.periods ?? [],
 );
 
-const countryFilter = useCountryFilter(ITEMTYPE, () =>
-  composers.value.map((c) => c.country ?? UNKNOWN_COUNTRY),
-);
+const countryFilter = useCountryFilter(ITEMTYPE, () => choices.value);
 
-const { viewMode, favoritesOnly, gridSize, loading, reload, search } =
-  useClassicalListing({
-    itemtype: ITEMTYPE,
-    listing: ListingType.CLASSICAL_COMPOSERS,
-    items: composers,
-    load: getComposers,
-    views: true,
-    search: {
-      placeholder: () => t("classical_filter_composers_placeholder"),
-    },
-    filters: () => [periodFilter.filter.value, countryFilter.filter.value],
-  });
-
-onMounted(reload);
+const {
+  viewMode,
+  gridSize,
+  loading,
+  loadingMore,
+  hasMore,
+  loadMore,
+  filtered,
+} = useClassicalListing({
+  itemtype: ITEMTYPE,
+  listing: ListingType.CLASSICAL_COMPOSERS,
+  items: composers,
+  load: getComposers,
+  query: () => ({
+    period: periodFilter.selected.value,
+    ...countryFilter.query.value,
+  }),
+  loadFilterChoices: async () => {
+    choices.value = await getComposerFilters();
+  },
+  views: true,
+  search: {
+    placeholder: () => t("classical_filter_composers_placeholder"),
+  },
+  filters: () => [periodFilter.filter.value, countryFilter.filter.value],
+});
 
 const gridItems = useArtistGridItems({
   rows: () => composers.value,
   section: "composers",
-  search,
-  favoritesOnly,
   details: (c) => ({
     lines: [
       [
@@ -79,8 +94,5 @@ const gridItems = useArtistGridItems({
         .join(" · "),
     ],
   }),
-  matches: (c) =>
-    periodFilter.matches(c.artist.period) &&
-    countryFilter.matches(c.country ?? UNKNOWN_COUNTRY),
 });
 </script>

@@ -4,7 +4,12 @@ import {
   toggledValue,
   type ListingMultiFilter,
 } from "@/helpers/listing_filters";
-import { Period, WorkType } from "@/plugins/api/interfaces";
+import {
+  Period,
+  WorkType,
+  type ClassicalComposerFilters,
+  type ClassicalWorkFilters,
+} from "@/plugins/api/interfaces";
 import { countryLabel, periodLabel } from "@/views/classical/labels";
 import { useClassicalPreferences } from "@/views/classical/preferences";
 import { $t } from "@/plugins/i18n";
@@ -23,27 +28,26 @@ interface ListFilterOptions<T extends string> {
   label: string;
   placeholder: string;
   layout: ListingMultiFilter["layout"];
-  // every value, in the order the panel lists them, or those of the listed
-  // items when the values are not known up front
+  // every value, in the order the panel lists them, or those present when
+  // the values are not known up front
   values: readonly T[] | (() => readonly T[]);
   valueLabel: (value: T) => string;
-  // the values of the listed items, to offer only those
-  present: () => Iterable<string | null | undefined>;
+  // the values the tab's list holds, to offer only those
+  present: () => Iterable<string>;
 }
 
 /**
  * A multi-select filter for a classical tab's Filters panel, kept per user.
  *
  * Returns `filter`, the panel's filter or undefined while there is nothing to
- * choose from, and `matches`, which tells whether an item with a value, or
- * with any of several, passes the filter.
+ * choose from, and `selected`, the chosen values.
  */
 export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
   const { preferences, save } = useClassicalPreferences(options.itemtype);
   const { values } = options;
   const saved = (preferences[options.key] ?? []) as T[];
-  // replaced whole on each change, so a shallow ref suffices; values read
-  // from the items cannot be checked before they load
+  // replaced whole on each change, so a shallow ref suffices; values not
+  // known up front cannot be checked before they load
   const selected = shallowRef<T[]>(
     typeof values === "function"
       ? saved
@@ -58,7 +62,7 @@ export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
   // A chosen value stays listed so it can be cleared even when no item has it
   // any more. A single value would filter nothing, so the filter hides then.
   const filter = computed<ListingMultiFilter | undefined>(() => {
-    const present = new Set<string | null | undefined>(options.present());
+    const present = new Set<string>(options.present());
     const all = typeof values === "function" ? values() : values;
     const offered = offeredFilterValues(all, present, selected.value);
     if (offered.length < 2 && !selected.value.length) return undefined;
@@ -78,25 +82,16 @@ export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
     };
   });
 
-  const matches = (value: string | null | undefined | string[]): boolean => {
-    if (!selected.value.length) return true;
-    const values = Array.isArray(value) ? value : [value];
-    return values.some((v) => selected.value.includes(v as T));
-  };
-
-  return { filter, matches };
+  return { filter, selected: computed(() => selected.value) };
 }
 
 /**
  * The period filter of a classical tab, listing periods in time order.
  *
  * :param itemtype: The tab the choice is stored under.
- * :param periods: The periods of the listed items.
+ * :param periods: The periods the tab's list holds.
  */
-export function usePeriodFilter(
-  itemtype: string,
-  periods: () => Array<Period | null | undefined>,
-) {
+export function usePeriodFilter(itemtype: string, periods: () => Period[]) {
   return useListFilter({
     itemtype,
     key: "periodFilter",
@@ -132,12 +127,17 @@ export function workTypeChoices(): string[] {
 /**
  * The work type filter of a classical tab.
  *
+ * Returns `filter`, as useListFilter does, and `query`, the list arguments
+ * for the chosen types.
+ *
  * :param itemtype: The tab the choice is stored under.
- * :param types: The types of the listed items, UNKNOWN_WORK_TYPE for those
- *   without one.
+ * :param choices: The filter values of the tab's list, absent until loaded.
  */
-export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
-  return useListFilter<string>({
+export function useWorkTypeFilter(
+  itemtype: string,
+  choices: () => ClassicalWorkFilters | undefined,
+) {
+  const { filter, selected } = useListFilter<string>({
     itemtype,
     key: "workTypeFilter",
     id: "work_type",
@@ -146,8 +146,18 @@ export function useWorkTypeFilter(itemtype: string, types: () => string[]) {
     layout: "dropdown",
     values: workTypeChoices(),
     valueLabel: (type) => $t(workTypeChoiceLabel(type)),
-    present: types,
+    present: () =>
+      withUnknown(
+        choices()?.work_types ?? [],
+        choices()?.work_type_unknown ?? false,
+        UNKNOWN_WORK_TYPE,
+      ),
   });
+  const query = computed(() => {
+    const { values, unknown } = splitUnknown(selected.value, UNKNOWN_WORK_TYPE);
+    return { work_type: values as WorkType[], work_type_unknown: unknown };
+  });
+  return { filter, query };
 }
 
 /**
@@ -192,12 +202,17 @@ export const UNKNOWN_COUNTRY = "unknown";
  * The country filter of a classical tab, listing countries by name with
  * Unknown last.
  *
+ * Returns `filter`, as useListFilter does, and `query`, the list arguments
+ * for the chosen countries.
+ *
  * :param itemtype: The tab the choice is stored under.
- * :param countries: The country codes of the listed items, UNKNOWN_COUNTRY
- *   for those without one.
+ * :param choices: The filter values of the tab's list, absent until loaded.
  */
-export function useCountryFilter(itemtype: string, countries: () => string[]) {
-  return useListFilter<string>({
+export function useCountryFilter(
+  itemtype: string,
+  choices: () => ClassicalComposerFilters | undefined,
+) {
+  const { filter, selected } = useListFilter<string>({
     itemtype,
     key: "countryFilter",
     id: "country",
@@ -205,15 +220,49 @@ export function useCountryFilter(itemtype: string, countries: () => string[]) {
     placeholder: "classical_filter_any_country",
     layout: "dropdown",
     values: () => {
-      const codes = [...new Set(countries())].filter(
-        (c) => c !== UNKNOWN_COUNTRY,
-      );
+      const codes = [...(choices()?.countries ?? [])];
       codes.sort((a, b) => countryLabel(a).localeCompare(countryLabel(b)));
       return [...codes, UNKNOWN_COUNTRY];
     },
     valueLabel: countryChoiceLabel,
-    present: countries,
+    present: () =>
+      withUnknown(
+        choices()?.countries ?? [],
+        choices()?.country_unknown ?? false,
+        UNKNOWN_COUNTRY,
+      ),
   });
+  const query = computed(() => {
+    const { values, unknown } = splitUnknown(selected.value, UNKNOWN_COUNTRY);
+    return { country: values, country_unknown: unknown };
+  });
+  return { filter, query };
+}
+
+/**
+ * Filter values with the choice for items without a value added, when some
+ * item has none.
+ */
+export function withUnknown(
+  values: readonly string[],
+  hasUnknown: boolean,
+  unknown: string,
+): string[] {
+  return hasUnknown ? [...values, unknown] : [...values];
+}
+
+/**
+ * The chosen values of a filter, without the choice for items without a
+ * value, and whether that choice is among them.
+ */
+export function splitUnknown(
+  chosen: readonly string[],
+  unknown: string,
+): { values: string[]; unknown: boolean } {
+  return {
+    values: chosen.filter((v) => v !== unknown),
+    unknown: chosen.includes(unknown),
+  };
 }
 
 /** The name of a country filter choice. */

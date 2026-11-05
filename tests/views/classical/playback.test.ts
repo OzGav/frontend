@@ -1,5 +1,5 @@
 import { MediaType, QueueOption } from "@/plugins/api/interfaces";
-import { playRecording } from "@/views/classical/playback";
+import { playRecording, playTracks } from "@/views/classical/playback";
 import { flushPromises } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { track } from "../../fixtures/track";
@@ -66,6 +66,21 @@ describe("playRecording", () => {
       undefined,
       0,
       0,
+    );
+  });
+});
+
+describe("playTracks", () => {
+  it("plays several tracks without the queue option set for albums", async () => {
+    const tracks = [track({ item_id: "1" }), track({ item_id: "2" })];
+
+    playTracks(tracks);
+    await flushPromises();
+
+    expect(menuMock.getDefaultEnqueueOptionFor).not.toHaveBeenCalled();
+    expect(apiMock.playMedia).toHaveBeenCalledWith(
+      tracks.map((t) => t.uri),
+      undefined,
     );
   });
 });

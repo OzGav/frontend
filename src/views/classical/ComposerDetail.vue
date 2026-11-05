@@ -46,19 +46,14 @@
       </ClassicalPlayRow>
     </WorksSection>
 
-    <OtherTracksSection
-      :artist-id="id"
-      as-composer
-      @play-track="onPlayOtherTrack"
-      @menu-track="onMenuOtherTrack"
-    />
+    <OtherTracksSection :artist-id="id" as-composer />
   </section>
 </template>
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import type { Artist, Track, Work, WorkType } from "@/plugins/api/interfaces";
+import type { Artist, Work, WorkType } from "@/plugins/api/interfaces";
 import { getClassicalArtist, getComposerWorks } from "@/services/classical";
 import { normalizeForFilter } from "@/helpers/utils";
 import { navigateOnRowClick } from "@/views/classical/listing";
@@ -67,7 +62,6 @@ import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import WorksSection from "@/views/classical/components/WorksSection.vue";
-import { openOtherTrackMenu } from "@/views/classical/menu";
 import {
   countryLabel,
   lifeYearsLabel,
@@ -75,7 +69,7 @@ import {
   recordingCountLabel,
   workTypeLabel,
 } from "@/views/classical/labels";
-import { playWork, playTracks } from "@/views/classical/playback";
+import { playWork } from "@/views/classical/playback";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -170,12 +164,4 @@ watch(
   (id) => load(id),
   { immediate: true },
 );
-
-const onPlayOtherTrack = (t: Track, evt: Event) => {
-  playTracks([t], evt);
-};
-
-const onMenuOtherTrack = (t: Track, evt: Event) => {
-  openOtherTrackMenu(t, router, evt);
-};
 </script>

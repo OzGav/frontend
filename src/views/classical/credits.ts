@@ -64,6 +64,11 @@ export function recordingCredits(recording: Recording) {
   return { conductors, orchestras, performers, leadPerformers };
 }
 
+/** The first artist credited as composer, if any. */
+export function creditedComposer(credits: Credit[]) {
+  return credits.find((c) => c.role === ArtistRole.COMPOSER)?.artist;
+}
+
 /** The names leading a recording's header, or its work's name without any. */
 export function recordingName(recording: Recording): string {
   const { conductors, orchestras, leadPerformers } =

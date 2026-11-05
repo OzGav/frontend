@@ -37,7 +37,7 @@
 import type { Recording, Track } from "@/plugins/api/interfaces";
 import MovementRecordingRow from "@/views/classical/components/MovementRecordingRow.vue";
 import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
-import { playTracks } from "@/views/classical/playback";
+import { playRecording, playTracks } from "@/views/classical/playback";
 import type {
   MovementGroup,
   MovementRow,
@@ -54,7 +54,7 @@ const emit = defineEmits<{
 }>();
 
 const playGroup = (rows: MovementRow[], evt: Event) => {
-  playTracks(
+  playRecording(
     rows.flatMap((row) => row.tracks),
     evt,
   );

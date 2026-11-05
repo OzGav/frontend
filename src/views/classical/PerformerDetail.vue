@@ -79,11 +79,7 @@
       </ClassicalPlayRow>
     </WorksSection>
 
-    <OtherTracksSection
-      :artist-id="id"
-      @play-track="onPlayOtherTrack"
-      @menu-track="onMenuOtherTrack"
-    />
+    <OtherTracksSection :artist-id="id" />
   </section>
 </template>
 
@@ -116,8 +112,8 @@ import {
   useOwnFavorites,
 } from "@/views/classical/favorites";
 import { recordingCountLabel } from "@/views/classical/labels";
-import { playRecording, playTracks } from "@/views/classical/playback";
-import { openOtherTrackMenu, openRecordingMenu } from "@/views/classical/menu";
+import { playRecording } from "@/views/classical/playback";
+import { openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -244,14 +240,6 @@ const load = async (id: string) => {
     return;
   }
   loading.value = false;
-};
-
-const onPlayOtherTrack = (t: Track, evt: Event) => {
-  playTracks([t], evt);
-};
-
-const onMenuOtherTrack = (t: Track, evt: Event) => {
-  openOtherTrackMenu(t, router, evt);
 };
 
 watch(

@@ -3,34 +3,26 @@ import {
   getDefaultEnqueueOptionFor,
   showPlayMenuForMediaItem,
 } from "@/layouts/default/ItemContextMenu.vue";
-import { handlePlayBtnClick } from "@/helpers/media_item_actions";
+import {
+  handlePlayBtnClick,
+  reportPlayError,
+} from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
 import {
   MediaType,
   PlaybackState,
+  type QueueOption,
   type Track,
   type Work,
 } from "@/plugins/api/interfaces";
-import { $t } from "@/plugins/i18n";
 import { store } from "@/plugins/store";
-import { toast } from "vue-sonner";
 
 /**
  * Play tracks in order the way the standard play buttons do, straight away on
  * an available player, otherwise through the player menu opened at the click.
  */
 export function playTracks(tracks: Track[], evt?: Event): void {
-  if (!tracks.length) return;
-  const { x, y } = evt ? getEventPosition(evt) : { x: 0, y: 0 };
-  if (tracks.length === 1) {
-    handlePlayBtnClick(tracks[0], x, y);
-    return;
-  }
-  if (store.activePlayer?.available) {
-    api.playMedia(tracks.map((t) => t.uri)).catch(onPlayError);
-    return;
-  }
-  showPlayMenuForMediaItem(tracks, undefined, x, y).catch(onPlayError);
+  playInOrder(tracks, evt, false);
 }
 
 /**
@@ -39,20 +31,7 @@ export function playTracks(tracks: Track[], evt?: Event): void {
  * otherwise through the player menu opened at the click.
  */
 export function playRecording(tracks: Track[], evt?: Event): void {
-  if (!tracks.length) return;
-  const { x, y } = evt ? getEventPosition(evt) : { x: 0, y: 0 };
-  if (store.activePlayer?.available) {
-    getDefaultEnqueueOptionFor(MediaType.ALBUM)
-      .then((option) =>
-        api.playMedia(
-          tracks.map((t) => t.uri),
-          option,
-        ),
-      )
-      .catch(onPlayError);
-    return;
-  }
-  showPlayMenuForMediaItem(tracks, undefined, x, y).catch(onPlayError);
+  playInOrder(tracks, evt, true);
 }
 
 /**
@@ -71,7 +50,31 @@ export function isTrackPlaying(track: Track): boolean {
   return store.curQueueItem?.media_item?.item_id === track.item_id;
 }
 
-function onPlayError(err: Error) {
-  console.error("Play action failed:", err);
-  toast.error($t("play_failed"));
+function playInOrder(
+  tracks: Track[],
+  evt: Event | undefined,
+  asAlbum: boolean,
+) {
+  if (!tracks.length) return;
+  const { x, y } = evt ? getEventPosition(evt) : { x: 0, y: 0 };
+  // a single track plays as the standard track rows play it
+  if (!asAlbum && tracks.length === 1) {
+    handlePlayBtnClick(tracks[0], x, y);
+    return;
+  }
+  if (store.activePlayer?.available) {
+    const option: Promise<QueueOption | undefined> = asAlbum
+      ? getDefaultEnqueueOptionFor(MediaType.ALBUM)
+      : Promise.resolve(undefined);
+    option
+      .then((o) =>
+        api.playMedia(
+          tracks.map((t) => t.uri),
+          o,
+        ),
+      )
+      .catch(reportPlayError);
+    return;
+  }
+  showPlayMenuForMediaItem(tracks, undefined, x, y).catch(reportPlayError);
 }

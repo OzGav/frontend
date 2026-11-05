@@ -70,7 +70,6 @@
         v-else-if="!selectedMovements.length && displayedRecordings.length"
         :groups="recordingGroups"
         :movements="ownMovements"
-        :act-movements-of="partEntriesOf"
         @menu-recording="onMenuRecording"
         @menu-movement="onMenuMovement"
       />
@@ -160,7 +159,7 @@ const {
 
 const composerMapping = computed(() => work.value?.composers[0]);
 
-const { lineageOf, partEntries, ownMovements, rowsOf, partEntriesOf } =
+const { lineageOf, partEntries, ownMovements, rowsOf } =
   useWorkParts(work, displayedRecordings);
 
 // How many shown recordings have each movement, by movement number; an act
@@ -183,7 +182,7 @@ const movementGroups = computed<MovementGroup[]>(() =>
     .map((m) => ({
       key: `movement-${m.number}`,
       name: partEntries.value.has(m.number)
-        ? shortMovementName(m.name)
+        ? shortMovementName(m)
         : m.name,
       rows: rowsOf(m),
     }))

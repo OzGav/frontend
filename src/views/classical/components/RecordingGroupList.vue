@@ -26,7 +26,6 @@
         :key="r.key"
         :recording="r"
         :movements="movements"
-        :act-movements="actMovementsOf(r)"
         @menu-recording="
           (rec: Recording, e: Event) => emit('menu-recording', rec, e)
         "
@@ -50,8 +49,6 @@ defineProps<{
   groups: RecordingGroup[];
   // the work's movements, to name those each recording covers
   movements?: WorkMovement[];
-  // the entries listed under the act a recording is of
-  actMovementsOf: (recording: Recording) => WorkMovement[];
 }>();
 
 const emit = defineEmits<{

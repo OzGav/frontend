@@ -40,13 +40,5 @@ export function useWorkParts(
   /** Each shown recording with its tracks of a movement. */
   const rowsOf = (m: WorkMovement) => movementRows(shown.value, m.number);
 
-  /** The entries listed under the part a recording is of, e.g. its act's arias. */
-  const partEntriesOf = (r: Recording): WorkMovement[] =>
-    r.part == null
-      ? []
-      : movements.value.filter(
-          (m) => m.parent != null && lineageOf(m.number).at(-1) === r.part,
-        );
-
-  return { lineageOf, partEntries, ownMovements, rowsOf, partEntriesOf };
+  return { lineageOf, partEntries, ownMovements, rowsOf };
 }

@@ -1313,6 +1313,10 @@ export interface WorkMovement {
   parent?: number | null;
   // the part's library work, for movements that are the work's parts
   work_id?: string | null;
+  // the name shortened to its quoted words, without any excerpt mark
+  short_name?: string | null;
+  // the name marks the movement as an excerpt
+  excerpt?: boolean;
   // whether the work's page lists it under a part, e.g. an aria under its act
   under_part?: boolean;
 }
@@ -1394,6 +1398,8 @@ export interface Recording {
   coverage?: RecordingCoverage | null;
   // the movement numbers each track counts towards, by track uri
   track_movements?: Record<string, number[]>;
+  // each track's name in the recording's track list, by track uri
+  track_names?: Record<string, string>;
 }
 
 // What the server still has to look up on MusicBrainz for the classical view

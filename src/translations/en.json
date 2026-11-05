@@ -1330,6 +1330,7 @@
     "classical_country_unknown": "Unknown",
     "classical_country_soviet_union": "Soviet Union",
     "classical_movements": "Movements",
+    "classical_movement_excerpt": "{name} (excerpt)",
     "classical_with_performers": "with {names}",
     "classical_with_performers_more": "with {names} +{count}",
     "classical_complete_recordings": "Complete recordings",

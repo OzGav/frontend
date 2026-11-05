@@ -66,7 +66,7 @@
             class="flex min-w-0 flex-1 cursor-pointer items-baseline gap-0 border-0 bg-[transparent] p-[0.25rem_0_0.25rem_2.5rem] text-left [font:inherit] text-inherit"
             @click="(e: MouseEvent) => openMovement(m, e)"
           >
-            <span class="movement-title text-[0.95rem]">{{
+            <span :class="[MOVEMENT_TITLE_CLASS, 'text-[0.95rem]']">{{
               trackName(m)
             }}</span>
           </button>
@@ -112,6 +112,7 @@ import {
   playRecording,
   playTracks,
 } from "@/views/classical/playback";
+import { MOVEMENT_TITLE_CLASS } from "@/views/classical/styles";
 import { isTouch } from "@/views/classical/touch";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -188,17 +189,3 @@ const coverageTitle = computed(() => {
     .join("\n");
 });
 </script>
-
-<style scoped>
-.movement-title {
-  font-family: var(
-    --font-classical-serif,
-    "Roboto Serif",
-    ui-serif,
-    Georgia,
-    serif
-  );
-  font-optical-sizing: auto;
-  font-style: italic;
-}
-</style>

@@ -1,8 +1,8 @@
 <template>
   <img
     v-if="logo"
-    class="detail-hero-title__logo"
-    :class="{ 'detail-hero-title__logo--phone': isPhone }"
+    class="w-auto max-w-full object-contain object-left"
+    :class="isPhone ? 'h-[56px]' : 'h-[80px]'"
     :src="logo"
     alt=""
   />
@@ -29,39 +29,10 @@ const nameClass = computed(() =>
   logo.value
     ? "sr-only"
     : [
-        "detail-hero-title__name",
-        { "detail-hero-title__name--phone": isPhone.value },
+        "m-0 line-clamp-2 leading-[1.2] font-medium [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]",
+        isPhone.value
+          ? "text-[34px] tracking-[-0.8px]"
+          : "text-[48px] tracking-[-1.2px]",
       ],
 );
 </script>
-
-<style scoped>
-.detail-hero-title__logo {
-  height: 80px;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-  object-position: left;
-}
-.detail-hero-title__name {
-  margin: 0;
-  font-size: 48px;
-  font-weight: 500;
-  letter-spacing: -1.2px;
-  line-height: 1.2;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.detail-hero-title__name--phone {
-  font-size: 34px;
-  letter-spacing: -0.8px;
-}
-.detail-hero-title__logo--phone {
-  height: 56px;
-}
-</style>

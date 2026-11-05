@@ -2,21 +2,27 @@ import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { normalizeGridSize } from "@/helpers/grid_size";
-import type { ListingFilter } from "@/helpers/listing_filters";
+import {
+  activeFilterCount,
+  type ListingFilter,
+} from "@/helpers/listing_filters";
 import { $t } from "@/plugins/i18n";
 import type { SortOptionInfo } from "@/plugins/api/interfaces";
-import type { ClassicalSort } from "@/services/classical";
+import type { ClassicalListQuery } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
 import {
   useClassicalSort,
   type ClassicalSortOptions,
 } from "@/views/classical/classicalSort";
+import { CLASSICAL_PAGE_SIZE, usePagedList } from "@/views/classical/paging";
 import { useClassicalPreferences } from "@/views/classical/preferences";
 import { Grid3x3, Heart, LayoutGrid, LayoutList, RefreshCw } from "@lucide/vue";
+import { refDebounced } from "@vueuse/core";
 import {
   computed,
   inject,
   markRaw,
+  onMounted,
   onUnmounted,
   ref,
   toRaw,
@@ -65,6 +71,9 @@ export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
 
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";
 
+/** How long typing in a classical tab's search or year boxes settles first. */
+export const CLASSICAL_TYPING_DEBOUNCE_MS = 300;
+
 // the views a picture tab offers in its sort menu
 export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
   {
@@ -87,13 +96,18 @@ export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
   },
 ];
 
-interface ClassicalListingOptions<T> extends Omit<
+interface ClassicalListingOptions<T, Q extends object> extends Omit<
   ClassicalSortOptions,
   "onChange"
 > {
-  // the tab's list, replaced by each load
+  // the tab's list, replaced by each reload and extended by each page
   items: Ref<T[]>;
-  load: (sort: ClassicalSort) => Promise<T[]>;
+  // fetches a page of the list
+  load: (query: ClassicalListQuery & Q) => Promise<T[]>;
+  // the list arguments of the tab's own filters; a change reloads the list
+  query?: () => Q;
+  // loads the values the tab's filters offer, as the tab opens and on refresh
+  loadFilterChoices?: () => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
   // the tab's own filters, shown in the Filters panel after the favourites
@@ -111,8 +125,14 @@ interface ClassicalListingOptions<T> extends Omit<
  * listings, the menu, text filter, sort and filters show in the Classical
  * view's toolbar while the tab is open, and going back to the tab returns it
  * to where it was scrolled.
+ *
+ * The list loads as the tab opens, page by page: place a LoadMoreSentinel
+ * after its last row while `hasMore`, with `loadingMore` and `loadMore`.
+ * `filtered` tells whether a search or filter narrows the list.
  */
-export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
+export function useClassicalListing<T, Q extends object = object>(
+  options: ClassicalListingOptions<T, Q>,
+) {
   const { preferences: prefs, save } = useClassicalPreferences(
     options.itemtype,
   );
@@ -120,32 +140,53 @@ export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
   // the text filter, empty where the tab has none
   const search = ref(options.search ? (prefs.search ?? "") : "");
   watch(search, (value) => save("search", value));
+  const searchText = refDebounced(
+    computed(() => search.value.trim()),
+    CLASSICAL_TYPING_DEBOUNCE_MS,
+  );
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
   );
   const favoritesOnly = ref(options.views === true && !!prefs.favoriteFilter);
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
-  // the tabs load on mount, so they start out loading
-  const loading = ref(true);
-  useBackScroll(() => loading.value);
 
-  let loadCount = 0;
-
-  const reload = async () => {
-    const count = ++loadCount;
-    loading.value = true;
-    try {
+  const { loading, loadingMore, hasMore, reload, loadMore } = usePagedList({
+    items: options.items,
+    fetch: async (offset, limit) => {
       await sort.ready;
-      const list = await options.load(sort.sort.value);
-      // a newer load has taken over the list
-      if (count !== loadCount) return;
-      options.items.value = list;
-    } catch {
-      // the api has already reported the failure
-    } finally {
-      if (count === loadCount) loading.value = false;
-    }
+      return options.load({
+        ...sort.sort.value,
+        search: searchText.value || undefined,
+        favorite: favoritesOnly.value || undefined,
+        offset,
+        limit,
+        ...(options.query?.() as Q),
+      });
+    },
+  });
+  const { returnRows } = useBackScroll(
+    () => loading.value,
+    () => options.items.value.length,
+  );
+
+  const refresh = (limit?: number) => {
+    // the api has already reported a failure
+    options.loadFilterChoices?.().catch(() => {});
+    return reload(limit);
   };
+
+  // going back to the tab loads again the rows it had, to scroll back to
+  onMounted(() => refresh(Math.max(CLASSICAL_PAGE_SIZE, returnRows() ?? 0)));
+  // Getters, so only a changed value reloads; the tab's arguments are built
+  // afresh on each read, so they are compared as text.
+  watch(
+    [
+      () => searchText.value,
+      () => favoritesOnly.value,
+      () => JSON.stringify(options.query?.()),
+    ],
+    () => reload(),
+  );
 
   // a kept filter opens with the tab, so it shows what narrows the list
   const searchOpen = ref(!!search.value);
@@ -221,7 +262,7 @@ export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
       icon: RefreshCw,
       disabled: loading.value,
       overflowAllowed: true,
-      action: reload,
+      action: () => refresh(),
     });
     if (options.views && viewMode.value !== "list") list.push(gridSizeItem());
     return list;
@@ -250,7 +291,19 @@ export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
     clearFilters: () => filters.value.forEach(clearFilter),
   }));
 
-  return { viewMode, favoritesOnly, gridSize, loading, reload, search };
+  const filtered = computed(
+    () => !!searchText.value || activeFilterCount(filters.value) > 0,
+  );
+
+  return {
+    viewMode,
+    gridSize,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    filtered,
+  };
 }
 
 // turns a filter off through its own handler, which saves the change

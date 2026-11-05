@@ -87,4 +87,7 @@ describe("countryLabel", () => {
     expect(countryLabel("PL")).toBe("Polen");
     i18nMock.global.locale.value = "en";
   });
+  it("names the Soviet Union itself, not as Russia", () => {
+    expect(countryLabel("SU")).toBe("classical_country_soviet_union");
+  });
 });

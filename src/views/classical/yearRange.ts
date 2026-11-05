@@ -2,7 +2,8 @@ import { computed, ref } from "vue";
 
 /**
  * State for a pair of YearRangeFilter boxes, the raw strings to bind to it,
- * plus a predicate that tests a year against whatever the boxes hold.
+ * the range they hold as `bounds`, plus a predicate that tests a year against
+ * whatever the boxes hold.
  */
 export function useYearRange() {
   const from = ref("");
@@ -38,7 +39,7 @@ export function useYearRange() {
     to.value = "";
   };
 
-  return { from, to, isActive, matches, clear };
+  return { from, to, bounds, isActive, matches, clear };
 }
 
 /**

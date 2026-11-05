@@ -43,6 +43,8 @@ export function periodLabel(period: Period): string {
 
 /** The name of a country in the user's language, e.g. Poland for PL. */
 export function countryLabel(code: string): string {
+  const historical = HISTORICAL_COUNTRIES[code];
+  if (historical) return $t(historical);
   const locale = canonicalizeLocale(i18n.global.locale.value);
   if (regionNames?.locale !== locale)
     regionNames = {
@@ -211,6 +213,11 @@ function heldCount(count: number, total: number): string {
 
 // the region names of the locale last asked for, built once rather than per name
 let regionNames: { locale: string; names: Intl.DisplayNames } | undefined;
+
+// Former countries the browser names after a successor, e.g. Russia for SU.
+const HISTORICAL_COUNTRIES: Partial<Record<string, string>> = {
+  SU: "classical_country_soviet_union",
+};
 
 // the score's number leading a name, e.g. XXXIX., IVa., 36a. or no. 6:; the
 // "." or ":" keeps a word such as Il from passing for one

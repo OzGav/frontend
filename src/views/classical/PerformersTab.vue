@@ -9,7 +9,8 @@
       :loading="loading"
       :placeholder-icon="Users"
     />
-    <ClassicalEmpty v-else :filtered="performers.length > 0" />
+    <ClassicalEmpty v-else :filtered="filtered" />
+    <LoadMoreSentinel v-if="hasMore" :loading="loadingMore" @more="loadMore" />
   </div>
 </template>
 
@@ -18,17 +19,19 @@ import {
   ArtistRole,
   ListingType,
   type ClassicalPerformer,
+  type ClassicalPerformerFilters,
 } from "@/plugins/api/interfaces";
-import { getPerformers } from "@/services/classical";
+import { getPerformerFilters, getPerformers } from "@/services/classical";
 import { useArtistGridItems } from "@/views/classical/artistGrid";
 import ClassicalArtistGrid from "@/views/classical/components/ClassicalArtistGrid.vue";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import { recordingCountLabel, roleLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
 import { useListFilter } from "@/views/classical/listFilters";
 import { useClassicalListing } from "@/views/classical/listing";
 import { Users } from "@lucide/vue";
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: "PerformersTab" });
@@ -49,6 +52,7 @@ const ROLE_LABELS = {
 } satisfies Partial<Record<ArtistRole, string>>;
 
 const performers = ref<ClassicalPerformer[]>([]);
+const choices = ref<ClassicalPerformerFilters>();
 
 useOwnFavorites(() => performers.value.map((row) => row.artist));
 
@@ -61,34 +65,39 @@ const roleFilter = useListFilter({
   layout: "checkboxes",
   values: Object.keys(ROLE_LABELS) as Array<keyof typeof ROLE_LABELS>,
   valueLabel: (role) => t(ROLE_LABELS[role]),
-  present: () => performers.value.flatMap((p) => p.roles),
+  present: () => choices.value?.roles ?? [],
 });
 
-// The full list is fetched once; the filters narrow it client-side.
-const { viewMode, favoritesOnly, gridSize, loading, reload, search } =
-  useClassicalListing({
-    itemtype: ITEMTYPE,
-    listing: ListingType.CLASSICAL_PERFORMERS,
-    items: performers,
-    load: getPerformers,
-    views: true,
-    search: {
-      placeholder: () => t("classical_filter_performers_placeholder"),
-    },
-    filters: () => [roleFilter.filter.value],
-  });
+const {
+  viewMode,
+  gridSize,
+  loading,
+  loadingMore,
+  hasMore,
+  loadMore,
+  filtered,
+} = useClassicalListing({
+  itemtype: ITEMTYPE,
+  listing: ListingType.CLASSICAL_PERFORMERS,
+  items: performers,
+  load: getPerformers,
+  query: () => ({ role: roleFilter.selected.value }),
+  loadFilterChoices: async () => {
+    choices.value = await getPerformerFilters();
+  },
+  views: true,
+  search: {
+    placeholder: () => t("classical_filter_performers_placeholder"),
+  },
+  filters: () => [roleFilter.filter.value],
+});
 
 const gridItems = useArtistGridItems({
   rows: () => performers.value,
   section: "performers",
-  search,
-  favoritesOnly,
   details: (p) => ({
     role: roleLabel(p.main_role),
     lines: [recordingCountLabel(p.recording_count)],
   }),
-  matches: (p) => roleFilter.matches(p.roles),
 });
-
-onMounted(reload);
 </script>

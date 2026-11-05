@@ -1380,6 +1380,29 @@ export interface ClassicalWorkEntry {
   period?: Period | null;
 }
 
+// The filter values present across a classical list, for its filter panel.
+export interface ClassicalComposerFilters {
+  periods: Period[];
+  // ISO 3166-1 codes
+  countries: string[];
+  // whether some composer has no country
+  country_unknown: boolean;
+}
+
+export interface ClassicalPerformerFilters {
+  roles: ArtistRole[];
+}
+
+export interface ClassicalWorkFilters {
+  periods: Period[];
+  work_types: WorkType[];
+  // whether some work has no type
+  work_type_unknown: boolean;
+  // both null when no work has a composition year
+  earliest_year: number | null;
+  latest_year: number | null;
+}
+
 export interface Playlist extends MediaItem {
   owner: string;
   is_editable: boolean;

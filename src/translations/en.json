@@ -1328,6 +1328,7 @@
     "classical_filter_country": "Country",
     "classical_filter_any_country": "Any country",
     "classical_country_unknown": "Unknown",
+    "classical_country_soviet_union": "Soviet Union",
     "classical_movements": "Movements",
     "classical_with_performers": "with {names}",
     "classical_with_performers_more": "with {names} +{count}",

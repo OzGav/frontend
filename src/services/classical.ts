@@ -1,25 +1,72 @@
 // Service layer for the Classical view, over the server's classical commands.
-// Lists are fetched whole in the server's sort order; the views filter them
-// client-side.
+// The browse lists are searched, filtered and paged by the server; the lists
+// of one composer, performer or work are fetched whole.
 
 import api from "@/plugins/api";
 import type {
   Artist,
+  ArtistRole,
   ClassicalComposer,
+  ClassicalComposerFilters,
   ClassicalLinkProgress,
   ClassicalPerformer,
+  ClassicalPerformerFilters,
   ClassicalWorkEntry,
+  ClassicalWorkFilters,
+  Period,
   Recording,
   SortDirection,
   SortField,
   Track,
   Work,
+  WorkType,
 } from "@/plugins/api/interfaces";
 
 /** The sort a classical list is fetched in; left out, the server default. */
 export interface ClassicalSort {
   sort_field?: SortField;
   sort_direction?: SortDirection;
+}
+
+/**
+ * A page of a classical browse list. A filter left out or empty does not
+ * narrow the list; one with several values keeps items matching any of them.
+ */
+export interface ClassicalListQuery extends ClassicalSort {
+  // accent and case free
+  search?: string;
+  // true for the user's likes, false for their dislikes
+  favorite?: boolean;
+  // 0 fetches every item
+  limit?: number;
+  offset?: number;
+}
+
+/** A page of the composers list. */
+export interface ClassicalComposerQuery extends ClassicalListQuery {
+  period?: Period[];
+  country?: string[];
+  // also keeps composers without a country
+  country_unknown?: boolean;
+}
+
+/** A page of the performers list. */
+export interface ClassicalPerformerQuery extends ClassicalListQuery {
+  role?: ArtistRole[];
+}
+
+/** A page of the works list. */
+export interface ClassicalWorkQuery extends Omit<
+  ClassicalListQuery,
+  "favorite"
+> {
+  period?: Period[];
+  work_type?: WorkType[];
+  // also keeps works without a type
+  work_type_unknown?: boolean;
+  // inclusive; works without a composition year drop out once either is set
+  year_from?: number;
+  year_to?: number;
 }
 
 /**
@@ -75,11 +122,16 @@ export async function getClassicalRoles(artistId: string): Promise<{
   }
 }
 
-/** Every composer in the library, in the given sort. */
+/** A page of the library's composers. */
 export function getComposers(
-  sort: ClassicalSort = {},
+  query: ClassicalComposerQuery = {},
 ): Promise<ClassicalComposer[]> {
-  return api.sendCommand("music/classical/composers", { ...sort, limit: 0 });
+  return api.sendCommand("music/classical/composers", { ...query });
+}
+
+/** The values the composers list can be filtered on. */
+export function getComposerFilters(): Promise<ClassicalComposerFilters> {
+  return api.sendCommand("music/classical/composer_filters");
 }
 
 /** The works of a composer. */
@@ -92,11 +144,16 @@ export function getComposerWorks(
   });
 }
 
-/** Every work in the library, in the given sort. */
+/** A page of the library's works. */
 export function getWorks(
-  sort: ClassicalSort = {},
+  query: ClassicalWorkQuery = {},
 ): Promise<ClassicalWorkEntry[]> {
-  return api.sendCommand("music/classical/works", { ...sort, limit: 0 });
+  return api.sendCommand("music/classical/works", { ...query });
+}
+
+/** The values the works list can be filtered on. */
+export function getWorkFilters(): Promise<ClassicalWorkFilters> {
+  return api.sendCommand("music/classical/work_filters");
 }
 
 /** One work, with its parts and arrangements filled in. */
@@ -121,11 +178,16 @@ export function getPerformerRecordings(
   });
 }
 
-/** Artists with a performing role on a classical track. */
+/** A page of the artists with a performing role on a classical track. */
 export function getPerformers(
-  sort: ClassicalSort = {},
+  query: ClassicalPerformerQuery = {},
 ): Promise<ClassicalPerformer[]> {
-  return api.sendCommand("music/classical/performers", { ...sort, limit: 0 });
+  return api.sendCommand("music/classical/performers", { ...query });
+}
+
+/** The values the performers list can be filtered on. */
+export function getPerformerFilters(): Promise<ClassicalPerformerFilters> {
+  return api.sendCommand("music/classical/performer_filters");
 }
 
 /**

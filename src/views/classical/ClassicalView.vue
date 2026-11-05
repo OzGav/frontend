@@ -18,36 +18,16 @@
       >
         <TabsList class="w-full h-auto">
           <TabsTrigger
-            value="composers"
+            v-for="{ tab, label, icon } in CLASSICAL_TABS"
+            :key="tab"
+            :value="tab"
             :class="TAB_TRIGGER_CLASS"
-            @click="goToTab('composers')"
+            @click="goToTab(tab)"
           >
-            <Feather class="size-[1.05rem] shrink-0" />
+            <component :is="icon" class="size-[1.05rem] shrink-0" />
             <span
               class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
-              >{{ $t("composers") }}</span
-            >
-          </TabsTrigger>
-          <TabsTrigger
-            value="works"
-            :class="TAB_TRIGGER_CLASS"
-            @click="goToTab('works')"
-          >
-            <Music3 class="size-[1.05rem] shrink-0" />
-            <span
-              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
-              >{{ $t("works") }}</span
-            >
-          </TabsTrigger>
-          <TabsTrigger
-            value="performers"
-            :class="TAB_TRIGGER_CLASS"
-            @click="goToTab('performers')"
-          >
-            <Users class="size-[1.05rem] shrink-0" />
-            <span
-              class="classical-tab-label min-w-0 overflow-hidden whitespace-nowrap group-[.icons-only]:hidden"
-              >{{ $t("performers") }}</span
+              >{{ $t(label) }}</span
             >
           </TabsTrigger>
         </TabsList>
@@ -113,6 +93,7 @@ import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";
 import {
   CLASSICAL_DEFAULT_TAB,
+  CLASSICAL_TABS,
   isClassicalTab,
   useClassicalTabNavigation,
   type ClassicalTab,
@@ -123,7 +104,7 @@ import {
   CLASSICAL_VIEWS,
   type ClassicalMenu,
 } from "@/views/classical/listing";
-import { Feather, Music3, Piano, Users } from "@lucide/vue";
+import { Piano } from "@lucide/vue";
 import { unrefElement, useResizeObserver } from "@vueuse/core";
 import { computed, nextTick, provide, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";

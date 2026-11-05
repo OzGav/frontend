@@ -1,18 +1,21 @@
+import { Feather, Music3, Users } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 
-const CLASSICAL_TABS = ["composers", "works", "performers"] as const;
+/** The Classical tabs in order, each with its label key and icon. */
+export const CLASSICAL_TABS = [
+  { tab: "composers", label: "composers", icon: Feather },
+  { tab: "works", label: "works", icon: Music3 },
+  { tab: "performers", label: "performers", icon: Users },
+] as const;
 
-export type ClassicalTab = (typeof CLASSICAL_TABS)[number];
+export type ClassicalTab = (typeof CLASSICAL_TABS)[number]["tab"];
 
 export const CLASSICAL_DEFAULT_TAB: ClassicalTab = "composers";
 
 const CLASSICAL_LAST_TAB_KEY = "frontend.classical.last_tab";
 
 export function isClassicalTab(value: unknown): value is ClassicalTab {
-  return (
-    typeof value === "string" &&
-    (CLASSICAL_TABS as readonly string[]).includes(value)
-  );
+  return CLASSICAL_TABS.some(({ tab }) => tab === value);
 }
 
 export function getLastVisitedClassicalTab(): ClassicalTab {

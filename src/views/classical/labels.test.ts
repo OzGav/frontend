@@ -24,7 +24,7 @@ vi.mock("@/plugins/i18n", () => ({
 describe("shortMovementName", () => {
   const movement = (fields: Partial<WorkMovement>): WorkMovement => ({
     number: 1,
-    name: 'no. 6. “Che gelida manina!” (Rodolfo)',
+    name: "no. 6. “Che gelida manina!” (Rodolfo)",
     mbid: null,
     ...fields,
   });
@@ -37,7 +37,7 @@ describe("shortMovementName", () => {
 
   it("falls back to the full name without a short one", () => {
     expect(shortMovementName(movement({}))).toBe(
-      'no. 6. “Che gelida manina!” (Rodolfo)',
+      "no. 6. “Che gelida manina!” (Rodolfo)",
     );
   });
 

@@ -159,8 +159,10 @@ const {
 
 const composerMapping = computed(() => work.value?.composers[0]);
 
-const { lineageOf, partEntries, ownMovements, rowsOf } =
-  useWorkParts(work, displayedRecordings);
+const { lineageOf, partEntries, ownMovements, rowsOf } = useWorkParts(
+  work,
+  displayedRecordings,
+);
 
 // How many shown recordings have each movement, by movement number; an act
 // counts the recordings of its arias too, and an aria those with its tracks.
@@ -181,9 +183,7 @@ const movementGroups = computed<MovementGroup[]>(() =>
     .filter((m) => selectedMovements.value.includes(m.number))
     .map((m) => ({
       key: `movement-${m.number}`,
-      name: partEntries.value.has(m.number)
-        ? shortMovementName(m)
-        : m.name,
+      name: partEntries.value.has(m.number) ? shortMovementName(m) : m.name,
       rows: rowsOf(m),
     }))
     .filter((g) => g.rows.length),

@@ -162,11 +162,17 @@ describe("groupByHeading", () => {
     });
     const act = recording({
       key: "act",
-      heading: heading(RecordingHeadingKind.MOVEMENT, { movement: 1, order: 1 }),
+      heading: heading(RecordingHeadingKind.MOVEMENT, {
+        movement: 1,
+        order: 1,
+      }),
     });
     const plain = recording({
       key: "plain",
-      heading: heading(RecordingHeadingKind.MOVEMENT, { movement: 4, order: 2 }),
+      heading: heading(RecordingHeadingKind.MOVEMENT, {
+        movement: 4,
+        order: 2,
+      }),
     });
     const stray = recording({
       key: "stray",

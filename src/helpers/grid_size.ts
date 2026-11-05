@@ -39,7 +39,7 @@ export interface GridSizeControls {
 
 // the range the `col-N` classes in the listing cover
 const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 12;
+export const MAX_COLUMNS = 12;
 
 /** The number of columns for a grid, given the responsive default. */
 export const gridColumns = (responsiveColumns: number, size: number): number =>

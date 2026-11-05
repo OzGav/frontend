@@ -4,7 +4,7 @@
     <!-- the same dark backdrop as the banner's heart and menu buttons -->
     <TabsList class="h-10 rounded-lg bg-black/35">
       <TabsTrigger
-        v-for="link in LINKS"
+        v-for="link in CLASSICAL_TABS"
         :key="link.tab"
         :value="link.tab"
         class="px-2.5 text-white/80 hover:text-white dark:text-white/80 data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-white/20 dark:data-[state=active]:text-white"
@@ -21,10 +21,10 @@
 <script setup lang="ts">
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  CLASSICAL_TABS,
   useClassicalTabNavigation,
   type ClassicalTab,
 } from "@/views/classical/tabs";
-import { Feather, Music3, Users } from "@lucide/vue";
 
 defineOptions({ name: "ClassicalSectionLinks" });
 
@@ -32,12 +32,6 @@ defineProps<{
   // the section the page belongs to, highlighted
   current?: ClassicalTab;
 }>();
-
-const LINKS = [
-  { tab: "composers", label: "composers", icon: Feather },
-  { tab: "works", label: "works", icon: Music3 },
-  { tab: "performers", label: "performers", icon: Users },
-] as const;
 
 const goToTab = useClassicalTabNavigation();
 </script>

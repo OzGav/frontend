@@ -7,7 +7,7 @@ import {
   useUserPreferences,
   type ItemsListingPreferences,
 } from "@/composables/userPreferences";
-import { normalizeGridSize } from "@/helpers/grid_size";
+import { MAX_COLUMNS, normalizeGridSize } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
 import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
@@ -340,12 +340,9 @@ export function useClassicalPreferences(itemtype: string) {
  * menu.
  */
 export function useClassicalSort(options: ClassicalSortOptions) {
-  const { getItemsListingPreferences, setItemsListingPreference } =
-    useUserPreferences();
+  const { preferences, save } = useClassicalPreferences(options.itemtype);
   const sortOptions = ref<SortOptionInfo[]>([]);
-  const sortBy = ref(
-    getItemsListingPreferences(PREFS_PATH, options.itemtype).value.sortBy ?? "",
-  );
+  const sortBy = ref(preferences.sortBy ?? "");
   const sorting = useLibrarySorting(sortOptions, sortBy);
 
   // Without the choices the list still loads, in the server's default order.
@@ -361,9 +358,7 @@ export function useClassicalSort(options: ClassicalSortOptions) {
       });
     });
 
-  const selectedOption = computed(() =>
-    sortOptions.value.find((o) => o.field === sorting.current.value.field),
-  );
+  const { selectedOption } = sorting;
 
   const sort = computed<ClassicalSort>(() =>
     selectedOption.value
@@ -390,7 +385,7 @@ export function useClassicalSort(options: ClassicalSortOptions) {
   const setSort = (value: string | undefined) => {
     if (!value || value === sortBy.value) return;
     sortBy.value = value;
-    setItemsListingPreference(PREFS_PATH, options.itemtype, "sortBy", value);
+    save("sortBy", value);
     options.onChange();
   };
 
@@ -416,13 +411,10 @@ export function classicalGridColumns(
   const fitting = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
   // unlike gridColumns this allows one column, so larger steps on a phone
   // never add a column
-  return Math.min(MAX_GRID_COLUMNS, Math.max(1, fitting - size));
+  return Math.min(MAX_COLUMNS, Math.max(1, fitting - size));
 }
 
 const PREFS_PATH = "classical";
-
-// the most columns the grid size slider allows elsewhere
-const MAX_GRID_COLUMNS = 12;
 
 // turns a filter off through its own handler, which saves the change
 function clearFilter(filter: ListingFilter) {

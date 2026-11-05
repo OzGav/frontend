@@ -4,6 +4,8 @@ import {
   activeFilterCount,
   clearedFilters,
   listingItemCount,
+  offeredFilterValues,
+  toggledValue,
   type ListingChoiceFilter,
   type ListingCustomFilter,
   type ListingMultiFilter,
@@ -171,5 +173,40 @@ describe("clearedFilters", () => {
       params: {},
       prefs: {},
     });
+  });
+});
+
+describe("offeredFilterValues", () => {
+  const all = ["a", "b", "c"];
+
+  it("offers the values the items have, in the order of all values", () => {
+    expect(offeredFilterValues(all, new Set(["c", "a"]), [])).toEqual([
+      "a",
+      "c",
+    ]);
+  });
+
+  it("keeps a chosen value no item has any more", () => {
+    expect(offeredFilterValues(all, new Set(["a"]), ["b"])).toEqual(["a", "b"]);
+  });
+
+  it("puts a chosen value outside all values last", () => {
+    expect(offeredFilterValues(all, new Set(["a"]), ["z"])).toEqual(["a", "z"]);
+  });
+});
+
+describe("toggledValue", () => {
+  it("adds a value not chosen at the end", () => {
+    expect(toggledValue(["a"], "b")).toEqual(["a", "b"]);
+  });
+
+  it("removes a chosen value", () => {
+    expect(toggledValue(["a", "b"], "a")).toEqual(["b"]);
+  });
+
+  it("leaves the given list untouched", () => {
+    const chosen = ["a"];
+    toggledValue(chosen, "b");
+    expect(chosen).toEqual(["a"]);
   });
 });

@@ -103,7 +103,7 @@ import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
-import { openTrackOnRowClick } from "@/views/classical/listing";
+import { openTrackOnRowClick } from "@/views/classical/rowClick";
 import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { movementCoverageLabel, trackLabel } from "@/views/classical/labels";
@@ -113,7 +113,7 @@ import {
   playTracks,
 } from "@/views/classical/playback";
 import { MOVEMENT_TITLE_CLASS } from "@/views/classical/styles";
-import { isTouch } from "@/views/classical/touch";
+import { isTouch } from "@/composables/touchScreen";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
 

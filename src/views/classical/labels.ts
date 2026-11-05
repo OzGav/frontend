@@ -1,4 +1,4 @@
-import { normalizeForFilter } from "@/helpers/utils";
+import { normalizeForFilter } from "@/helpers/text_filter";
 import {
   ExternalID,
   type ArtistRole,

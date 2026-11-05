@@ -6,9 +6,6 @@ vi.mock("@/plugins/i18n", () => ({
   canonicalizeLocale: (locale: string) => locale,
   i18n: { global: { locale: { value: "en" } } },
 }));
-vi.mock("@/helpers/utils", () => ({
-  normalizeForFilter: (s: string) => s.toLowerCase(),
-}));
 
 describe("shortMovementName", () => {
   it.each([

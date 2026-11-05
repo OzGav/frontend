@@ -86,7 +86,7 @@
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import { normalizeForFilter } from "@/helpers/utils";
+import { normalizeForFilter } from "@/helpers/text_filter";
 import type {
   Artist,
   ClassicalWorkEntry,
@@ -99,7 +99,7 @@ import {
   getPerformerWorks,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
-import { navigateOnRowClick } from "@/views/classical/listing";
+import { navigateOnRowClick } from "@/views/classical/rowClick";
 import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";

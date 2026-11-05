@@ -60,10 +60,8 @@ import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue"
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import {
-  openTrackOnRowClick,
-  useClassicalSort,
-} from "@/views/classical/listing";
+import { useClassicalSort } from "@/views/classical/classicalSort";
+import { openTrackOnRowClick } from "@/views/classical/rowClick";
 import { openOtherTrackMenu } from "@/views/classical/menu";
 import { isTrackPlaying, playTracks } from "@/views/classical/playback";
 import { ref, watch } from "vue";

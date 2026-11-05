@@ -2,7 +2,7 @@ import { MediaType, QueueOption } from "@/plugins/api/interfaces";
 import { playRecording, playTracks } from "@/views/classical/playback";
 import { flushPromises } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { track } from "../../fixtures/track";
+import { track } from "../../../tests/fixtures/track";
 
 const { apiMock, menuMock, storeMock } = vi.hoisted(() => ({
   apiMock: { playMedia: vi.fn() },

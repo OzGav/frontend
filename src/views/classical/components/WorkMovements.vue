@@ -72,6 +72,7 @@
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
+import { toggledValue } from "@/helpers/listing_filters";
 import type { WorkMovement } from "@/plugins/api/interfaces";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import {
@@ -165,7 +166,7 @@ const entryRow = (m: WorkMovement, name: string, depth: number) => ({
   depth,
   count: props.counts[m.number] ?? 0,
   selected: model.value.includes(m.number),
-  toggle: () => (model.value = toggled(model.value, m.number)),
+  toggle: () => (model.value = toggledValue(model.value, m.number)),
 });
 
 // each shown movement followed by its arias
@@ -184,10 +185,4 @@ const groups = computed(() =>
 const clear = () => {
   model.value = [];
 };
-
-function toggled<T>(list: T[], value: T): T[] {
-  return list.includes(value)
-    ? list.filter((v) => v !== value)
-    : [...list, value];
-}
 </script>

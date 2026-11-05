@@ -84,6 +84,29 @@ export function activeFilterCount(filters: ListingFilter[]): number {
   }, 0);
 }
 
+/**
+ * The values a multi-select filter offers: those the listed items have, in the
+ * order of all values, then any chosen value no item has any more, kept so it
+ * can be cleared.
+ */
+export function offeredFilterValues<T>(
+  all: readonly T[],
+  present: ReadonlySet<unknown>,
+  chosen: readonly T[],
+): T[] {
+  return [
+    ...all.filter((v) => present.has(v) || chosen.includes(v)),
+    ...chosen.filter((v) => !all.includes(v)),
+  ];
+}
+
+/** The chosen values with one value removed if chosen, otherwise added. */
+export function toggledValue<T>(chosen: readonly T[], value: T): T[] {
+  return chosen.includes(value)
+    ? chosen.filter((v) => v !== value)
+    : [...chosen, value];
+}
+
 interface ListingCountSource {
   // the count the page fetched, if it has one
   total?: number;

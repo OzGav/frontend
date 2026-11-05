@@ -39,11 +39,26 @@ export interface GridSizeControls {
 
 // the range the `col-N` classes in the listing cover
 const MIN_COLUMNS = 2;
-export const MAX_COLUMNS = 12;
+const MAX_COLUMNS = 12;
 
 /** The number of columns for a grid, given the responsive default. */
 export const gridColumns = (responsiveColumns: number, size: number): number =>
   Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, responsiveColumns - size));
+
+/**
+ * The number of columns for a grid of cards at least minWidth wide: as many as
+ * fit the width, stepped by the cover size. Unlike gridColumns this allows one
+ * column, so larger steps on a phone never add a column.
+ */
+export const fittingGridColumns = (
+  width: number,
+  minWidth: number,
+  gap: number,
+  size: number,
+): number => {
+  const fitting = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+  return Math.min(MAX_COLUMNS, Math.max(1, fitting - size));
+};
 
 /** A stored size as a step the slider can show, whatever was stored. */
 export const normalizeGridSize = (value: unknown): number => {

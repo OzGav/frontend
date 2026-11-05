@@ -84,6 +84,7 @@ import {
   type Period,
   type Work,
 } from "@/plugins/api/interfaces";
+import { getBreakpointValue } from "@/plugins/breakpoint";
 import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
@@ -105,15 +106,12 @@ import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { computed, markRaw, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import { useDisplay } from "vuetify";
 
 defineOptions({ name: "WorksTab" });
 
 const ITEMTYPE = "works";
 
 const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
-
-const { mobile } = useDisplay();
 
 const { t } = useI18n();
 
@@ -153,6 +151,9 @@ const hasComposedYears = computed(
 );
 
 const router = useRouter();
+
+// as narrow as a phone, where the columns join the title's line
+const mobile = computed(() => !getBreakpointValue("bp2"));
 
 // The play column leads on hover screens and trails on touch screens; on
 // phones the title takes the width.

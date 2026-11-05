@@ -2,8 +2,10 @@
   <!-- --play-offset is the play slot in front of each row, absent on touch
        screens -->
   <article
-    class="[--play-offset:calc(32px_+_0.4rem)] [@media(hover:none)]:[--play-offset:0px]"
-    :class="{ expanded }"
+    :class="[
+      isTouch ? '[--play-offset:0px]' : '[--play-offset:calc(32px_+_0.4rem)]',
+      { expanded },
+    ]"
   >
     <ClassicalPlayRow
       class="flex items-center gap-[0.4rem]"
@@ -106,6 +108,7 @@ import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { movementCoverageLabel, trackLabel } from "@/views/classical/labels";
 import { isTrackPlaying } from "@/views/classical/playback";
+import { isTouch } from "@/views/classical/touch";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
 

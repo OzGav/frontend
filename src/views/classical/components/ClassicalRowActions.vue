@@ -18,10 +18,7 @@
       :size="24"
       class="mx-[10px]"
     />
-    <div
-      v-if="getBreakpointValue('bp3') && !$vuetify.display.mobile"
-      class="mx-[10px]"
-    >
+    <div v-if="getBreakpointValue('bp3')" class="mx-[10px]">
       <FavouriteButton v-if="favoriteItem" :item="favoriteItem" />
       <!-- a row of several tracks gets the same heart, liking or clearing them all -->
       <Button
@@ -40,10 +37,11 @@
     </div>
     <MAButton
       variant="icon"
-      icon="mdi-dots-vertical"
       :aria-label="name ? `${$t('more_options')}: ${name}` : $t('more_options')"
       @click.stop.prevent="(e: Event) => $emit('menu', e)"
-    />
+    >
+      <EllipsisVertical class="size-6" />
+    </MAButton>
   </div>
 </template>
 
@@ -63,7 +61,7 @@ import {
 } from "@/plugins/api/interfaces";
 import { authManager } from "@/plugins/auth";
 import { getBreakpointValue } from "@/plugins/breakpoint";
-import { Heart } from "@lucide/vue";
+import { EllipsisVertical, Heart } from "@lucide/vue";
 import { computed } from "vue";
 
 defineOptions({ name: "ClassicalRowActions" });

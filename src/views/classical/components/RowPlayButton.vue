@@ -22,12 +22,11 @@
       />
     </span>
   </button>
-  <v-btn
+  <Button
     v-else-if="side === 'end' && isTouch && !disabled"
-    icon
-    variant="text"
-    size="small"
-    class="ml-auto flex-none self-center"
+    variant="ghost"
+    size="icon-lg"
+    class="ml-auto flex-none self-center rounded-full"
     :aria-label="label"
     @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
@@ -41,10 +40,11 @@
         class="play-icon-centered"
       />
     </span>
-  </v-btn>
+  </Button>
 </template>
 
 <script setup lang="ts">
+import { Button } from "@/components/ui/button";
 import { Play } from "@lucide/vue";
 import { isTouch } from "@/views/classical/touch";
 

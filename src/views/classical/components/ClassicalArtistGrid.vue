@@ -90,11 +90,13 @@
           />
           <MAButton
             variant="list"
-            icon="mdi-dots-vertical"
+            :icon="true"
             class="ml-auto"
             :aria-label="`${$t('more_options')}: ${item.name}`"
             @click.stop="openArtistMenu(item.artist, router, $event)"
-          />
+          >
+            <EllipsisVertical class="size-6" />
+          </MAButton>
         </div>
       </li>
     </template>
@@ -118,6 +120,7 @@ import {
   type ClassicalViewMode,
 } from "@/views/classical/listing";
 import { openArtistMenu } from "@/views/classical/menu";
+import { EllipsisVertical } from "@lucide/vue";
 import { useElementSize } from "@vueuse/core";
 import { computed, ref, type Component } from "vue";
 import { useRouter } from "vue-router";

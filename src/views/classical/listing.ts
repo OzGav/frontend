@@ -1,6 +1,7 @@
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
 import {
   useUserPreferences,
@@ -8,11 +9,13 @@ import {
 } from "@/composables/userPreferences";
 import { normalizeGridSize } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
+import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import api from "@/plugins/api";
 import {
   type ListingType,
   type SortField,
   type SortOptionInfo,
+  type Track,
 } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import type { ClassicalSort } from "@/services/classical";
@@ -89,6 +92,17 @@ export function navigateOnRowClick(
 ) {
   if (isRowControlClick(evt)) return;
   router.push(to);
+}
+
+/**
+ * Open or play a track the way a click on any track row does, when the click
+ * lands on its row itself, leaving clicks on the row's own links and buttons
+ * to them.
+ */
+export function openTrackOnRowClick(evt: MouseEvent, track: Track) {
+  if (isRowControlClick(evt)) return;
+  const { x, y } = getEventPosition(evt);
+  handleMediaItemClick(track, x, y);
 }
 
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";

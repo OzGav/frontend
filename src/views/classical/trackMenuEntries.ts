@@ -3,11 +3,22 @@
 
 import type { ContextMenuItem } from "@/helpers/context_menu_item";
 import api from "@/plugins/api";
-import { ArtistRole, type Credit, type Track } from "@/plugins/api/interfaces";
+import type { Credit, Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
-import { PERFORMER_ROLES } from "@/views/classical/credits";
+import { creditedComposer, PERFORMER_ROLES } from "@/views/classical/credits";
 import { instrumentLabel, roleLabel } from "@/views/classical/labels";
 import type { Router } from "vue-router";
+
+interface MenuTarget {
+  item_id: string;
+  name: string;
+}
+
+interface ClassicalMenuTargets {
+  credits: Credit[];
+  composer?: MenuTarget;
+  work?: MenuTarget | null;
+}
 
 /**
  * The classical entries for one library track, empty when the track is not
@@ -28,17 +39,33 @@ export async function classicalTrackEntries(
         .catch(() => undefined);
   if (!fullTrack?.is_classical) return [];
   const credits = fullTrack.credits ?? [];
-  const composer = credits.find((c) => c.role === ArtistRole.COMPOSER)?.artist;
+  return classicalMenuEntries(
+    {
+      credits,
+      composer: creditedComposer(credits),
+      work: fullTrack.work,
+    },
+    router,
+  );
+}
+
+/**
+ * Go to composer, Go to work and the Go to performer submenu, each left out
+ * when there is nothing to go to.
+ */
+export function classicalMenuEntries(
+  { credits, composer, work }: ClassicalMenuTargets,
+  router: Router,
+): ContextMenuItem[] {
   return [
     gotoComposer(composer, router),
-    fullTrack.work ? gotoWork(fullTrack.work, router) : null,
+    work ? gotoWork(work, router) : null,
     performerSubMenu(credits, router),
   ].filter((x): x is ContextMenuItem => x !== null);
 }
 
-/** Go to composer, absent without a composer. */
-export function gotoComposer(
-  composer: { item_id: string; name: string } | undefined,
+function gotoComposer(
+  composer: MenuTarget | undefined,
   router: Router,
 ): ContextMenuItem | null {
   if (!composer) return null;
@@ -50,11 +77,7 @@ export function gotoComposer(
   };
 }
 
-/** Go to work. */
-export function gotoWork(
-  work: { item_id: string; name: string },
-  router: Router,
-): ContextMenuItem {
+function gotoWork(work: MenuTarget, router: Router): ContextMenuItem {
   return {
     label: "classical_goto_work",
     labelArgs: [work.name],
@@ -63,11 +86,8 @@ export function gotoWork(
   };
 }
 
-/**
- * The Go to performer submenu, most important role first, absent without
- * performer credits.
- */
-export function performerSubMenu(
+// most important role first
+function performerSubMenu(
   credits: Credit[],
   router: Router,
 ): ContextMenuItem | null {

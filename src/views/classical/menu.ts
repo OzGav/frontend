@@ -10,28 +10,25 @@ import {
   getPlaybackContextMenuItems,
   type ContextMenuItem,
 } from "@/layouts/default/ItemContextMenu.vue";
-import {
-  ArtistRole,
-  type Artist,
-  type Credit,
-  type ItemMapping,
-  type Recording,
-  type Track,
-  type Work,
+import type {
+  Artist,
+  Credit,
+  ItemMapping,
+  Recording,
+  Track,
+  Work,
 } from "@/plugins/api/interfaces";
 import { getEventPosition } from "@/composables/useHoldToOpenMenu";
 import { eventbus } from "@/plugins/eventbus";
 import { Info } from "@lucide/vue";
-import {
-  gotoComposer,
-  gotoWork,
-  performerSubMenu,
-} from "@/views/classical/trackMenuEntries";
+import { creditedComposer } from "@/views/classical/credits";
+import { classicalMenuEntries } from "@/views/classical/trackMenuEntries";
 import type { Router } from "vue-router";
 
 interface ClassicalMenuContext {
   router: Router;
-  work: Work | ItemMapping;
+  // left out for a track without a work, which leaves out Go to work
+  work?: Work | ItemMapping;
   composer?: ItemMapping | Artist;
 }
 
@@ -78,30 +75,24 @@ export async function openRecordingMenu(
   emit(items, evt);
 }
 
-// Workless tracks reuse the standard track menu, plus the classical entries
-// spliced near "Go to album". With no work to go to, "Go to work" is left out
-// rather than shown greyed out.
+/**
+ * Menu for a track without a work, the standard track menu plus Go to
+ * composer and Go to performer.
+ */
 export async function openOtherTrackMenu(
   track: Track,
   router: Router,
   evt: Event | MouseEvent,
 ) {
   const credits = track.credits ?? [];
-  const composer = credits.find((c) => c.role === ArtistRole.COMPOSER)?.artist;
-  const playItems = await getPlaybackContextMenuItems([track]);
-  const standardItems = await getContextMenuItems([track], undefined, {
-    withoutClassicalEntries: true,
+  const items = await buildMenuItems({
+    tracks: [track],
+    credits,
+    ctx: { router, composer: creditedComposer(credits) },
+    includeRemoveFromLibrary: true,
+    includeMoreInfo: true,
   });
-
-  const filtered = standardItems.filter((item) => item.label !== "goto_artist");
-
-  const classicalEntries: ContextMenuItem[] = [
-    gotoComposer(composer, router),
-    performerSubMenu(credits, router),
-  ].filter((x): x is ContextMenuItem => x !== null);
-  spliceAfterAlbum(filtered, classicalEntries);
-
-  emit([...playItems, ...filtered], evt);
+  emit(items, evt);
 }
 
 /**
@@ -175,12 +166,13 @@ async function buildMenuItems({
     return true;
   });
 
-  const classicalEntries: ContextMenuItem[] = [
-    gotoComposer(ctx.composer, ctx.router),
-    gotoWork(ctx.work, ctx.router),
-    performerSubMenu(credits, ctx.router),
-  ].filter((x): x is ContextMenuItem => x !== null);
-  spliceAfterAlbum(filtered, classicalEntries);
+  spliceAfterAlbum(
+    filtered,
+    classicalMenuEntries(
+      { credits, composer: ctx.composer, work: ctx.work },
+      ctx.router,
+    ),
+  );
 
   return [...playItems, ...filtered];
 }

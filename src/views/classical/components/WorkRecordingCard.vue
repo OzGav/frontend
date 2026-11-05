@@ -11,7 +11,7 @@
       class="flex items-center gap-[0.4rem]"
       :label="`${$t('play')} ${recordingName}`"
       @menu="(e: Event) => $emit('menu-recording', recording, e)"
-      @play="(e: Event) => $emit('play-recording', recording, e)"
+      @play="(e: Event) => playRecording(recording.tracks, e)"
     >
       <!-- Not a <button>, as the credited names inside are links. -->
       <div
@@ -56,9 +56,9 @@
           tag="li"
           class="flex cursor-pointer items-center gap-[0.4rem]"
           :label="`${$t('play')} ${trackName(m)}`"
-          @click="onMovementClick(m, $event)"
+          @click="openTrackOnRowClick($event, m)"
           @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
-          @play="(e: Event) => $emit('play-movement', m, e)"
+          @play="(e: Event) => playTracks([m], e)"
         >
           <!-- movement titles sit indented under the recording's credits -->
           <button
@@ -103,11 +103,15 @@ import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
-import { isRowControlClick } from "@/views/classical/listing";
+import { openTrackOnRowClick } from "@/views/classical/listing";
 import { recordingName as nameOf } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { movementCoverageLabel, trackLabel } from "@/views/classical/labels";
-import { isTrackPlaying } from "@/views/classical/playback";
+import {
+  isTrackPlaying,
+  playRecording,
+  playTracks,
+} from "@/views/classical/playback";
 import { isTouch } from "@/views/classical/touch";
 import { ChevronRight } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -123,8 +127,6 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-  (e: "play-recording", recording: Recording, evt: Event): void;
-  (e: "play-movement", movement: Track, evt: Event): void;
   (e: "menu-recording", recording: Recording, evt: Event): void;
   (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
 }>();
@@ -135,11 +137,6 @@ const expanded = ref(false);
 const openMovement = (track: Track, evt: MouseEvent) => {
   const { x, y } = getEventPosition(evt);
   handleMediaItemClick(track, x, y);
-};
-
-const onMovementClick = (track: Track, evt: MouseEvent) => {
-  if (isRowControlClick(evt)) return;
-  openMovement(track, evt);
 };
 
 const toggle = () => {

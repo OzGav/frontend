@@ -3,7 +3,7 @@
   <ClassicalPlayRow
     class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
     :label="`${$t('play')} ${name}`"
-    @click="onClick"
+    @click="(e: MouseEvent) => openTrackOnRowClick(e, tracks[0])"
     @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
     @play="(e: Event) => $emit('play', tracks, e)"
   >
@@ -25,15 +25,13 @@
 </template>
 
 <script setup lang="ts">
-import { getEventPosition } from "@/composables/useHoldToOpenMenu";
-import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import type { Recording, Track } from "@/plugins/api/interfaces";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
 import { recordingName } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
-import { isRowControlClick } from "@/views/classical/listing";
+import { openTrackOnRowClick } from "@/views/classical/listing";
 import { isTrackPlaying } from "@/views/classical/playback";
 import { computed } from "vue";
 
@@ -51,11 +49,4 @@ defineEmits<{
 }>();
 
 const name = computed(() => recordingName(props.recording));
-
-// The row opens or plays the way a click on any track row does.
-const onClick = (evt: MouseEvent) => {
-  if (isRowControlClick(evt)) return;
-  const { x, y } = getEventPosition(evt);
-  handleMediaItemClick(props.tracks[0], x, y);
-};
 </script>

@@ -22,9 +22,9 @@
         tag="li"
         class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem] [--play-row-inset:0.25rem]"
         :label="`${$t('play')} ${t.name}`"
-        @click="onRowClick(t, $event)"
-        @menu="(e: Event) => $emit('menu-track', t, e)"
-        @play="(e: Event) => $emit('play-track', t, e)"
+        @click="openTrackOnRowClick($event, t)"
+        @menu="(e: Event) => openOtherTrackMenu(t, router, e)"
+        @play="(e: Event) => playTracks([t], e)"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-[0.1rem]">
           <span class="truncate text-[0.95rem] font-medium">{{ t.name }}</span>
@@ -44,7 +44,7 @@
             :duration="t.duration"
             :source-item="t"
             :favorite-item="t"
-            @menu="(e: Event) => $emit('menu-track', t, e)"
+            @menu="(e: Event) => openOtherTrackMenu(t, router, e)"
           />
         </template>
       </ClassicalPlayRow>
@@ -54,17 +54,20 @@
 
 <script setup lang="ts">
 import LibrarySortControls from "@/components/LibrarySortControls.vue";
-import { getEventPosition } from "@/composables/useHoldToOpenMenu";
-import { handleMediaItemClick } from "@/helpers/media_item_actions";
 import { ListingType, type Track } from "@/plugins/api/interfaces";
 import { getOtherTracks } from "@/services/classical";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { isRowControlClick, useClassicalSort } from "@/views/classical/listing";
-import { isTrackPlaying } from "@/views/classical/playback";
+import {
+  openTrackOnRowClick,
+  useClassicalSort,
+} from "@/views/classical/listing";
+import { openOtherTrackMenu } from "@/views/classical/menu";
+import { isTrackPlaying, playTracks } from "@/views/classical/playback";
 import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 defineOptions({ name: "OtherTracksSection" });
 
@@ -74,10 +77,7 @@ const props = defineProps<{
   asComposer?: boolean;
 }>();
 
-defineEmits<{
-  (e: "play-track", track: Track, evt: Event): void;
-  (e: "menu-track", track: Track, evt: Event): void;
-}>();
+const router = useRouter();
 
 const tracks = ref<Track[]>([]);
 
@@ -119,11 +119,4 @@ watch(
   },
   { immediate: true },
 );
-
-// A click on the row itself does what a click on any track row does.
-const onRowClick = (track: Track, evt: MouseEvent) => {
-  if (isRowControlClick(evt)) return;
-  const { x, y } = getEventPosition(evt);
-  handleMediaItemClick(track, x, y);
-};
 </script>

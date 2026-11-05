@@ -27,8 +27,6 @@
         :recording="r"
         :movements="movements"
         :act-movements="actMovementsOf(r)"
-        @play-recording="onPlayRecording"
-        @play-movement="playMovement"
         @menu-recording="
           (rec: Recording, e: Event) => emit('menu-recording', rec, e)
         "
@@ -44,7 +42,6 @@
 <script setup lang="ts">
 import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
 import WorkRecordingCard from "@/views/classical/components/WorkRecordingCard.vue";
-import { playRecording, playTracks } from "@/views/classical/playback";
 import type { RecordingGroup } from "@/views/classical/recordingGroups";
 
 defineOptions({ name: "RecordingGroupList" });
@@ -61,12 +58,4 @@ const emit = defineEmits<{
   (e: "menu-recording", recording: Recording, evt: Event): void;
   (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
 }>();
-
-const onPlayRecording = (r: Recording, evt: Event) => {
-  playRecording(r.tracks, evt);
-};
-
-const playMovement = (m: Track, evt: Event) => {
-  playTracks([m], evt);
-};
 </script>

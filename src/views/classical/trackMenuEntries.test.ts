@@ -61,7 +61,7 @@ describe("classicalMenuEntries", () => {
       credit("o", "Orchestra", ArtistRole.ORCHESTRA),
       credit("c", "Conductor", ArtistRole.CONDUCTOR),
     ]);
-    expect(entries?.map(([, args]) => args?.[0])).toEqual([
+    expect(entries?.map(([, args]) => (args as string[])[0])).toEqual([
       "Conductor",
       "Orchestra",
       "Soloist",

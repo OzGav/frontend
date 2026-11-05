@@ -8,6 +8,9 @@ export enum ContextMenuItemId {
   GOTO_ARTIST = "goto_artist",
   GOTO_ALBUM = "goto_album",
   REMOVE_LIBRARY = "remove_library",
+  GOTO_COMPOSER = "goto_composer",
+  GOTO_WORK = "goto_work",
+  GOTO_PERFORMER = "goto_performer",
 }
 
 // Menu item for the app-wide context menu (ItemContextMenu / eventbus

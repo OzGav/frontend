@@ -20,10 +20,10 @@
         tag="li"
         class="flex cursor-pointer items-center gap-[0.5rem] py-[0.5rem]"
         :label="`${$t('play')} ${w.work.name}`"
-        :disabled="!tracksByWork[w.work.item_id]?.length"
+        :disabled="!w.recording_count"
         @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
         @menu="(e: Event) => onMenuWork(w, e)"
-        @play="(e: Event) => onPlayWork(w.work.item_id, e)"
+        @play="(e: Event) => onPlayWork(w, e)"
       >
         <div class="flex min-w-0 flex-1 flex-col text-inherit no-underline">
           <!-- Only the name is the link, so the underline marks just what is
@@ -54,10 +54,10 @@
             {{ w.work.version }}
           </span>
           <span
-            v-if="coPerformers[w.work.item_id]?.length"
+            v-if="w.co_performers?.length"
             class="text-[0.8rem] text-muted-foreground"
           >
-            {{ coPerformersLabel(coPerformers[w.work.item_id]) }}
+            {{ coPerformersLabel(w.co_performers) }}
           </span>
         </div>
         <span class="text-[0.875rem] whitespace-nowrap text-muted-foreground">
@@ -66,9 +66,8 @@
         <template #actions>
           <ClassicalRowActions
             :name="w.work.name"
-            :source-item="tracksByWork[w.work.item_id]?.[0]"
-            :favorite="likedByWork[w.work.item_id]"
-            @toggle-favorite="toggleWorkFavorite(w.work.item_id)"
+            :favorite="w.liked ?? undefined"
+            @toggle-favorite="toggleWorkFavorite(w)"
             @menu="(e: Event) => onMenuWork(w, e)"
           />
         </template>
@@ -83,15 +82,16 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import { normalizeForFilter } from "@/helpers/text_filter";
-import type {
-  Artist,
-  ClassicalWorkEntry,
-  Recording,
-  Track,
+import { subscribeOwnFavorites } from "@/helpers/favorites";
+import {
+  MediaType,
+  type Artist,
+  type ClassicalWorkEntry,
+  type Recording,
 } from "@/plugins/api/interfaces";
 import {
   getClassicalArtist,
-  getPerformerRecordings,
+  getPerformerWorkRecordings,
   getPerformerWorks,
 } from "@/services/classical";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
@@ -101,17 +101,13 @@ import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
 import WorksSection from "@/views/classical/components/WorksSection.vue";
-import { coPerformerNames } from "@/views/classical/credits";
-import {
-  allLiked,
-  setTracksLiked,
-  useOwnFavorites,
-} from "@/views/classical/favorites";
+import { allLiked, setTracksLiked } from "@/views/classical/favorites";
 import { recordingCountLabel } from "@/views/classical/labels";
 import { playRecording } from "@/views/classical/playback";
 import { openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
-import { computed, ref, watch } from "vue";
+import { useDebounceFn } from "@vueuse/core";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformerDetail" });
@@ -122,48 +118,31 @@ const router = useRouter();
 
 // co-performers named on a work row before the rest are counted
 const CO_PERFORMERS_SHOWN = 3;
+// how long the user's own likes and unlikes are left to settle before the
+// works' hearts are read again
+const LIKES_SETTLE_MS = 1000;
 
 const artistItem = ref<Artist | undefined>();
 
 useDetailItemUpdates(artistItem);
 
 const works = ref<ClassicalWorkEntry[]>([]);
-const recordings = ref<Recording[]>([]);
 const loading = ref(true);
 useBackScroll(() => loading.value);
 
-useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
-
-// This performer's recordings of each work, and all their tracks, by work id.
-// A part's recordings count towards its parent, the row the works list shows.
-const recordingsByWork = computed(() => {
-  const byWork: Record<string, Recording[]> = {};
-  for (const r of recordings.value)
-    (byWork[(r.parent_work ?? r.work).item_id] ??= []).push(r);
-  return byWork;
-});
-const tracksByWork = computed(() => {
-  const byWork: Record<string, Track[]> = {};
-  for (const [workId, list] of Object.entries(recordingsByWork.value))
-    byWork[workId] = list.flatMap((r) => r.tracks);
-  return byWork;
-});
-
-// Whether every track of each work is liked, by work id; absent without tracks.
-const likedByWork = computed(() => {
-  const byWork: Record<string, boolean | undefined> = {};
-  for (const [workId, tracks] of Object.entries(tracksByWork.value))
-    byWork[workId] = tracks.length ? allLiked(tracks) : undefined;
-  return byWork;
-});
-
-// Everyone else on this performer's recordings of each work, by work id.
-const coPerformers = computed(() => {
-  const byWork: Record<string, string[]> = {};
-  for (const [workId, list] of Object.entries(recordingsByWork.value))
-    byWork[workId] = coPerformerNames(list, props.id);
-  return byWork;
-});
+// A like or unlike of a track may change a work's heart, so the hearts are
+// read again once the user's changes settle.
+const refreshLikes = useDebounceFn(async () => {
+  const id = props.id;
+  const entries = await getPerformerWorks(id).catch(() => undefined);
+  if (entries && id === props.id) works.value = entries;
+}, LIKES_SETTLE_MS);
+onBeforeUnmount(
+  subscribeOwnFavorites((update) => {
+    if (update.media_type === MediaType.TRACK && !loading.value)
+      void refreshLikes();
+  }),
+);
 
 // e.g. with Wiener Philharmoniker, Mirella Freni, Luciano Pavarotti +2
 const coPerformersLabel = (names: string[]) =>
@@ -186,7 +165,7 @@ const searchableWorks = computed(() =>
         ...entry.work.catalog_numbers,
         ...entry.work.composers.map((c) => c.name),
         ...(entry.part_names ?? []),
-        ...(coPerformers.value[entry.work.item_id] ?? []),
+        ...(entry.co_performers ?? []),
       ].join(" "),
     ),
   })),
@@ -199,23 +178,37 @@ const workLink = (workId: string) => ({
   query: { filterByArtistId: props.id },
 });
 
-const toggleWorkFavorite = (workId: string) => {
-  const tracks = tracksByWork.value[workId] ?? [];
-  setTracksLiked(tracks, !allLiked(tracks));
+// This performer's recordings of a work, fetched when a row is acted on; none
+// when that fails, which the api layer already reports.
+const workRecordings = (w: ClassicalWorkEntry): Promise<Recording[]> =>
+  getPerformerWorkRecordings(props.id, w.work.item_id).catch(() => []);
+
+const toggleWorkFavorite = async (w: ClassicalWorkEntry) => {
+  const previous = w.liked;
+  w.liked = !previous;
+  const tracks = (await workRecordings(w)).flatMap((r) => r.tracks);
+  if (!tracks.length) {
+    w.liked = previous;
+    return;
+  }
+  await setTracksLiked(tracks, !previous);
+  // tracks that did not save are back to their previous state
+  w.liked = allLiked(tracks);
 };
 
-const onPlayWork = (workId: string, evt: Event) => {
-  playRecording(tracksByWork.value[workId] ?? [], evt);
+const onPlayWork = async (w: ClassicalWorkEntry, evt: Event) => {
+  const tracks = (await workRecordings(w)).flatMap((r) => r.tracks);
+  if (tracks.length) playRecording(tracks, evt);
 };
 
 // A "Works performed" row really points at this performer's recordings of
 // the work, so reuse the recording menu rather than rolling a parallel work
 // menu. It covers all of them, like the row's play and heart.
-const onMenuWork = (w: ClassicalWorkEntry, evt: Event) => {
-  const workRecordings = recordingsByWork.value[w.work.item_id] ?? [];
-  if (!workRecordings.length) return;
+const onMenuWork = async (w: ClassicalWorkEntry, evt: Event) => {
+  const recordings = await workRecordings(w);
+  if (!recordings.length) return;
   openRecordingMenu(
-    workRecordings,
+    recordings,
     { router, work: w.work, composer: w.work.composers[0] },
     evt,
   );
@@ -225,19 +218,15 @@ const load = async (id: string) => {
   // the previous performer must not stay actionable under the new route
   artistItem.value = undefined;
   works.value = [];
-  recordings.value = [];
   loading.value = true;
   try {
-    const [artist, entries, performed] = await Promise.all([
+    const [artist, entries] = await Promise.all([
       getClassicalArtist(id),
       getPerformerWorks(id),
-      // without them the rows show no play, heart or menu
-      getPerformerRecordings(id).catch(() => []),
     ]);
     // a newer load has taken over the page
     if (id !== props.id) return;
     works.value = entries;
-    recordings.value = performed;
     artistItem.value = artist;
   } catch {
     // an unknown id leaves the page on its placeholder, as the artist page does

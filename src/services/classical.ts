@@ -166,15 +166,14 @@ export function getWorkRecordings(workId: string): Promise<Recording[]> {
   return api.sendCommand("music/classical/recordings", { work_id: workId });
 }
 
-/**
- * Every recording an artist performs on, per work in the order of the works
- * listing.
- */
-export function getPerformerRecordings(
+/** The recordings an artist performs on of a work, its parts included. */
+export function getPerformerWorkRecordings(
   performerId: string,
+  workId: string,
 ): Promise<Recording[]> {
   return api.sendCommand("music/classical/recordings", {
     performer_id: performerId,
+    work_id: workId,
   });
 }
 

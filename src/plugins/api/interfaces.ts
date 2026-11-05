@@ -1444,6 +1444,12 @@ export interface ClassicalWorkEntry {
   part_names?: string[];
   // the period of the work's first composer
   period?: Period | null;
+  // the next two are only filled when the list is filtered by a performer
+  // everyone else on the performer's recordings, most important role first
+  co_performers?: string[];
+  // whether the user likes every track of the performer's recordings; null
+  // without tracks
+  liked?: boolean | null;
 }
 
 // The filter values present across a classical list, for its filter panel.

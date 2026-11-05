@@ -1,7 +1,7 @@
 import { ArtistRole } from "@/plugins/api/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { credit, recording } from "../../../tests/fixtures/recording";
-import { coPerformerNames, recordingCredits, recordingName } from "./credits";
+import { recordingCredits, recordingName } from "./credits";
 
 vi.mock("@/plugins/i18n", () => ({
   $t: (key: string) => key,
@@ -70,30 +70,5 @@ describe("recordingName", () => {
 
   it("falls back to the work's name without credits", () => {
     expect(recordingName(recording())).toBe("Work");
-  });
-});
-
-describe("coPerformerNames", () => {
-  it("names the other performers by role rank, each once", () => {
-    const recordings = [
-      recording({
-        credits: [
-          credit("me", "Me", ArtistRole.SOLOIST),
-          credit("s", "Soloist", ArtistRole.SOLOIST),
-          credit("c", "Conductor", ArtistRole.CONDUCTOR),
-        ],
-      }),
-      recording({
-        credits: [
-          credit("o", "Orchestra", ArtistRole.ORCHESTRA),
-          credit("c", "Conductor", ArtistRole.CONDUCTOR),
-        ],
-      }),
-    ];
-    expect(coPerformerNames(recordings, "me")).toEqual([
-      "Orchestra",
-      "Conductor",
-      "Soloist",
-    ]);
   });
 });

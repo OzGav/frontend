@@ -1,4 +1,12 @@
-import { countryLabel, shortMovementName } from "@/views/classical/labels";
+import {
+  RecordingCoverageKind,
+  type WorkMovement,
+} from "@/plugins/api/interfaces";
+import {
+  countryLabel,
+  movementCoverageLabel,
+  shortMovementName,
+} from "@/views/classical/labels";
 import { describe, expect, it, vi } from "vitest";
 
 const { i18nMock } = vi.hoisted(() => ({
@@ -6,7 +14,9 @@ const { i18nMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/plugins/i18n", () => ({
-  $t: (key: string) => key,
+  // shows the values a text is built from after its key, e.g. key(3, 22)
+  $t: (key: string, named?: Record<string, unknown>) =>
+    named ? `${key}(${Object.values(named).join(", ")})` : key,
   canonicalizeLocale: (locale: string) => locale,
   i18n: i18nMock,
 }));
@@ -89,5 +99,58 @@ describe("countryLabel", () => {
   });
   it("names the Soviet Union itself, not as Russia", () => {
     expect(countryLabel("SU")).toBe("classical_country_soviet_union");
+  });
+});
+
+describe("movementCoverageLabel", () => {
+  const MOVEMENTS: WorkMovement[] = [
+    { number: 1, name: "Act I", mbid: null, work_id: "act1" },
+    { number: 2, name: "Act II", mbid: null, work_id: "act2" },
+  ];
+  const coverage = (
+    kind: RecordingCoverageKind,
+    movement: number | null,
+    held = 0,
+    total = 0,
+  ) => ({ kind, movement, held, total });
+
+  it("shows nothing for the whole work", () => {
+    expect(movementCoverageLabel(null, MOVEMENTS)).toBe("");
+  });
+
+  it("names a movement held whole as complete", () => {
+    expect(
+      movementCoverageLabel(
+        coverage(RecordingCoverageKind.MOVEMENT, 2),
+        MOVEMENTS,
+      ),
+    ).toBe("classical_movement_complete(Act II)");
+  });
+
+  it("names a movement and the count of its pieces held", () => {
+    expect(
+      movementCoverageLabel(
+        coverage(RecordingCoverageKind.MOVEMENT_PIECES, 1, 2, 9),
+        MOVEMENTS,
+      ),
+    ).toBe("classical_movement_parts(Act I, classical_movements_of(2, 9))");
+  });
+
+  it("names just the movement when its pieces are not counted", () => {
+    expect(
+      movementCoverageLabel(
+        coverage(RecordingCoverageKind.MOVEMENT_PIECES, 1, 2, 0),
+        MOVEMENTS,
+      ),
+    ).toBe("Act I");
+  });
+
+  it("counts the movements held", () => {
+    expect(
+      movementCoverageLabel(
+        coverage(RecordingCoverageKind.MOVEMENTS, null, 3, 22),
+        MOVEMENTS,
+      ),
+    ).toBe("classical_movements_of(3, 22)");
   });
 });

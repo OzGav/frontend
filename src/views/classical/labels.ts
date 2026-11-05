@@ -1,11 +1,12 @@
 import { normalizeForFilter } from "@/helpers/text_filter";
 import {
   ExternalID,
+  RecordingCoverageKind,
   type ArtistRole,
   type ClassicalLinkProgress,
   type LifeSpan,
   type Period,
-  type Recording,
+  type RecordingCoverage,
   type Track,
   type WorkMovement,
   type WorkType,
@@ -102,51 +103,30 @@ export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
 
 /**
  * What a recording holds, as its row names it: an act or other part it holds
- * whole as complete, e.g. Act I (Complete), nothing for the whole work, else a
- * count such as 3 of 22.
- * A recording of some of an act's numbers names the act first, e.g. Act III
- * (1 of 9).
+ * whole as complete, e.g. Act I (Complete), some of a part's numbers after the
+ * part's name, e.g. Act III (1 of 9), else a count such as 3 of 22. Empty for
+ * the whole work.
  *
- * :param recording: The recording, with the movements it covers.
- * :param movements: The work's movements.
- * :param actMovements: The entries listed under the act, for a recording of
- *   some of its numbers.
+ * :param coverage: What the recording holds.
+ * :param movements: The work's movements, to name the one it holds.
  */
 export function movementCoverageLabel(
-  recording: Recording,
+  coverage: RecordingCoverage | null | undefined,
   movements: WorkMovement[],
-  actMovements: WorkMovement[] = [],
 ): string {
-  if (recording.complete) return "";
-  const covered = new Set(recording.movement_numbers);
-  // a part under a covered movement, e.g. an aria of a covered act, adds
-  // nothing to it
-  const numbers = [...covered].filter((n) => {
-    const parent = movements.find((m) => m.number === n)?.parent;
-    return parent == null || !covered.has(parent);
-  });
-  if (!numbers.length) return "";
-  const single =
-    numbers.length === 1
-      ? movements.find((m) => m.number === numbers[0])
-      : undefined;
-  const parts = recording.part_movements ?? [];
-  if (single && parts.length) {
-    // a number's pieces are not numbers of the act
-    const total = actMovements.filter((m) => m.parent === single.number).length;
-    return total
-      ? $t("classical_movement_parts", {
-          movement: single.name,
-          parts: heldCount(parts.length, total),
-        })
-      : single.name;
-  }
-  if (single?.work_id)
-    return $t("classical_movement_complete", { movement: single.name });
-  return heldCount(
-    numbers.length,
-    movements.filter((m) => m.parent == null).length,
-  );
+  if (!coverage) return "";
+  if (coverage.kind === RecordingCoverageKind.MOVEMENTS)
+    return heldCount(coverage.held, coverage.total);
+  const name =
+    movements.find((m) => m.number === coverage.movement)?.name ?? "";
+  if (coverage.kind === RecordingCoverageKind.MOVEMENT)
+    return $t("classical_movement_complete", { movement: name });
+  return coverage.total
+    ? $t("classical_movement_parts", {
+        movement: name,
+        parts: heldCount(coverage.held, coverage.total),
+      })
+    : name;
 }
 
 /**

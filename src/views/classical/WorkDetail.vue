@@ -117,8 +117,7 @@ import {
 } from "@/views/classical/labels";
 import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
 import {
-  groupByMovement,
-  groupByPart,
+  groupByHeading,
   type MovementGroup,
   type RecordingGroup,
 } from "@/views/classical/recordingGroups";
@@ -201,20 +200,15 @@ const shownCount = computed(() =>
     : displayedRecordings.value.length,
 );
 
-// The shown recordings in groups: by the movement list on a work whose
-// movements are its parts, otherwise by the work they are of.
-const recordingGroups = computed<RecordingGroup[]>(() => {
-  const w = work.value;
-  if (!w) return [];
-  return w.movements?.some((m) => m.work_id)
-    ? groupByMovement(
-        ownMovements.value,
-        w.item_id,
+const recordingGroups = computed<RecordingGroup[]>(() =>
+  work.value
+    ? groupByHeading(
+        work.value,
         displayedRecordings.value,
-        lineageOf,
+        composerMapping.value?.item_id,
       )
-    : groupByPart(w, displayedRecordings.value, composerMapping.value?.item_id);
-});
+    : [],
+);
 
 // Skip the composer's logo so the hero shows the work title.
 const heroItem = computed<Work | undefined>(() => {

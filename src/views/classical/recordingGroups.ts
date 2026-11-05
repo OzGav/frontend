@@ -1,7 +1,7 @@
 import {
-  ExternalID,
-  type ItemMapping,
+  RecordingHeadingKind,
   type Recording,
+  type RecordingHeading,
   type Track,
   type Work,
   type WorkMovement,
@@ -56,148 +56,104 @@ export function movementLineage(
 
 /**
  * Each recording with its tracks of a movement; an act brings its arias'
- * tracks.
+ * tracks. Recordings without such a track are left out.
  *
- * :param recordings: The recordings to take the tracks from.
+ * :param recordings: The recordings, as fetched for the work's page.
  * :param number: The movement's number.
- * :param lineageOf: A movement number with those of the movements above it.
- * :param mbid: The movement's MusicBrainz work id, whose tracks a recording
- *   without a track numbered as the movement offers instead.
  */
 export function movementRows(
   recordings: Recording[],
   number: number,
-  lineageOf: (number: number) => number[],
-  mbid?: string | null,
 ): MovementRow[] {
   return recordings
-    .map((recording) => {
-      const numbered = recording.tracks.filter(
-        (t) =>
-          t.movement_number != null &&
-          lineageOf(t.movement_number).includes(number),
-      );
-      return {
-        recording,
-        tracks:
-          numbered.length || !mbid
-            ? numbered
-            : recording.tracks.filter((t) =>
-                t.external_ids.some(
-                  ([type, id]) => type === ExternalID.MB_WORK && id === mbid,
-                ),
-              ),
-      };
-    })
+    .map((recording) => ({
+      recording,
+      tracks: recording.tracks.filter((t) =>
+        recording.track_movements?.[t.uri]?.includes(number),
+      ),
+    }))
     .filter((row) => row.tracks.length);
 }
 
 /**
- * The recordings by the work they are of: the page's own work first, then, on
- * a work with parts such as an opera, each part in the work's order.
+ * The recordings under the headings of the work's page, in the page's order.
+ * Recordings without a heading are left out.
  *
  * :param w: The page's work.
- * :param recordings: The recordings to group.
+ * :param recordings: The recordings, as fetched for the work's page.
  * :param composerId: The work's composer, whom the groups leave unnamed.
  */
-export function groupByPart(
+export function groupByHeading(
   w: Work,
   recordings: Recording[],
   composerId?: string,
 ): RecordingGroup[] {
   const groups = new Map<
     string,
-    { work: Work | ItemMapping; recordings: Recording[] }
+    { heading: RecordingHeading; recordings: Recording[] }
   >();
-  for (const part of [w, ...(w.parts ?? [])])
-    groups.set(part.item_id, { work: part, recordings: [] });
   for (const r of recordings) {
-    // a part of a listed part, e.g. an aria of an act, goes with that part
-    const id =
-      !groups.has(r.work.item_id) &&
-      r.parent_work &&
-      groups.has(r.parent_work.item_id)
-        ? r.parent_work.item_id
-        : r.work.item_id;
-    // a part the work does not list still shows, last
-    if (!groups.has(id)) groups.set(id, { work: r.work, recordings: [] });
-    groups.get(id)!.recordings.push(r);
+    if (!r.heading) continue;
+    const key = headingKey(r.heading);
+    if (!groups.has(key))
+      groups.set(key, { heading: r.heading, recordings: [] });
+    groups.get(key)!.recordings.push(r);
   }
+  const rank = (r: Recording) => r.heading?.rank ?? 0;
   return [...groups.entries()]
-    .filter(([, g]) => g.recordings.length)
-    .map(([id, g]) => {
-      const c = "composers" in g.work ? g.work.composers[0] : undefined;
-      return {
-        key: id,
-        name: g.work.name,
-        version: g.work.version,
-        link: id === w.item_id ? undefined : `/classical/works/${id}`,
-        composer: c && c.item_id !== composerId ? c.name : undefined,
-        recordings: g.recordings,
-      };
-    });
+    .sort(([, a], [, b]) => a.heading.order - b.heading.order)
+    .map(([key, g]) => ({
+      key,
+      ...headingTitle(w, g.heading, composerId),
+      recordings: g.recordings.sort((a, b) => rank(a) - rank(b)),
+    }));
 }
 
-/**
- * Each recording under the top-level movement it belongs to, e.g. an aria's
- * recording under its act, in movement order. Recordings of the whole work
- * come first and any that fit nowhere last.
- *
- * :param movements: The work's movements.
- * :param workId: The page's work.
- * :param recordings: The recordings to group.
- * :param lineageOf: A movement number with those of the movements above it.
- */
-export function groupByMovement(
-  movements: WorkMovement[],
-  workId: string,
-  recordings: Recording[],
-  lineageOf: (number: number) => number[],
-): RecordingGroup[] {
-  const byWork = new Map(
-    movements.filter((m) => m.work_id).map((m) => [m.work_id!, m.number]),
-  );
-  const byTop = new Map<number, Array<{ r: Recording; rank: number }>>();
-  const complete: Recording[] = [];
-  const other: Recording[] = [];
-  for (const r of recordings) {
-    const number =
-      byWork.get(r.work.item_id) ??
-      (r.parent_work && byWork.get(r.parent_work.item_id)) ??
-      r.movement_numbers?.[0];
-    if (number != null) {
-      const top = lineageOf(number).at(-1)!;
-      // the whole movement first, then by the first part held
-      const rank = r.movement_numbers?.includes(top)
-        ? 0
-        : (r.movement_numbers?.find((n) => n !== top) ?? number);
-      byTop.set(top, [...(byTop.get(top) ?? []), { r, rank }]);
-    } else if (r.work.item_id === workId) complete.push(r);
-    else other.push(r);
+// a heading's group key, unique on the page
+function headingKey(heading: RecordingHeading): string {
+  switch (heading.kind) {
+    case RecordingHeadingKind.MOVEMENT:
+      return `movement-${heading.movement}`;
+    case RecordingHeadingKind.WORK:
+      return heading.work?.item_id ?? "";
+    default:
+      return heading.kind;
   }
-  const year = (r: Recording) => r.year ?? Number.MAX_SAFE_INTEGER;
-  const groups: RecordingGroup[] = [
-    {
-      key: "complete",
-      name: $t("classical_complete_recordings"),
-      recordings: complete,
-    },
-    ...movements
-      .filter((m) => byTop.has(m.number))
-      .map((m) => ({
-        key: `movement-${m.number}`,
-        name: m.name,
-        link: m.work_id ? `/classical/works/${m.work_id}` : undefined,
-        recordings: byTop
-          .get(m.number)!
-          .sort((a, b) => a.rank - b.rank || year(a.r) - year(b.r))
-          .map((x) => x.r),
-      })),
-    {
-      key: "other",
-      name: $t("classical_other_recordings"),
-      recordings: other,
-    },
-  ];
-  return groups.filter((g) => g.recordings.length);
+}
+
+// what a heading shows: its name, and for a work its link, composer and version
+function headingTitle(
+  w: Work,
+  heading: RecordingHeading,
+  composerId?: string,
+): Omit<RecordingGroup, "key" | "recordings"> {
+  switch (heading.kind) {
+    case RecordingHeadingKind.COMPLETE:
+      return { name: $t("classical_complete_recordings") };
+    case RecordingHeadingKind.OTHER:
+      return { name: $t("classical_other_recordings") };
+    case RecordingHeadingKind.MOVEMENT: {
+      const m = w.movements?.find((x) => x.number === heading.movement);
+      return {
+        name: m?.name ?? "",
+        link: m?.work_id ? `/classical/works/${m.work_id}` : undefined,
+      };
+    }
+    case RecordingHeadingKind.WORK: {
+      const id = heading.work?.item_id;
+      // the heading's work has its full name and no composers, unlike the
+      // page's work and its parts
+      const shown =
+        id === w.item_id
+          ? w
+          : (w.parts?.find((p) => p.item_id === id) ?? heading.work);
+      const c = shown && "composers" in shown ? shown.composers[0] : undefined;
+      return {
+        name: shown?.name ?? "",
+        version: shown?.version,
+        link: id === w.item_id ? undefined : `/classical/works/${id}`,
+        composer: c && c.item_id !== composerId ? c.name : undefined,
+      };
+    }
+  }
 }

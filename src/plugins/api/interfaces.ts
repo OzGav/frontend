@@ -1313,6 +1313,53 @@ export interface WorkMovement {
   parent?: number | null;
   // the part's library work, for movements that are the work's parts
   work_id?: string | null;
+  // whether the work's page lists it under a part, e.g. an aria under its act
+  under_part?: boolean;
+}
+
+export enum RecordingHeadingKind {
+  // the work itself or one of its parts, e.g. an act
+  WORK = "work",
+  // the recordings of the whole work
+  COMPLETE = "complete",
+  // a top-level movement of the work, e.g. an act
+  MOVEMENT = "movement",
+  // the recordings that fit under no other heading
+  OTHER = "other",
+}
+
+// The heading a recording shows under on its work's page.
+export interface RecordingHeading {
+  kind: RecordingHeadingKind;
+  // for a work heading, the work it stands for, with its full name and no
+  // composers
+  work?: ItemMapping | null;
+  // for a movement heading, the top-level movement's number
+  movement?: number | null;
+  // the heading's position on the page
+  order: number;
+  // the recording's position under the heading
+  rank: number;
+}
+
+export enum RecordingCoverageKind {
+  // one movement whole, e.g. an act
+  MOVEMENT = "movement",
+  // some of the pieces of one movement, e.g. two arias
+  MOVEMENT_PIECES = "movement_pieces",
+  // some of the movements of the work
+  MOVEMENTS = "movements",
+}
+
+// What part of its work a recording holds, when not all of it.
+export interface RecordingCoverage {
+  kind: RecordingCoverageKind;
+  // the movement it holds whole or pieces of
+  movement?: number | null;
+  // the pieces or movements it holds, 0 for a whole movement
+  held: number;
+  // the pieces or movements there are, 0 when unknown or for a whole movement
+  total: number;
 }
 
 // One performance of a work, grouped by the server from its movement tracks.
@@ -1338,6 +1385,15 @@ export interface Recording {
   // the movements of its part it holds, e.g. the arias of an act, when it
   // holds only some; numbered in the part's own movement list
   part_movements?: WorkMovement[];
+  // the next four are only filled when requested for a work's page
+  // the heading it shows under; null when it shows under none
+  heading?: RecordingHeading | null;
+  // the number of the movement that is the part it is of, e.g. its act
+  part?: number | null;
+  // what it holds; null for the whole work or when nothing is known
+  coverage?: RecordingCoverage | null;
+  // the movement numbers each track counts towards, by track uri
+  track_movements?: Record<string, number[]>;
 }
 
 // What the server still has to look up on MusicBrainz for the classical view

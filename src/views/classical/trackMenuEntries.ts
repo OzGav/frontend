@@ -9,6 +9,9 @@ import { creditedComposer, PERFORMER_ROLES } from "@/views/classical/credits";
 import { instrumentLabel, roleLabel } from "@/views/classical/labels";
 import type { Router } from "vue-router";
 
+// ranks a role outside PERFORMER_ROLES after all of them
+const UNRANKED_ROLE_PRIORITY = PERFORMER_ROLES.length;
+
 interface MenuTarget {
   item_id: string;
   name: string;
@@ -160,7 +163,7 @@ function aggregateCredits(credits: Credit[]): AggregatedCredit[] {
 
 function rolePriority(role: ArtistRole): number {
   const idx = PERFORMER_ROLES.indexOf(role);
-  return idx === -1 ? 99 : idx;
+  return idx === -1 ? UNRANKED_ROLE_PRIORITY : idx;
 }
 
 function dedupe<T>(arr: T[]): T[] {

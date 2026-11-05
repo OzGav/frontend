@@ -1,11 +1,21 @@
 import { $t } from "@/plugins/i18n";
 import type { Component } from "vue";
 
+// Stable identity for standard entries that other menus build on, so they
+// match on something other than a translation key.
+export enum ContextMenuItemId {
+  SHOW_INFO = "show_info",
+  GOTO_ARTIST = "goto_artist",
+  GOTO_ALBUM = "goto_album",
+  REMOVE_LIBRARY = "remove_library",
+}
+
 // Menu item for the app-wide context menu (ItemContextMenu / eventbus
 // "contextmenu" event). Lives in a plain .ts module (rather than being
 // exported from the ItemContextMenu.vue SFC) so editors resolve it natively
 // without going through the Vue language plugin's virtual files.
 export interface ContextMenuItem {
+  id?: ContextMenuItemId;
   label: string;
   // positional for a `{0}` message, named for a `{name}` one
   labelArgs?: Array<string | number> | Record<string, string | number>;

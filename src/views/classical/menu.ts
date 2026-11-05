@@ -10,6 +10,7 @@ import {
   getPlaybackContextMenuItems,
   type ContextMenuItem,
 } from "@/layouts/default/ItemContextMenu.vue";
+import { ContextMenuItemId } from "@/helpers/context_menu_item";
 import type {
   Artist,
   Credit,
@@ -101,6 +102,7 @@ export function artistShowInfoEntry(
   router: Router,
 ): ContextMenuItem {
   return {
+    id: ContextMenuItemId.SHOW_INFO,
     label: "show_info",
     labelArgs: [],
     icon: Info,
@@ -144,10 +146,14 @@ async function buildMenuItems({
   // Go to artist gives way to the Go to performer submenu, and the recording
   // menu leaves out Remove from library and Show info.
   const filtered = standardItems.filter((item) => {
-    if (item.label === "goto_artist") return false;
-    if (!includeRemoveFromLibrary && item.label === "remove_library")
+    if (item.id === ContextMenuItemId.GOTO_ARTIST) return false;
+    if (
+      !includeRemoveFromLibrary &&
+      item.id === ContextMenuItemId.REMOVE_LIBRARY
+    )
       return false;
-    if (!includeMoreInfo && item.label === "show_info") return false;
+    if (!includeMoreInfo && item.id === ContextMenuItemId.SHOW_INFO)
+      return false;
     return true;
   });
 
@@ -168,7 +174,9 @@ function spliceAfterAlbum(
   items: ContextMenuItem[],
   entries: ContextMenuItem[],
 ) {
-  const albumIdx = items.findIndex((i) => i.label === "goto_album");
+  const albumIdx = items.findIndex(
+    (i) => i.id === ContextMenuItemId.GOTO_ALBUM,
+  );
   if (albumIdx >= 0) items.splice(albumIdx + 1, 0, ...entries);
   else items.unshift(...entries);
 }
@@ -198,7 +206,10 @@ async function classicalArtistMenuItems(
 ): Promise<ContextMenuItem[]> {
   const items = await getContextMenuItems([artist]);
   const showInfo =
-    items.find((i) => i.label === "show_info") ??
+    items.find((i) => i.id === ContextMenuItemId.SHOW_INFO) ??
     artistShowInfoEntry(artist, router);
-  return [showInfo, ...items.filter((i) => i.label !== "show_info")];
+  return [
+    showInfo,
+    ...items.filter((i) => i.id !== ContextMenuItemId.SHOW_INFO),
+  ];
 }

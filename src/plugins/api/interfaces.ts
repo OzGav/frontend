@@ -517,6 +517,8 @@ export enum EventType {
   // setup_flow_updated: a running setup flow produced a new/updated step;
   // object_id is the flow_id, data is the SetupFlowStep
   SETUP_FLOW_UPDATED = "setup_flow_updated",
+  // data is the ClassicalLinkProgress left after a MusicBrainz linking run
+  CLASSICAL_LINK_PROGRESS = "classical_link_progress",
   // special types for local subscriptions only
   CONNECTED = "connected",
   DISCONNECTED = "disconnected",

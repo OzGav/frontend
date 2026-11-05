@@ -222,8 +222,9 @@ const { loading, reload, search } = useClassicalListing({
     workTypeFilter.filter.value,
     yearFilter.value,
   ],
-  load: async (sort) => {
-    works.value = (await getWorks(sort)).map(
+  items: works,
+  load: async (sort) =>
+    (await getWorks(sort)).map(
       ({ work, recording_count, part_names, period }) => {
         const composer = work.composers[0]?.name ?? "";
         const catalogNumber = work.catalog_numbers[0] ?? "";
@@ -247,8 +248,7 @@ const { loading, reload, search } = useClassicalListing({
           ),
         };
       },
-    );
-  },
+    ),
 });
 
 onMounted(reload);

@@ -134,11 +134,13 @@ interface ClassicalSortOptions {
   labels?: Partial<Record<SortField, string>>;
 }
 
-interface ClassicalListingOptions extends Omit<
+interface ClassicalListingOptions<T> extends Omit<
   ClassicalSortOptions,
   "onChange"
 > {
-  load: (sort: ClassicalSort) => Promise<void>;
+  // the tab's list, replaced by each load
+  items: Ref<T[]>;
+  load: (sort: ClassicalSort) => Promise<T[]>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
   // the tab's own filters, shown in the Filters panel after the favourites
@@ -157,7 +159,7 @@ interface ClassicalListingOptions extends Omit<
  * view's toolbar while the tab is open, and going back to the tab returns it
  * to where it was scrolled.
  */
-export function useClassicalListing(options: ClassicalListingOptions) {
+export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
   const { preferences: prefs, save } = useClassicalPreferences(
     options.itemtype,
   );
@@ -174,13 +176,21 @@ export function useClassicalListing(options: ClassicalListingOptions) {
   const loading = ref(true);
   useBackScroll(() => loading.value);
 
+  let loadCount = 0;
+
   const reload = async () => {
+    const count = ++loadCount;
     loading.value = true;
     try {
       await sort.ready;
-      await options.load(sort.sort.value);
+      const list = await options.load(sort.sort.value);
+      // a newer load has taken over the list
+      if (count !== loadCount) return;
+      options.items.value = list;
+    } catch {
+      // the api has already reported the failure
     } finally {
-      loading.value = false;
+      if (count === loadCount) loading.value = false;
     }
   };
 

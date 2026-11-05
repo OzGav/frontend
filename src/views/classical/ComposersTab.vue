@@ -53,9 +53,8 @@ const { viewMode, favoritesOnly, gridSize, loading, reload, search } =
   useClassicalListing({
     itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_COMPOSERS,
-    load: async (sort) => {
-      composers.value = await getComposers(sort);
-    },
+    items: composers,
+    load: getComposers,
     views: true,
     search: {
       placeholder: () => t("classical_filter_composers_placeholder"),

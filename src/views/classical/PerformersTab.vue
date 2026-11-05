@@ -69,9 +69,8 @@ const { viewMode, favoritesOnly, gridSize, loading, reload, search } =
   useClassicalListing({
     itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_PERFORMERS,
-    load: async (sort) => {
-      performers.value = await getPerformers(sort);
-    },
+    items: performers,
+    load: getPerformers,
     views: true,
     search: {
       placeholder: () => t("classical_filter_performers_placeholder"),

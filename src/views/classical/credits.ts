@@ -1,18 +1,9 @@
+import { PERFORMER_ROLES } from "@/helpers/classical_credits";
 import {
   ArtistRole,
   type Credit,
   type Recording,
 } from "@/plugins/api/interfaces";
-
-/** Performing roles, in the order credits are ranked for display. */
-export const PERFORMER_ROLES: readonly ArtistRole[] = [
-  ArtistRole.CONDUCTOR,
-  ArtistRole.ORCHESTRA,
-  ArtistRole.ENSEMBLE,
-  ArtistRole.CHOIR,
-  ArtistRole.SOLOIST,
-  ArtistRole.PERFORMER,
-];
 
 export interface CreditedArtist {
   id: string;
@@ -36,11 +27,6 @@ export function recordingCredits(recording: Recording) {
       ? []
       : creditedArtists(credits, NON_CONDUCTING_ROLES, true);
   return { conductors, orchestras, performers, leadPerformers };
-}
-
-/** The first artist credited as composer, if any. */
-export function creditedComposer(credits: Credit[]) {
-  return credits.find((c) => c.role === ArtistRole.COMPOSER)?.artist;
 }
 
 /** The names leading a recording's header, or its work's name without any. */

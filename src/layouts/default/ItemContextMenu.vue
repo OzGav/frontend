@@ -385,7 +385,7 @@ import {
 import { authManager } from "@/plugins/auth";
 import { $t } from "@/plugins/i18n";
 import { toast } from "vue-sonner";
-import { classicalTrackEntries } from "@/views/classical/trackMenuEntries";
+import { classicalTrackEntries } from "@/helpers/classical_track_menu";
 
 import GenreIcon from "@/components/icons/GenreIcon.vue";
 import {

@@ -1,6 +1,5 @@
 import {
   RecordingCoverageKind,
-  type ArtistRole,
   type ClassicalLinkProgress,
   type LifeSpan,
   type Period,
@@ -9,11 +8,6 @@ import {
   type WorkType,
 } from "@/plugins/api/interfaces";
 import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
-
-/** The display name of a classical credit role, e.g. Conductor. */
-export function roleLabel(role: ArtistRole): string {
-  return $t(`classical_artist_role.${role}`);
-}
 
 /** The display name of a work type, e.g. Song cycle. */
 export function workTypeLabel(type: WorkType): string {

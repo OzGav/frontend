@@ -1,8 +1,8 @@
 import { ArtistRole } from "@/plugins/api/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { Router } from "vue-router";
-import { credit } from "../../../tests/fixtures/recording";
-import { classicalMenuEntries } from "./trackMenuEntries";
+import { credit } from "../../tests/fixtures/recording";
+import { classicalMenuEntries } from "./classical_track_menu";
 
 vi.mock("@/plugins/api", () => ({ default: {} }));
 vi.mock("@/plugins/i18n", () => ({

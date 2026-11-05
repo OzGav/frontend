@@ -23,7 +23,7 @@ vi.mock("@/plugins/i18n", () => ({
   canonicalizeLocale: (locale: string) => locale,
   i18n: { global: { locale: { value: "en" } } },
 }));
-vi.mock("@/views/classical/trackMenuEntries", () => ({
+vi.mock("@/helpers/classical_track_menu", () => ({
   classicalMenuEntries: () => [{ label: "classical" }],
 }));
 

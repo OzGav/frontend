@@ -8,6 +8,7 @@
       :menu-items="menu?.items"
       :enforce-overflow-menu="true"
       class="classical-toolbar"
+      :class="CLASSICAL_SERIF_CLASS"
     >
       <!-- The minimum width leaves room for the three tab icons. -->
       <Tabs
@@ -104,6 +105,7 @@ import {
   CLASSICAL_VIEWS,
   type ClassicalMenu,
 } from "@/views/classical/listing";
+import { CLASSICAL_SERIF_CLASS } from "@/views/classical/styles";
 import { Piano } from "@lucide/vue";
 import { unrefElement, useResizeObserver } from "@vueuse/core";
 import { computed, nextTick, provide, ref, useTemplateRef, watch } from "vue";
@@ -241,18 +243,6 @@ const goToTab = useClassicalTabNavigation();
 
 .classical-typography :deep(.classical-tab-trigger),
 .classical-typography :deep(.classical-tab-trigger span) {
-  font-family: var(--font-classical-serif);
-  font-optical-sizing: auto;
-}
-
-.classical-typography :deep(.v-card-title) {
-  font-family: var(--font-classical-serif);
-  font-optical-sizing: auto;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-}
-
-.classical-typography :deep(.header.v-toolbar) {
   font-family: var(--font-classical-serif);
   font-optical-sizing: auto;
 }

@@ -7,11 +7,6 @@
       @edit-rows="rowsEditorOpen = true"
     />
 
-    <!-- TODO(classical-credits): Insert a CREDITS section here, above APPEARS
-         ON, shown only when itemDetails.is_classical is set. Render
-         itemDetails.credits as {name, role, instrument} rows, each name
-         linking to /classical/performers/<id> (or the composer page for a
-         composer credit). -->
     <template v-if="itemDetails">
       <template v-for="rowId in visibleRows" :key="rowId">
         <!-- lyrics -->

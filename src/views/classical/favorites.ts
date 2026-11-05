@@ -1,12 +1,13 @@
 import {
-  clearFavorite,
   favoriteState,
   setFavoriteState,
   subscribeOwnFavorites,
 } from "@/helpers/favorites";
 import api from "@/plugins/api";
+import { $t } from "@/plugins/i18n";
 import type { Track } from "@/plugins/api/interfaces";
 import { onBeforeUnmount } from "vue";
+import { toast } from "vue-sonner";
 
 /** Whether every track is liked; an empty list never is. */
 export function allLiked(tracks: Track[]): boolean {
@@ -15,8 +16,8 @@ export function allLiked(tracks: Track[]): boolean {
 
 /**
  * Like every track, or clear the state on every track. The new state shows
- * on the given tracks straight away; when a write fails, the tracks not yet
- * saved get their previous state back and the rest are not sent.
+ * on the given tracks straight away; when saving stops at a track, it and the
+ * tracks after it get their previous state back.
  */
 export async function setTracksLiked(
   tracks: Track[],
@@ -24,16 +25,19 @@ export async function setTracksLiked(
 ): Promise<void> {
   const previous = tracks.map(favoriteState);
   for (const track of tracks) setFavoriteState(track, liked ? true : null);
-  for (const [i, track] of tracks.entries()) {
-    try {
-      if (liked) await api.setFavorite(track, true);
-      else await clearFavorite(track);
-    } catch {
-      // the api layer already reports the error
-      tracks.slice(i).forEach((t, j) => setFavoriteState(t, previous[i + j]));
-      return;
-    }
+  let saved = 0;
+  try {
+    saved = await api.setFavorites(
+      tracks.map((t) => t.uri),
+      liked ? true : null,
+    );
+    if (saved < tracks.length) toast.error($t("favorites_save_failed"));
+  } catch {
+    // the api layer already reports the error
   }
+  tracks
+    .slice(saved)
+    .forEach((t, i) => setFavoriteState(t, previous[saved + i]));
 }
 
 /**

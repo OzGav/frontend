@@ -1422,6 +1422,7 @@
     "favorites_remove": "Remove from favorites",
     "favorites_dislike": "Dislike",
     "favorites_dislike_remove": "Remove dislike",
+    "favorites_save_failed": "Not every track could be saved to your favorites",
     "favorites_menu": "Favorite options",
     "favorites_menu_liked": "Favorite options, liked",
     "favorites_menu_disliked": "Favorite options, disliked",

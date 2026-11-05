@@ -188,12 +188,6 @@ export function worksMenuItems(
 /** The choice for composers without a country in the country filter. */
 export const UNKNOWN_COUNTRY = "unknown";
 
-/** The name of a country filter choice. */
-const countryChoiceLabel = (code: string) =>
-  code === UNKNOWN_COUNTRY
-    ? $t("classical_country_unknown")
-    : countryLabel(code);
-
 /**
  * The country filter of a classical tab, listing countries by name with
  * Unknown last.
@@ -221,3 +215,9 @@ export function useCountryFilter(itemtype: string, countries: () => string[]) {
     present: countries,
   });
 }
+
+/** The name of a country filter choice. */
+const countryChoiceLabel = (code: string) =>
+  code === UNKNOWN_COUNTRY
+    ? $t("classical_country_unknown")
+    : countryLabel(code);

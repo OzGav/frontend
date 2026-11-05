@@ -24,7 +24,7 @@ export function useWorkParts(
   const lineageOf = (n: number) => lineage.value.get(n) ?? [n];
 
   // the part a movement sits under at the top, e.g. an aria's act
-  const topOf = (n: number) => lineageOf(n).at(-1)!;
+  const topOf = (n: number) => lineageOf(n).at(-1) ?? n;
 
   // the top-level movements that are works of their own, e.g. acts, by work id
   const partNumbers = computed(
@@ -70,7 +70,8 @@ export function useWorkParts(
       shown.value,
       m.number,
       lineageOf,
-      partEntries.value.has(m.number) && !partEntries.value.has(m.parent!)
+      partEntries.value.has(m.number) &&
+        (m.parent == null || !partEntries.value.has(m.parent))
         ? m.mbid
         : null,
     );

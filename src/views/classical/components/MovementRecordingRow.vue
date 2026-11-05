@@ -12,12 +12,12 @@
     <template #actions>
       <ClassicalRowActions
         :name="name"
-        :playing="tracks.some(isTrackPlaying)"
-        :duration="tracks.reduce((sum, t) => sum + t.duration, 0)"
+        :playing="playing"
+        :duration="duration"
         :source-item="tracks[0]"
         :favorite-item="tracks.length === 1 ? tracks[0] : undefined"
-        :favorite="tracks.length > 1 ? allLiked(tracks) : undefined"
-        @toggle-favorite="setTracksLiked(tracks, !allLiked(tracks))"
+        :favorite="tracks.length > 1 ? liked : undefined"
+        @toggle-favorite="setTracksLiked(tracks, !liked)"
         @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
       />
     </template>
@@ -49,4 +49,12 @@ defineEmits<{
 }>();
 
 const name = computed(() => recordingName(props.recording));
+
+const playing = computed(() => props.tracks.some(isTrackPlaying));
+
+const duration = computed(() =>
+  props.tracks.reduce((sum, t) => sum + t.duration, 0),
+);
+
+const liked = computed(() => allLiked(props.tracks));
 </script>

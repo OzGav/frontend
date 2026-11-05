@@ -22,31 +22,6 @@ export interface CreditedArtist {
 }
 
 /**
- * The artists credited with any of the given roles, in credit order and
- * without repeats. With instruments, each credit's instrument is kept, so an
- * artist playing two instruments appears once per instrument.
- */
-function creditedArtists(
-  credits: Credit[],
-  roles: readonly ArtistRole[],
-  withInstruments = false,
-): CreditedArtist[] {
-  const seen = new Set<string>();
-  const artists: CreditedArtist[] = [];
-  for (const c of credits) {
-    if (!roles.includes(c.role)) continue;
-    const instrument =
-      (withInstruments && instrumentLabel(c.instrument, c.artist.name)) ||
-      undefined;
-    const key = `${c.artist.item_id}|${instrument ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    artists.push({ id: c.artist.item_id, name: c.artist.name, instrument });
-  }
-  return artists;
-}
-
-/**
  * A recording's credits as its header shows them: conductors and orchestras
  * lead, then ensembles, choirs, soloists and other performers. Without a
  * conductor or orchestra those performers lead instead, each with their
@@ -119,3 +94,28 @@ const CO_PERFORMER_RANK: Partial<Record<ArtistRole, number>> = {
   [ArtistRole.CHOIR]: 3,
   [ArtistRole.PERFORMER]: 4,
 };
+
+/**
+ * The artists credited with any of the given roles, in credit order and
+ * without repeats. With instruments, each credit's instrument is kept, so an
+ * artist playing two instruments appears once per instrument.
+ */
+function creditedArtists(
+  credits: Credit[],
+  roles: readonly ArtistRole[],
+  withInstruments = false,
+): CreditedArtist[] {
+  const seen = new Set<string>();
+  const artists: CreditedArtist[] = [];
+  for (const c of credits) {
+    if (!roles.includes(c.role)) continue;
+    const instrument =
+      (withInstruments && instrumentLabel(c.instrument, c.artist.name)) ||
+      undefined;
+    const key = `${c.artist.item_id}|${instrument ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    artists.push({ id: c.artist.item_id, name: c.artist.name, instrument });
+  }
+  return artists;
+}

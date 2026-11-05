@@ -18,7 +18,7 @@
     <template v-else>
       <!-- The standard panel card, padded with a hover tile. -->
       <li
-        v-for="{ item, image } in rows"
+        v-for="{ item, image, listLine } in rows"
         :key="item.id"
         v-hold="(e: TouchEvent) => onHold(e, item.artist)"
         class="flex min-w-0 cursor-pointer rounded-[8px] [transition:background_0.15s_ease]"
@@ -65,7 +65,7 @@
             </div>
             <template v-if="viewMode === 'list'">
               <div v-if="item.role || item.lines.length" :class="layout.sub">
-                {{ [item.role, ...item.lines].filter(Boolean).join(" · ") }}
+                {{ listLine }}
               </div>
             </template>
             <template v-else>
@@ -116,6 +116,7 @@ import type { Artist } from "@/plugins/api/interfaces";
 import { getBreakpointValue } from "@/plugins/breakpoint";
 import type { ClassicalViewMode } from "@/views/classical/listing";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
+import type { ClassicalArtistGridItem } from "@/views/classical/artistGrid";
 import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
@@ -124,22 +125,6 @@ import { computed, ref, type Component } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalArtistGrid" });
-
-/** A composer or performer as the grid shows it. */
-export interface ClassicalArtistGridItem {
-  id: string;
-  // the artist the item's menu acts on
-  artist: Artist;
-  name: string;
-  link: string;
-  wideImage?: string;
-  squareImage?: string;
-  listImage?: string;
-  // a performer's role, the first line below the name
-  role?: string;
-  // text below the name, one line each in the picture views
-  lines: string[];
-}
 
 const props = withDefaults(
   defineProps<{
@@ -163,7 +148,8 @@ const { width } = useElementSize(gridEl);
 // The heart's own menu checks the permission, as on the standard panel cards.
 const showHeart = computed(() => getBreakpointValue("bp3"));
 
-// The image for the current view, picked once per item rather than per use.
+// The image for the current view and the list line, worked out once per item
+// rather than per use.
 const rows = computed(() =>
   props.items.map((item) => ({
     item,
@@ -173,6 +159,8 @@ const rows = computed(() =>
         : props.viewMode === "thumbs"
           ? item.squareImage
           : item.listImage,
+    // the list view's single line under the name
+    listLine: [item.role, ...item.lines].filter(Boolean).join(" · "),
   })),
 );
 

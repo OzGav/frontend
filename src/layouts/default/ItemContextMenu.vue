@@ -447,6 +447,7 @@ import type { Component } from "vue";
 // The item type lives in a plain .ts module (editor-friendly); re-exported
 // here for convenience since most consumers already import from this file.
 import {
+  ContextMenuItemId,
   menuItemLabel,
   type ContextMenuItem,
 } from "@/helpers/context_menu_item";
@@ -644,6 +645,7 @@ export const getContextMenuItems = async function (
     (itemIsAvailable(items[0]) || isExternalItem(items[0]))
   ) {
     contextMenuItems.push({
+      id: ContextMenuItemId.SHOW_INFO,
       label: "show_info",
       labelArgs: [],
       action: () => {
@@ -726,6 +728,7 @@ export const getContextMenuItems = async function (
   ) {
     for (const artist of (items[0] as Track).artists) {
       contextMenuItems.push({
+        id: ContextMenuItemId.GOTO_ARTIST,
         label: "goto_artist",
         labelArgs: [artist.name],
         action: () => {
@@ -754,6 +757,7 @@ export const getContextMenuItems = async function (
       : null;
   if (trackAlbum) {
     contextMenuItems.push({
+      id: ContextMenuItemId.GOTO_ALBUM,
       label: "goto_album",
       labelArgs: [trackAlbum.name],
       action: () => {
@@ -910,6 +914,7 @@ export const getContextMenuItems = async function (
     ].includes(resolvedItem.media_type)
   ) {
     contextMenuItems.push({
+      id: ContextMenuItemId.REMOVE_LIBRARY,
       label: "remove_library",
       labelArgs: [],
       action: () => {

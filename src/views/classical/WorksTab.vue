@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-3">
     <div v-if="loading && !works.length">
-      <ListViewSkeleton v-for="n in 8" :key="n" />
+      <ListViewSkeleton v-for="n in SKELETONS" :key="n" />
     </div>
     <!-- Column tracks live on the list, and the rows borrow them through
          subgrid, so catalog, year and count line up all the way down. -->
@@ -105,6 +105,7 @@ import { useRouter } from "vue-router";
 defineOptions({ name: "WorksTab" });
 
 const ITEMTYPE = "works";
+const SKELETONS = 8;
 
 const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
 

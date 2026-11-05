@@ -8,35 +8,38 @@
 
 <script setup lang="ts">
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { ClassicalLinkProgress } from "@/plugins/api/interfaces";
+import { api } from "@/plugins/api";
+import {
+  EventType,
+  type ClassicalLinkProgress,
+  type EventMessage,
+} from "@/plugins/api/interfaces";
 import { getLinkProgress } from "@/services/classical";
 import { linkProgressLabel } from "@/views/classical/labels";
 import { Info } from "@lucide/vue";
-import { useDocumentVisibility, useIntervalFn } from "@vueuse/core";
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 defineOptions({ name: "LinkProgressAlert" });
 
-// ms between checks while the page is on screen
-const REFRESH_INTERVAL = 60_000;
-
 const progress = ref<ClassicalLinkProgress>();
 
-const refresh = async () => {
+onMounted(async () => {
+  // the server reports progress after each linking run, so the page asks once
+  const unsub = api.subscribe(
+    EventType.CLASSICAL_LINK_PROGRESS,
+    (evt: EventMessage) => {
+      progress.value = evt.data as ClassicalLinkProgress;
+    },
+  );
+  onBeforeUnmount(unsub);
   try {
-    progress.value = await getLinkProgress();
+    // an event that arrived meanwhile is newer
+    const current = await getLinkProgress();
+    progress.value ??= current;
   } catch {
-    progress.value = undefined;
+    // unknown until the next run reports, so no banner meanwhile
   }
-};
-
-// checks straight away, and again each time the page comes back on screen
-const { pause, resume } = useIntervalFn(refresh, REFRESH_INTERVAL, {
-  immediateCallback: true,
 });
-
-const visibility = useDocumentVisibility();
-watch(visibility, (state) => (state === "visible" ? resume() : pause()));
 
 const message = computed(() =>
   progress.value ? linkProgressLabel(progress.value) : "",

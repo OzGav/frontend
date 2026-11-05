@@ -111,7 +111,8 @@ import { useRoute } from "vue-router";
 
 defineOptions({ name: "ClassicalView" });
 
-// a little larger than TabsTrigger's text-sm, keeping its line height
+// a little larger than TabsTrigger's text-sm, keeping text-sm's line height
+// as a ratio (its 1.25rem leading over its 0.875rem size)
 const TAB_TRIGGER_CLASS =
   "classical-tab-trigger min-w-0 overflow-hidden text-[0.95rem] leading-[calc(1.25/0.875)]";
 

@@ -1,6 +1,6 @@
 <template>
   <div v-if="loading && !items.length && viewMode === 'list'">
-    <ListViewSkeleton v-for="n in 8" :key="n" />
+    <ListViewSkeleton v-for="n in LIST_SKELETONS" :key="n" />
   </div>
   <!-- The card's 8px padding sits outside the line the rest of the page uses. -->
   <ul
@@ -11,7 +11,7 @@
     :style="gridStyle"
   >
     <template v-if="loading && !items.length">
-      <li v-for="n in 12" :key="n">
+      <li v-for="n in PANEL_SKELETONS" :key="n">
         <PanelViewSkeleton />
       </li>
     </template>
@@ -125,6 +125,9 @@ import { computed, ref, type Component } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalArtistGrid" });
+
+const LIST_SKELETONS = 8;
+const PANEL_SKELETONS = 12;
 
 const props = withDefaults(
   defineProps<{

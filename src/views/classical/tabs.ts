@@ -1,3 +1,5 @@
+import { setUserPreference } from "@/composables/userPreferences";
+import { store } from "@/plugins/store";
 import { Feather, Music3, Users } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -12,7 +14,7 @@ export type ClassicalTab = (typeof CLASSICAL_TABS)[number]["tab"];
 
 export const CLASSICAL_DEFAULT_TAB: ClassicalTab = "composers";
 
-const CLASSICAL_LAST_TAB_KEY = "frontend.classical.last_tab";
+const CLASSICAL_LAST_TAB_KEY = "classical_last_tab";
 
 /** Whether a value names a Classical tab. */
 export function isClassicalTab(value: unknown): value is ClassicalTab {
@@ -21,7 +23,7 @@ export function isClassicalTab(value: unknown): value is ClassicalTab {
 
 /** The Classical tab last opened, or the default tab before any. */
 export function getLastVisitedClassicalTab(): ClassicalTab {
-  const stored = localStorage.getItem(CLASSICAL_LAST_TAB_KEY);
+  const stored = store.currentUser?.preferences?.[CLASSICAL_LAST_TAB_KEY];
   return isClassicalTab(stored) ? stored : CLASSICAL_DEFAULT_TAB;
 }
 
@@ -34,7 +36,8 @@ export function useClassicalTabNavigation(): (tab: ClassicalTab) => void {
   const router = useRouter();
   return (tab) => {
     const target = `/classical/${tab}`;
-    localStorage.setItem(CLASSICAL_LAST_TAB_KEY, tab);
+    if (getLastVisitedClassicalTab() !== tab)
+      void setUserPreference(CLASSICAL_LAST_TAB_KEY, tab);
     if (route.path !== target) router.push(target);
   };
 }

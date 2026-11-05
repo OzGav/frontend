@@ -1,25 +1,16 @@
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { getEventPosition } from "@/composables/useHoldToOpenMenu";
-import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import {
-  useUserPreferences,
-  type ItemsListingPreferences,
-} from "@/composables/userPreferences";
-import { MAX_COLUMNS, normalizeGridSize } from "@/helpers/grid_size";
+import { normalizeGridSize } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
-import { handleMediaItemClick } from "@/helpers/media_item_actions";
-import api from "@/plugins/api";
-import {
-  type ListingType,
-  type SortField,
-  type SortOptionInfo,
-  type Track,
-} from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import type { ClassicalSort } from "@/services/classical";
 import { useBackScroll } from "@/views/classical/backScroll";
+import {
+  useClassicalSort,
+  type ClassicalSortOptions,
+} from "@/views/classical/classicalSort";
+import { useClassicalPreferences } from "@/views/classical/preferences";
 import { Grid3x3, Heart, LayoutGrid, LayoutList, RefreshCw } from "@lucide/vue";
 import {
   computed,
@@ -33,8 +24,6 @@ import {
   type InjectionKey,
   type Ref,
 } from "vue";
-import type { RouteLocationRaw, Router } from "vue-router";
-import { toast } from "vue-sonner";
 
 /** The toolbar menu a classical page hands to the Classical view. */
 export interface ClassicalMenu {
@@ -73,38 +62,6 @@ interface ClassicalMenuSearch {
 export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
   Symbol("classicalMenu");
 
-/**
- * Whether a click inside a list row landed on one of the row's own links or
- * buttons, which handle it themselves.
- */
-export function isRowControlClick(evt: MouseEvent): boolean {
-  return !!(evt.target as HTMLElement).closest("a, button");
-}
-
-/**
- * Open a list row's page when the click lands on the row itself, leaving
- * clicks on its own links and buttons to them.
- */
-export function navigateOnRowClick(
-  evt: MouseEvent,
-  router: Router,
-  to: RouteLocationRaw,
-) {
-  if (isRowControlClick(evt)) return;
-  router.push(to);
-}
-
-/**
- * Open or play a track the way a click on any track row does, when the click
- * lands on its row itself, leaving clicks on the row's own links and buttons
- * to them.
- */
-export function openTrackOnRowClick(evt: MouseEvent, track: Track) {
-  if (isRowControlClick(evt)) return;
-  const { x, y } = getEventPosition(evt);
-  handleMediaItemClick(track, x, y);
-}
-
 export type ClassicalViewMode = "fanart" | "thumbs" | "list";
 
 // the views a picture tab offers in its sort menu
@@ -128,25 +85,6 @@ export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
     icon: LayoutList,
   },
 ];
-
-/** The classical lists the server offers sort choices for. */
-type ClassicalListingType =
-  | ListingType.CLASSICAL_COMPOSERS
-  | ListingType.CLASSICAL_PERFORMERS
-  | ListingType.CLASSICAL_WORKS
-  | ListingType.CLASSICAL_OTHER_TRACKS;
-
-interface ClassicalSortOptions {
-  // name the choice is stored under
-  itemtype: string;
-  listing: ClassicalListingType;
-  // called after the user picks another sort
-  onChange: () => void;
-  // fields left out of the menu, e.g. while the data they sort on is missing
-  exclude?: () => SortField[];
-  // label keys under sort replacing the server's, e.g. a more specific year
-  labels?: Partial<Record<SortField, string>>;
-}
 
 interface ClassicalListingOptions<T> extends Omit<
   ClassicalSortOptions,
@@ -313,108 +251,6 @@ export function useClassicalListing<T>(options: ClassicalListingOptions<T>) {
 
   return { viewMode, favoritesOnly, gridSize, loading, reload, search };
 }
-
-/**
- * The listing settings kept for a classical tab, as they were when the tab
- * opened, and a way to save one.
- */
-export function useClassicalPreferences(itemtype: string) {
-  const { getItemsListingPreferences, setItemsListingPreference } =
-    useUserPreferences();
-  const save = <K extends keyof ItemsListingPreferences>(
-    key: K,
-    value: ItemsListingPreferences[K],
-  ) => setItemsListingPreference(PREFS_PATH, itemtype, key, value);
-  return {
-    preferences: getItemsListingPreferences(PREFS_PATH, itemtype).value,
-    save,
-  };
-}
-
-/**
- * The sort of a classical list, chosen from the choices the server offers for
- * it and kept per user like the other library listings keep theirs.
- *
- * Returns `ready`, settled once the choices are known; `sort`, the arguments
- * to fetch the list with; and `options`, `sortBy` and `setSort`, for a sort
- * menu.
- */
-export function useClassicalSort(options: ClassicalSortOptions) {
-  const { preferences, save } = useClassicalPreferences(options.itemtype);
-  const sortOptions = ref<SortOptionInfo[]>([]);
-  const sortBy = ref(preferences.sortBy ?? "");
-  const sorting = useLibrarySorting(sortOptions, sortBy);
-
-  // Without the choices the list still loads, in the server's default order.
-  const ready = api
-    .getSortOptions(options.listing)
-    .then((list) => {
-      sortOptions.value = list;
-      sortBy.value = sorting.normalizeSortBy(sortBy.value);
-    })
-    .catch(() => {
-      toast.error($t("settings.error_loading_sort_options"), {
-        id: "library-sort-options-error",
-      });
-    });
-
-  const { selectedOption } = sorting;
-
-  const sort = computed<ClassicalSort>(() =>
-    selectedOption.value
-      ? {
-          sort_field: selectedOption.value.field,
-          sort_direction: selectedOption.value.supports_direction
-            ? sorting.current.value.direction
-            : undefined,
-        }
-      : {},
-  );
-
-  // the choices on offer, under the page's own labels
-  const offered = computed(() => {
-    const excluded = options.exclude?.() ?? [];
-    return sortOptions.value
-      .filter((o) => !excluded.includes(o.field))
-      .map((o) => ({
-        ...o,
-        label_key: options.labels?.[o.field] ?? o.label_key,
-      }));
-  });
-
-  const setSort = (value: string | undefined) => {
-    if (!value || value === sortBy.value) return;
-    sortBy.value = value;
-    save("sortBy", value);
-    options.onChange();
-  };
-
-  return {
-    ready,
-    sort,
-    options: offered,
-    sortBy: computed(() => sortBy.value),
-    setSort,
-  };
-}
-
-/**
- * Number of grid columns for a picture view. The default is as many columns
- * of at least minWidth as fit the width, and the cover size steps from there.
- */
-export function classicalGridColumns(
-  width: number,
-  minWidth: number,
-  gap: number,
-  size: number,
-): number {
-  const fitting = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
-  // unlike gridColumns this allows one column, so larger steps on a phone
-  // never add a column
-  return Math.min(MAX_COLUMNS, Math.max(1, fitting - size));
-}
-
-const PREFS_PATH = "classical";
 
 // turns a filter off through its own handler, which saves the change
 function clearFilter(filter: ListingFilter) {

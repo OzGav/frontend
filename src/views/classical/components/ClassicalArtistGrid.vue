@@ -111,14 +111,11 @@ import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import PanelViewSkeleton from "@/components/skeletons/PanelViewSkeleton.vue";
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import { canHoldFavorite } from "@/helpers/favorites";
-import { GRID_SIZE_DEFAULT } from "@/helpers/grid_size";
+import { fittingGridColumns, GRID_SIZE_DEFAULT } from "@/helpers/grid_size";
 import type { Artist } from "@/plugins/api/interfaces";
 import { getBreakpointValue } from "@/plugins/breakpoint";
-import {
-  classicalGridColumns,
-  navigateOnRowClick,
-  type ClassicalViewMode,
-} from "@/views/classical/listing";
+import type { ClassicalViewMode } from "@/views/classical/listing";
+import { navigateOnRowClick } from "@/views/classical/rowClick";
 import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
@@ -190,7 +187,7 @@ const gridStyle = computed(() => {
     props.viewMode === "thumbs" ? SQUARE_MIN_WIDTH : props.minCardWidth;
   const style = { "--artist-card-min": `${minWidth}px` };
   if (!width.value) return style;
-  const columns = classicalGridColumns(
+  const columns = fittingGridColumns(
     width.value,
     minWidth,
     GRID_GAP,

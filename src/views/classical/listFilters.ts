@@ -1,8 +1,12 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import type { ListingMultiFilter } from "@/helpers/listing_filters";
+import {
+  offeredFilterValues,
+  toggledValue,
+  type ListingMultiFilter,
+} from "@/helpers/listing_filters";
 import { Period, WorkType } from "@/plugins/api/interfaces";
 import { countryLabel, periodLabel } from "@/views/classical/labels";
-import { useClassicalPreferences } from "@/views/classical/listing";
+import { useClassicalPreferences } from "@/views/classical/preferences";
 import { $t } from "@/plugins/i18n";
 import { Shapes } from "@lucide/vue";
 import { computed, shallowRef, type Ref } from "vue";
@@ -56,10 +60,7 @@ export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
   const filter = computed<ListingMultiFilter | undefined>(() => {
     const present = new Set<string | null | undefined>(options.present());
     const all = typeof values === "function" ? values() : values;
-    const offered = [
-      ...all.filter((v) => present.has(v) || selected.value.includes(v)),
-      ...selected.value.filter((v) => !all.includes(v)),
-    ];
+    const offered = offeredFilterValues(all, present, selected.value);
     if (offered.length < 2 && !selected.value.length) return undefined;
     return {
       kind: "multi",
@@ -72,12 +73,7 @@ export function useListFilter<T extends string>(options: ListFilterOptions<T>) {
         value,
       })),
       selected: selected.value,
-      toggle: (value) =>
-        set(
-          selected.value.includes(value as T)
-            ? selected.value.filter((v) => v !== value)
-            : [...selected.value, value as T],
-        ),
+      toggle: (value) => set(toggledValue(selected.value, value as T)),
       set: (next) => set(next as T[]),
     };
   });
@@ -166,10 +162,10 @@ export function worksMenuItems(
   types: string[],
   chosen: Ref<string[]>,
 ): ToolBarMenuItem[] {
-  const present = new Set(types);
-  // a ticked type stays listed so it can be cleared even when no work has it
-  const offered = workTypeChoices().filter(
-    (t) => present.has(t) || chosen.value.includes(t),
+  const offered = offeredFilterValues(
+    workTypeChoices(),
+    new Set(types),
+    chosen.value,
   );
   if (offered.length < 2 && !chosen.value.length) return [];
   return [
@@ -182,9 +178,7 @@ export function worksMenuItems(
         label: workTypeChoiceLabel(type),
         selected: chosen.value.includes(type),
         action: () => {
-          chosen.value = chosen.value.includes(type)
-            ? chosen.value.filter((t) => t !== type)
-            : [...chosen.value, type];
+          chosen.value = toggledValue(chosen.value, type);
         },
       })),
     },

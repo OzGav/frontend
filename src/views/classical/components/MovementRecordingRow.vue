@@ -31,7 +31,7 @@ import ClassicalRowActions from "@/views/classical/components/ClassicalRowAction
 import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
 import { recordingName } from "@/views/classical/credits";
 import { allLiked, setTracksLiked } from "@/views/classical/favorites";
-import { openTrackOnRowClick } from "@/views/classical/listing";
+import { openTrackOnRowClick } from "@/views/classical/rowClick";
 import { isTrackPlaying } from "@/views/classical/playback";
 import { computed } from "vue";
 

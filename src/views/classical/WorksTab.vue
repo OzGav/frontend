@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import type { ListingCustomFilter } from "@/helpers/listing_filters";
-import { normalizeForFilter } from "@/helpers/utils";
+import { normalizeForFilter } from "@/helpers/text_filter";
 import {
   ListingType,
   SortField,
@@ -89,11 +89,9 @@ import { getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
-import {
-  navigateOnRowClick,
-  useClassicalListing,
-  useClassicalPreferences,
-} from "@/views/classical/listing";
+import { useClassicalListing } from "@/views/classical/listing";
+import { useClassicalPreferences } from "@/views/classical/preferences";
+import { navigateOnRowClick } from "@/views/classical/rowClick";
 import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
 import {
   UNKNOWN_WORK_TYPE,
@@ -101,7 +99,7 @@ import {
   useWorkTypeFilter,
 } from "@/views/classical/listFilters";
 import { playWork } from "@/views/classical/playback";
-import { isTouch } from "@/views/classical/touch";
+import { isTouch } from "@/composables/touchScreen";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { computed, markRaw, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";

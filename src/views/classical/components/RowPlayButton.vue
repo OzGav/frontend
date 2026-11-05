@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import { Play } from "@lucide/vue";
-import { isTouch } from "@/views/classical/touch";
+import { isTouch } from "@/composables/touchScreen";
 
 defineOptions({ name: "RowPlayButton" });
 

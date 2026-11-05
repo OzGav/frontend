@@ -1,5 +1,5 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { normalizeForFilter } from "@/helpers/utils";
+import { normalizeForFilter } from "@/helpers/text_filter";
 import type { Recording, Work } from "@/plugins/api/interfaces";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useBackFilter } from "@/views/classical/backFilter";

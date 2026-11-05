@@ -47,7 +47,7 @@
 import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
-import { normalizeForFilter } from "@/helpers/utils";
+import { normalizeForFilter } from "@/helpers/text_filter";
 import type { WorkType } from "@/plugins/api/interfaces";
 import { useBackFilter } from "@/views/classical/backFilter";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";

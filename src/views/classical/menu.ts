@@ -2,8 +2,8 @@
 //
 // Movement and other-track rows are real library tracks, so they go through
 // the standard menu builders (getPlaybackContextMenuItems +
-// getContextMenuItems), then classical-specific entries (Go to composer /
-// work / performer submenu) are spliced in adjacent to Go to album.
+// getContextMenuItems), then classical-specific entries (View composer /
+// work / performer submenu) are spliced in adjacent to View album.
 
 import {
   getContextMenuItems,
@@ -28,7 +28,7 @@ import type { Router } from "vue-router";
 
 interface ClassicalMenuContext {
   router: Router;
-  // left out for a track without a work, which leaves out Go to work
+  // left out for a track without a work, which leaves out View work
   work?: Work | ItemMapping;
   composer?: ItemMapping | Artist;
 }
@@ -77,8 +77,8 @@ export async function openRecordingMenu(
 }
 
 /**
- * Menu for a track without a work, the standard track menu plus Go to
- * composer and Go to performer.
+ * Menu for a track without a work, the standard track menu plus View
+ * composer and View performer.
  */
 export async function openOtherTrackMenu(
   track: Track,
@@ -143,7 +143,7 @@ async function buildMenuItems({
     withoutClassicalEntries: true,
   });
 
-  // Go to artist gives way to the Go to performer submenu, and the recording
+  // View artist gives way to the View performer submenu, and the recording
   // menu leaves out Remove from library and Show info.
   const filtered = standardItems.filter((item) => {
     if (item.id === ContextMenuItemId.GOTO_ARTIST) return false;
@@ -168,7 +168,7 @@ async function buildMenuItems({
   return [...playItems, ...filtered];
 }
 
-// Go to album only exists for a single track; without it (the multi-track
+// View album only exists for a single track; without it (the multi-track
 // recording menu) the classical entries lead the standard block.
 function spliceAfterAlbum(
   items: ContextMenuItem[],

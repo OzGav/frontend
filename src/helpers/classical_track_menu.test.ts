@@ -31,7 +31,7 @@ describe("classicalMenuEntries", () => {
     expect(labels).toEqual([
       "classical_goto_composer",
       "classical_goto_work",
-      "classical_goto_performer",
+      "classical_goto_one_performer",
     ]);
   });
 
@@ -46,11 +46,16 @@ describe("classicalMenuEntries", () => {
       performerEntries([
         credit("p", "Pinnock", ArtistRole.PERFORMER, "harpsichord"),
         credit("p", "Pinnock", ArtistRole.CONDUCTOR),
+        credit("e", "The English Concert", ArtistRole.ORCHESTRA),
       ]),
     ).toEqual([
       [
         "classical_performer_with_qualifier",
         ["Pinnock", "classical_artist_role.conductor, harpsichord"],
+      ],
+      [
+        "classical_performer_with_qualifier",
+        ["The English Concert", "classical_artist_role.orchestra"],
       ],
     ]);
   });
@@ -78,13 +83,29 @@ describe("classicalMenuEntries", () => {
           "string quartet",
           "",
         ),
+        credit("s", "Soloist", ArtistRole.SOLOIST, "piano", "piano"),
       ]),
     ).toEqual([
       [
         "classical_performer_with_qualifier",
         ["Brodsky Quartet", "classical_artist_role.ensemble"],
       ],
+      ["classical_performer_with_qualifier", ["Soloist", "piano"]],
     ]);
+  });
+
+  it("leads straight to a performer who is the only one", () => {
+    const [entry] = classicalMenuEntries(
+      { credits: [credit("g", "Gould", ArtistRole.SOLOIST, "piano")] },
+      router,
+    );
+    expect([entry.label, entry.labelArgs, entry.subItems]).toEqual([
+      "classical_goto_one_performer",
+      ["Gould"],
+      undefined,
+    ]);
+    entry.action?.();
+    expect(router.push).toHaveBeenCalledWith("/classical/performers/g");
   });
 
   it("leaves out composer credits from the performers", () => {

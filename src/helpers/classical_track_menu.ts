@@ -1,7 +1,10 @@
-// The classical track menu entries (Go to composer / work / performer
-// submenu), shared by the Classical pages' menus and the normal track menu.
+// The classical track menu entries (View composer, work and performer),
+// shared by the Classical pages' menus and the normal track menu.
 
-import type { ContextMenuItem } from "@/helpers/context_menu_item";
+import {
+  ContextMenuItemId,
+  type ContextMenuItem,
+} from "@/helpers/context_menu_item";
 import api from "@/plugins/api";
 import type { ArtistRole, Credit, Track } from "@/plugins/api/interfaces";
 import { Feather, Music3, Users } from "@lucide/vue";
@@ -56,8 +59,8 @@ export async function classicalTrackEntries(
 }
 
 /**
- * Go to composer, Go to work and the Go to performer submenu, each left out
- * when there is nothing to go to.
+ * View composer, View work and View performer (a submenu for several), each
+ * left out when there is nothing to go to.
  */
 export function classicalMenuEntries(
   { credits, composer, work }: ClassicalMenuTargets,
@@ -66,7 +69,7 @@ export function classicalMenuEntries(
   return [
     gotoComposer(composer, router),
     work ? gotoWork(work, router) : null,
-    performerSubMenu(credits, router),
+    performerEntry(credits, router),
   ].filter((x): x is ContextMenuItem => x !== null);
 }
 
@@ -76,6 +79,7 @@ function gotoComposer(
 ): ContextMenuItem | null {
   if (!composer) return null;
   return {
+    id: ContextMenuItemId.GOTO_COMPOSER,
     label: "classical_goto_composer",
     labelArgs: [composer.name],
     icon: Feather,
@@ -85,6 +89,7 @@ function gotoComposer(
 
 function gotoWork(work: MenuTarget, router: Router): ContextMenuItem {
   return {
+    id: ContextMenuItemId.GOTO_WORK,
     label: "classical_goto_work",
     labelArgs: [work.name],
     icon: Music3,
@@ -92,14 +97,23 @@ function gotoWork(work: MenuTarget, router: Router): ContextMenuItem {
   };
 }
 
-// most important role first
-function performerSubMenu(
+// One performer directly, several in a submenu, most important role first.
+function performerEntry(
   credits: Credit[],
   router: Router,
 ): ContextMenuItem | null {
   const grouped = aggregateCredits(credits);
   if (grouped.length === 0) return null;
+  if (grouped.length === 1)
+    return {
+      id: ContextMenuItemId.GOTO_PERFORMER,
+      label: "classical_goto_one_performer",
+      labelArgs: [grouped[0].name],
+      icon: Users,
+      action: () => router.push(`/classical/performers/${grouped[0].artistId}`),
+    };
   return {
+    id: ContextMenuItemId.GOTO_PERFORMER,
     label: "classical_goto_performer",
     labelArgs: [],
     icon: Users,
@@ -110,7 +124,7 @@ function performerSubMenu(
 }
 
 // Submenu entry, a name plus a role or instrument qualifier in parens. Shown
-// under the parent "Go to performer" item, so the verb is already implied.
+// under the parent "View performer" item, so the verb is already implied.
 function performerSubmenuEntry(
   artistId: string,
   name: string,

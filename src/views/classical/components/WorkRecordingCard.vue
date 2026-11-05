@@ -123,7 +123,7 @@ const props = defineProps<{
   recording: Recording;
   // the work's movements, to name those the recording covers
   movements?: WorkMovement[];
-  // the entries listed under the act it is of, to count those it holds
+  // the entries listed under the act it is of, to name its tracks
   actMovements?: WorkMovement[];
 }>();
 
@@ -152,11 +152,7 @@ const favorite = computed(() => allLiked(props.recording.tracks));
 const recordingName = computed(() => nameOf(props.recording));
 
 const coverage = computed(() =>
-  movementCoverageLabel(
-    props.recording,
-    props.movements ?? [],
-    props.actMovements,
-  ),
+  movementCoverageLabel(props.recording.coverage, props.movements ?? []),
 );
 
 // the work's, its parent's and the page's act names, which a track never goes by

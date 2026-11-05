@@ -52,6 +52,7 @@ import HomeAssistantMenuButton from "@/components/HomeAssistantMenuButton.vue";
 import ServerOutdated from "@/components/ServerOutdated.vue";
 import { Toaster } from "@/components/ui/sonner";
 import { loadRoles } from "@/composables/roles";
+import { onLibrarySyncCompleted } from "@/composables/useLibrarySync";
 import { useReconnectGrace } from "@/composables/useReconnectGrace";
 import { initGlobalShortcutsSync } from "@/composables/useShortcuts";
 import { useThemePreference } from "@/composables/useThemePreference";
@@ -75,7 +76,12 @@ import {
   resetMediaSession,
 } from "@/helpers/mediaSession";
 import { api, ConnectionState } from "@/plugins/api";
-import { CoreState, EventType, Scope } from "@/plugins/api/interfaces";
+import {
+  CoreState,
+  EventType,
+  MediaType,
+  Scope,
+} from "@/plugins/api/interfaces";
 import { toast } from "vue-sonner";
 import { getDeviceName } from "@/plugins/api/helpers";
 import authManager from "@/plugins/auth";
@@ -696,8 +702,20 @@ onMounted(async () => {
   });
 });
 
+// A track sync can bring the first classical tracks or remove the last ones.
+const stopClassicalContentRefresh = onLibrarySyncCompleted(
+  MediaType.TRACK,
+  async () => {
+    if (authManager.isGuestAccessSession() || authManager.isDashboardViewer()) {
+      return;
+    }
+    store.hasClassicalContent = await hasClassicalContent();
+  },
+);
+
 onUnmounted(() => {
   unsubscribeFromHAProperties();
+  stopClassicalContentRefresh();
 });
 
 function applyForceMobileLayout() {

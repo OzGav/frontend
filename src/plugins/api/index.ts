@@ -1970,6 +1970,21 @@ export class MusicAssistantApi {
     });
   }
 
+  /**
+   * Set the signed-in user's state on several items, in order.
+   *
+   * :param items: The items (uris or media items) to set the state on.
+   * :param favorite: true to like, false to dislike, null to clear the state.
+   * :return: How many items were handled; when fewer than given, the item at
+   *   that index failed and the rest were left alone.
+   */
+  public async setFavorites(
+    items: Array<string | MediaItemType | ItemMapping>,
+    favorite: boolean | null,
+  ): Promise<number> {
+    return this.sendCommand("music/favorites/set_items", { items, favorite });
+  }
+
   public browse(
     path?: string,
     player_id?: string,

@@ -12,13 +12,11 @@
     >
       <ClassicalPlayRow
         v-for="w in works"
-        :key="w.item_id"
+        :key="w.work.item_id"
         tag="li"
         class="col-[1/-1] grid cursor-pointer grid-cols-subgrid items-baseline py-[0.5rem] [--play-row-inset:0.25rem]"
-        :label="`${$t('play')} ${w.name}`"
-        @click="
-          navigateOnRowClick($event, router, `/classical/works/${w.item_id}`)
-        "
+        :label="`${$t('play')} ${w.work.name}`"
+        @click="navigateOnRowClick($event, router, workLink(w))"
         @play="(e: Event) => playWork(w.work, e)"
       >
         <div class="flex min-w-0 flex-col text-inherit no-underline">
@@ -29,14 +27,13 @@
             <!-- Only the name is the link, so the underline marks just what
                  is clicked. -->
             <router-link
-              v-if="w.composer_id"
-              :to="`/classical/composers/${w.composer_id}`"
+              v-if="w.work.composers[0]"
+              :to="`/classical/composers/${w.work.composers[0].item_id}`"
               class="text-inherit no-underline [&:focus-visible]:underline [&:hover]:underline"
             >
-              {{ w.composer }}
+              {{ w.work.composers[0].name }}
             </router-link>
-            <template v-else>{{ w.composer }}</template>
-            <template v-if="w.period_label"> · {{ w.period_label }}</template>
+            <template v-if="w.period"> · {{ periodLabel(w.period) }}</template>
             <!-- on phones the columns join this line, under the title -->
             <template v-if="mobile">
               <template v-for="detail in phoneDetails(w)" :key="String(detail)">
@@ -45,21 +42,26 @@
             </template>
           </span>
           <router-link
-            :to="`/classical/works/${w.item_id}`"
+            :to="workLink(w)"
             class="overflow-hidden text-[0.95rem] font-semibold text-ellipsis text-inherit no-underline"
             :class="mobile ? 'whitespace-normal' : 'whitespace-nowrap'"
           >
-            {{ w.name }}
+            {{ w.work.name }}
           </router-link>
-          <span v-if="w.version" class="text-[0.8rem] text-muted-foreground">
-            {{ w.version }}
+          <span
+            v-if="w.work.version"
+            class="text-[0.8rem] text-muted-foreground"
+          >
+            {{ w.work.version }}
           </span>
         </div>
         <!-- Rendered even when empty so every row keeps all four columns. -->
         <template v-if="!mobile">
-          <span :class="COLUMN_CLASS">{{ w.catalog_number }}</span>
-          <span :class="COLUMN_CLASS">{{ w.year_composed }}</span>
-          <span :class="COLUMN_CLASS">{{ w.recordings_label }}</span>
+          <span :class="COLUMN_CLASS">{{ w.work.catalog_numbers[0] }}</span>
+          <span :class="COLUMN_CLASS">{{ w.work.composition_year }}</span>
+          <span :class="COLUMN_CLASS">{{
+            recordingCountLabel(w.recording_count)
+          }}</span>
         </template>
       </ClassicalPlayRow>
     </ul>
@@ -74,8 +76,8 @@ import type { ListingCustomFilter } from "@/helpers/listing_filters";
 import {
   ListingType,
   SortField,
+  type ClassicalWorkEntry,
   type ClassicalWorkFilters,
-  type Work,
 } from "@/plugins/api/interfaces";
 import { getBreakpointValue } from "@/plugins/breakpoint";
 import { getWorkFilters, getWorks } from "@/services/classical";
@@ -111,23 +113,7 @@ const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
 
 const { t } = useI18n();
 
-// Flattened to the fields the rows show.
-interface WorkRow {
-  // what the play button plays
-  work: Work;
-  item_id: string;
-  name: string;
-  // tells apart works sharing a title, e.g. 1888 version
-  version: string;
-  composer: string;
-  composer_id?: string;
-  period_label: string;
-  catalog_number: string;
-  year_composed?: number | null;
-  recordings_label: string;
-}
-
-const works = ref<WorkRow[]>([]);
+const works = ref<ClassicalWorkEntry[]>([]);
 const choices = ref<ClassicalWorkFilters>();
 
 const { preferences, save } = useClassicalPreferences(ITEMTYPE);
@@ -145,8 +131,15 @@ const router = useRouter();
 // as narrow as a phone, where the columns join the title's line
 const mobile = computed(() => !getBreakpointValue("bp2"));
 
-const phoneDetails = (w: WorkRow) =>
-  [w.catalog_number, w.year_composed, w.recordings_label].filter(Boolean);
+const workLink = (w: ClassicalWorkEntry) =>
+  `/classical/works/${w.work.item_id}`;
+
+const phoneDetails = ({ work, recording_count }: ClassicalWorkEntry) =>
+  [
+    work.catalog_numbers[0],
+    work.composition_year,
+    recordingCountLabel(recording_count),
+  ].filter(Boolean);
 
 // The play column leads on hover screens and trails on touch screens; on
 // phones the title takes the width.
@@ -231,18 +224,6 @@ const { loading, loadingMore, hasMore, loadMore, filtered } =
     loadFilterChoices: async () => {
       choices.value = await getWorkFilters();
     },
-    load: async (query) =>
-      (await getWorks(query)).map(({ work, recording_count, period }) => ({
-        work,
-        item_id: work.item_id,
-        name: work.name,
-        version: work.version,
-        composer: work.composers[0]?.name ?? "",
-        composer_id: work.composers[0]?.item_id,
-        period_label: period ? periodLabel(period) : "",
-        catalog_number: work.catalog_numbers[0] ?? "",
-        year_composed: work.composition_year,
-        recordings_label: recordingCountLabel(recording_count),
-      })),
+    load: getWorks,
   });
 </script>

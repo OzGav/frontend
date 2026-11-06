@@ -4,7 +4,7 @@
   </div>
   <!-- The card's 8px padding sits outside the line the rest of the page uses. -->
   <ul
-    v-else
+    v-else-if="items.length || loading"
     ref="gridEl"
     class="artist-grid m-[0_-8px] grid list-none p-0"
     :class="layout.grid"
@@ -101,6 +101,12 @@
       </li>
     </template>
   </ul>
+  <ClassicalEmpty v-else :filtered="filtered" />
+  <LoadMoreSentinel
+    v-if="hasMore"
+    :loading="loadingMore"
+    @more="emit('more')"
+  />
 </template>
 
 <script setup lang="ts">
@@ -117,6 +123,8 @@ import { getBreakpointValue } from "@/plugins/breakpoint";
 import type { ClassicalViewMode } from "@/views/classical/listing";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
 import type { ClassicalArtistGridItem } from "@/views/classical/artistGrid";
+import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
@@ -140,9 +148,19 @@ const props = withDefaults(
     loading?: boolean;
     // drawn on the cards of artists without a picture
     placeholderIcon: Component;
+    // a filter is narrowing the list, for its empty state
+    filtered: boolean;
+    // a further page can be loaded
+    hasMore: boolean;
+    loadingMore: boolean;
   }>(),
   { gridSize: GRID_SIZE_DEFAULT, loading: false },
 );
+
+const emit = defineEmits<{
+  // asks for the next page
+  more: [];
+}>();
 
 const router = useRouter();
 const gridEl = ref<HTMLElement | null>(null);

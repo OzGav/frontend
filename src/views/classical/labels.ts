@@ -5,13 +5,15 @@ import {
   type Period,
   type RecordingCoverage,
   type WorkMovement,
-  type WorkType,
 } from "@/plugins/api/interfaces";
 import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
 
-/** The display name of a work type, e.g. Song cycle. */
-export function workTypeLabel(type: WorkType): string {
-  return $t(`classical_work_type.${type}`);
+/**
+ * The translation key of a work type's name, e.g. for Song cycle; also of the
+ * work type filter's Unknown choice.
+ */
+export function workTypeKey(type: string): string {
+  return `classical_work_type.${type}`;
 }
 
 /** The display name of a composer's period, e.g. Baroque. */

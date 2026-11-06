@@ -35,7 +35,8 @@
 
 <script setup lang="ts">
 import { WorkType, type Artist, type Work } from "@/plugins/api/interfaces";
-import { periodLabel, workTypeLabel } from "@/views/classical/labels";
+import { $t } from "@/plugins/i18n";
+import { periodLabel, workTypeKey } from "@/views/classical/labels";
 import { CLASSICAL_SERIF_CLASS } from "@/views/classical/styles";
 import { Music } from "@lucide/vue";
 import { computed } from "vue";
@@ -55,7 +56,9 @@ const workDetails = computed(() => {
   return [
     props.composer?.period && periodLabel(props.composer.period),
     w.catalog_numbers[0],
-    w.work_type && w.work_type !== WorkType.OTHER && workTypeLabel(w.work_type),
+    w.work_type &&
+      w.work_type !== WorkType.OTHER &&
+      $t(workTypeKey(w.work_type)),
     w.composition_year && String(w.composition_year),
   ].filter((d): d is string => !!d);
 });

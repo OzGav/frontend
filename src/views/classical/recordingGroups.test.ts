@@ -54,8 +54,8 @@ describe("movementLineage", () => {
 
 describe("movementRows", () => {
   it("keeps each recording's tracks that count towards the movement", () => {
-    const aria = track({ item_id: "a", movement_number: 2 });
-    const other = track({ item_id: "b", movement_number: 4 });
+    const aria = track({ item_id: "a" });
+    const other = track({ item_id: "b" });
     const r = recording({
       tracks: [aria, other],
       track_movements: { [aria.uri]: [2, 1], [other.uri]: [4] },
@@ -64,7 +64,7 @@ describe("movementRows", () => {
   });
 
   it("leaves out recordings without a track of the movement", () => {
-    const t = track({ item_id: "b", movement_number: 4 });
+    const t = track({ item_id: "b" });
     const r = recording({ tracks: [t], track_movements: { [t.uri]: [4] } });
     const bare = recording({ key: "bare", tracks: [track({ item_id: "c" })] });
     expect(movementRows([r, bare], 1)).toEqual([]);

@@ -22,35 +22,17 @@
       :from-library="!work.movements_from_musicbrainz"
     />
 
-    <ClassicalSection
+    <FilterableSection
+      v-model="query"
+      v-model:open="searchOpen"
       :title="$t('recordings')"
       :meta="recordings.length ? recordingCountLabel(shownCount) : undefined"
+      :searchable="recordings.length > 0"
+      :placeholder="$t('classical_filter_recordings_placeholder')"
+      :menu="recordingsMenu"
+      :menu-active="yearRangeActive"
     >
-      <template v-if="recordings.length" #append>
-        <div class="ms-auto flex items-center">
-          <SectionSearch
-            ref="searchField"
-            v-model="query"
-            :open="searchOpen"
-            :placeholder="$t('classical_filter_recordings_placeholder')"
-            @toggle="toggleSearch"
-            @close="closeSearch"
-          />
-          <ToolbarOverflowMenu
-            v-if="recordingsMenu.length"
-            :items="recordingsMenu"
-            :active="yearRangeActive"
-          />
-        </div>
-      </template>
-      <template v-if="recordings.length" #below-head>
-        <ListingSearchRow
-          ref="searchRow"
-          v-model="query"
-          :open="searchOpen"
-          :placeholder="$t('classical_filter_recordings_placeholder')"
-          @close="closeSearch"
-        />
+      <template #below-search>
         <PerformerFilterLine
           v-if="performerName"
           :performer="performerName"
@@ -74,7 +56,7 @@
         @menu-movement="onMenuMovement"
       />
       <ClassicalEmpty v-else :filtered="recordings.length > 0" />
-    </ClassicalSection>
+    </FilterableSection>
 
     <RelatedWorksSection :work="work" />
   </section>
@@ -82,9 +64,7 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
-import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import {
   ImageType,
@@ -101,12 +81,11 @@ import {
 import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
-import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
+import FilterableSection from "@/views/classical/components/FilterableSection.vue";
 import MovementGroupList from "@/views/classical/components/MovementGroupList.vue";
 import PerformerFilterLine from "@/views/classical/components/PerformerFilterLine.vue";
 import RecordingGroupList from "@/views/classical/components/RecordingGroupList.vue";
 import RelatedWorksSection from "@/views/classical/components/RelatedWorksSection.vue";
-import SectionSearch from "@/views/classical/components/SectionSearch.vue";
 import WorkHeroMeta from "@/views/classical/components/WorkHeroMeta.vue";
 import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";
@@ -145,10 +124,6 @@ useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
 const {
   query,
   searchOpen,
-  searchField,
-  searchRow,
-  toggleSearch,
-  closeSearch,
   yearRangeActive,
   recordingsMenu,
   performerName,

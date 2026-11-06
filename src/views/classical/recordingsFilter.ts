@@ -1,5 +1,4 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { useListingSearch } from "@/composables/useListingSearch";
 import { normalizeForFilter } from "@/helpers/text_filter";
 import type { Recording, Work } from "@/plugins/api/interfaces";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
@@ -34,13 +33,8 @@ export function useRecordingsFilter(
   const router = useRouter();
 
   const query = ref("");
-  const {
-    open: searchOpen,
-    field: searchField,
-    row: searchRow,
-    toggle: toggleSearch,
-    close: closeSearch,
-  } = useListingSearch(query);
+  // whether the search field shows
+  const searchOpen = ref(false);
   // the performer the page was opened for, whose recordings alone show
   const performerArtistId = ref<string | null>(null);
 
@@ -158,7 +152,8 @@ export function useRecordingsFilter(
     () => route.id,
     () => {
       clearYearRange();
-      closeSearch();
+      query.value = "";
+      searchOpen.value = false;
       performerArtistId.value = null;
       selectedMovements.value = [];
       restoreFilter();
@@ -185,10 +180,6 @@ export function useRecordingsFilter(
   return {
     query,
     searchOpen,
-    searchField,
-    searchRow,
-    toggleSearch,
-    closeSearch,
     yearRangeActive,
     recordingsMenu,
     performerName,

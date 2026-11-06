@@ -1195,10 +1195,6 @@ export interface Album extends MediaItem {
   year?: number | null;
   artists: Array<ItemMapping | Artist>;
   album_type: AlbumType;
-  // credits are only sent with the full album, never on listings
-  credits?: Credit[];
-  is_classical?: boolean;
-  classical_tag?: boolean;
 }
 
 export interface AudioMetadata {
@@ -1222,11 +1218,7 @@ export interface Track extends MediaItem {
   // credits are only sent with the full track, never on listings
   credits?: Credit[];
   work?: ItemMapping | null;
-  movement_number?: number | null;
-  movement_total?: number | null;
-  movement_name?: string | null;
   is_classical?: boolean;
-  classical_tag?: boolean;
 }
 
 export enum ArtistRole {
@@ -1280,8 +1272,6 @@ export enum Period {
 export interface Credit {
   artist: ItemMapping | Artist;
   role: ArtistRole;
-  // only meaningful for soloists and other performers
-  instrument: string | null;
   // the instrument as shown after the name, empty when nothing should show
   instrument_label?: string;
   // ordering within a role group
@@ -1387,17 +1377,9 @@ export interface Recording {
   duration: number;
   // the numbers of the movements it covers, sorted
   movement_numbers?: number[];
-  // whether it covers every movement; null unless the work's movements are
-  // MusicBrainz's
-  complete?: boolean | null;
-  // the movements of its part it holds, e.g. the arias of an act, when it
-  // holds only some; numbered in the part's own movement list
-  part_movements?: WorkMovement[];
-  // the next four are only filled when requested for a work's page
+  // the next three are only filled when requested for a work's page
   // the heading it shows under; null when it shows under none
   heading?: RecordingHeading | null;
-  // the number of the movement that is the part it is of, e.g. its act
-  part?: number | null;
   // what it holds; null for the whole work or when nothing is known
   coverage?: RecordingCoverage | null;
   // the movement numbers each track counts towards, by track uri
@@ -1419,8 +1401,6 @@ export interface ClassicalComposer {
   artist: Artist;
   // the artist's first fanart, which the summary metadata leaves out
   fanart?: MediaItemImage | null;
-  // ISO 3166-1 code of the country the composer is associated with, e.g. PL
-  country?: string | null;
   work_count: number;
   recording_count: number;
 }
@@ -1431,7 +1411,6 @@ export interface ClassicalPerformer {
   fanart?: MediaItemImage | null;
   // the performing role with the most credits
   main_role: ArtistRole;
-  roles: ArtistRole[];
   work_count: number;
   recording_count: number;
 }

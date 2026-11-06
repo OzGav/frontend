@@ -1,16 +1,17 @@
 <template>
   <div class="flex flex-col gap-4">
     <ClassicalArtistGrid
-      v-if="gridItems.length || loading"
       :items="gridItems"
       :view-mode="viewMode"
       :grid-size="gridSize"
       :min-card-width="220"
       :loading="loading"
       :placeholder-icon="Users"
+      :filtered="filtered"
+      :has-more="hasMore"
+      :loading-more="loadingMore"
+      @more="loadMore"
     />
-    <ClassicalEmpty v-else :filtered="filtered" />
-    <LoadMoreSentinel v-if="hasMore" :loading="loadingMore" @more="loadMore" />
   </div>
 </template>
 
@@ -24,8 +25,6 @@ import {
 import { getPerformerFilters, getPerformers } from "@/services/classical";
 import { useArtistGridItems } from "@/views/classical/artistGrid";
 import ClassicalArtistGrid from "@/views/classical/components/ClassicalArtistGrid.vue";
-import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
-import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import { roleLabel } from "@/helpers/classical_credits";
 import { recordingCountLabel } from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";

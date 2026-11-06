@@ -37,7 +37,6 @@ export function credit(
   return {
     artist: itemMapping({ item_id: id, name, media_type: MediaType.ARTIST }),
     role,
-    instrument,
     instrument_label: instrumentLabel,
     position: 0,
   };

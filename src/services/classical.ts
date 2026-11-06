@@ -22,6 +22,9 @@ import type {
   WorkType,
 } from "@/plugins/api/interfaces";
 
+/** The side of a classical artist a detail page shows. */
+export type ClassicalArtistRole = "composer" | "performer";
+
 /** The sort a classical list is fetched in; left out, the server default. */
 export interface ClassicalSort {
   sort_field?: SortField;
@@ -134,12 +137,16 @@ export function getComposerFilters(): Promise<ClassicalComposerFilters> {
   return api.sendCommand("music/classical/composer_filters");
 }
 
-/** The works of a composer. */
-export function getComposerWorks(
-  composerId: string,
+/**
+ * The works of a composer, or those a performer appears on with recording
+ * counts scoped to them.
+ */
+export function getArtistWorks(
+  role: ClassicalArtistRole,
+  artistId: string,
 ): Promise<ClassicalWorkEntry[]> {
   return api.sendCommand("music/classical/works", {
-    composer_id: composerId,
+    [`${role}_id`]: artistId,
     limit: 0,
   });
 }
@@ -187,18 +194,6 @@ export function getPerformers(
 /** The values the performers list can be filtered on. */
 export function getPerformerFilters(): Promise<ClassicalPerformerFilters> {
   return api.sendCommand("music/classical/performer_filters");
-}
-
-/**
- * The works a performer appears on, with recording counts scoped to them.
- */
-export function getPerformerWorks(
-  performerId: string,
-): Promise<ClassicalWorkEntry[]> {
-  return api.sendCommand("music/classical/works", {
-    performer_id: performerId,
-    limit: 0,
-  });
 }
 
 /**

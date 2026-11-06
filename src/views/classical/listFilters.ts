@@ -10,7 +10,11 @@ import {
   type ClassicalComposerFilters,
   type ClassicalWorkFilters,
 } from "@/plugins/api/interfaces";
-import { countryLabel, periodLabel } from "@/views/classical/labels";
+import {
+  countryLabel,
+  periodLabel,
+  workTypeKey,
+} from "@/views/classical/labels";
 import { useClassicalPreferences } from "@/views/classical/preferences";
 import { $t } from "@/plugins/i18n";
 import { Shapes } from "@lucide/vue";
@@ -108,19 +112,13 @@ export function usePeriodFilter(itemtype: string, periods: () => Period[]) {
 /** The choice for works without a type in the work type filter. */
 export const UNKNOWN_WORK_TYPE = "unknown";
 
-/** Translation key of a work type filter choice. */
-export const workTypeChoiceLabel = (type: string) =>
-  `classical_work_type.${type}`;
-
 /**
  * Every work type filter choice, by name with Other and Unknown last.
  */
 export function workTypeChoices(): string[] {
   const byName = Object.values(WorkType)
     .filter((type) => type !== WorkType.OTHER)
-    .sort((a, b) =>
-      $t(workTypeChoiceLabel(a)).localeCompare($t(workTypeChoiceLabel(b))),
-    );
+    .sort((a, b) => $t(workTypeKey(a)).localeCompare($t(workTypeKey(b))));
   return [...byName, WorkType.OTHER, UNKNOWN_WORK_TYPE];
 }
 
@@ -145,7 +143,7 @@ export function useWorkTypeFilter(
     placeholder: "classical_filter_any_type",
     layout: "dropdown",
     values: workTypeChoices(),
-    valueLabel: (type) => $t(workTypeChoiceLabel(type)),
+    valueLabel: (type) => $t(workTypeKey(type)),
     present: () =>
       withUnknown(
         choices()?.work_types ?? [],
@@ -185,7 +183,7 @@ export function worksMenuItems(
       active: chosen.value.length > 0,
       closeOnContentClick: false,
       subItems: offered.map((type) => ({
-        label: workTypeChoiceLabel(type),
+        label: workTypeKey(type),
         selected: chosen.value.includes(type),
         action: () => {
           chosen.value = toggledValue(chosen.value, type);

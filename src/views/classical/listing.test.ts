@@ -177,7 +177,7 @@ describe("useClassicalListing", () => {
     await vi.advanceTimersByTimeAsync(CLASSICAL_TYPING_DEBOUNCE_MS);
     expect(listing.filtered.value).toBe(true);
 
-    menu.value?.search?.close();
+    menu.value?.search?.setText("");
     await vi.advanceTimersByTimeAsync(CLASSICAL_TYPING_DEBOUNCE_MS);
     expect(listing.filtered.value).toBe(false);
 

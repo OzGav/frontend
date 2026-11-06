@@ -1,5 +1,6 @@
 import { ArtistRole, Period, SortField } from "@/plugins/api/interfaces";
 import {
+  getArtistWorks,
   getComposerFilters,
   getComposers,
   getPerformerFilters,
@@ -81,5 +82,18 @@ describe("classical filter choices", () => {
   ])("fetches the choices with %s", async (command, get) => {
     await get();
     expect(apiMock.sendCommand).toHaveBeenCalledWith(command);
+  });
+});
+
+describe("an artist's works", () => {
+  it.each([
+    ["composer", "composer_id"],
+    ["performer", "performer_id"],
+  ] as const)("fetches every work of a %s", async (role, field) => {
+    await getArtistWorks(role, "7");
+    expect(apiMock.sendCommand).toHaveBeenCalledWith("music/classical/works", {
+      [field]: "7",
+      limit: 0,
+    });
   });
 });

@@ -1,12 +1,12 @@
 <template>
   <section>
-    <ClassicalHero :item="artistItem" section="composers" show-favorite>
+    <ClassicalHero :item="artist" section="composers" show-favorite>
       <template v-if="heroMeta" #meta>{{ heroMeta }}</template>
     </ClassicalHero>
     <DetailTextRow
-      v-if="artistItem?.metadata.description"
-      :text="artistItem.metadata.description"
-      :dialog-title="artistItem.name"
+      v-if="artist?.metadata.description"
+      :text="artist.metadata.description"
+      :dialog-title="artist.name"
       markdown
     />
     <WorksSection
@@ -18,26 +18,26 @@
     >
       <ClassicalPlayRow
         v-for="w in filtered"
-        :key="w.item_id"
+        :key="w.work.item_id"
         tag="li"
         class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
-        :label="`${$t('play')} ${w.name}`"
-        @click="navigateOnRowClick($event, router, workLink(w.item_id))"
+        :label="`${$t('play')} ${w.work.name}`"
+        @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
         @play="(e: Event) => playWork(w.work, e)"
       >
         <!-- the details on their own line, under the title; title and details
              keep a shared baseline, centred against the play slot -->
         <span class="flex min-w-0 flex-1 flex-col">
           <router-link
-            :to="workLink(w.item_id)"
+            :to="workLink(w.work.item_id)"
             class="font-semibold text-inherit no-underline"
           >
-            {{ w.name }}
+            {{ w.work.name }}
           </router-link>
           <span
-            v-if="w.version"
+            v-if="w.work.version"
             class="text-[0.875rem] text-muted-foreground"
-            >{{ w.version }}</span
+            >{{ w.work.version }}</span
           >
           <span class="text-[0.875rem] text-muted-foreground">
             {{ workDetails(w) }}
@@ -52,12 +52,9 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import type { Artist, Work, WorkType } from "@/plugins/api/interfaces";
-import { getClassicalArtist, getComposerWorks } from "@/services/classical";
-import { normalizeForFilter } from "@/helpers/text_filter";
-import { navigateOnRowClick } from "@/views/classical/rowClick";
-import { useBackScroll } from "@/views/classical/backScroll";
+import type { ClassicalWorkEntry } from "@/plugins/api/interfaces";
+import { $t } from "@/plugins/i18n";
+import { useClassicalArtistPage } from "@/views/classical/artistPage";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
@@ -67,10 +64,11 @@ import {
   lifeYearsLabel,
   periodLabel,
   recordingCountLabel,
-  workTypeLabel,
+  workTypeKey,
 } from "@/views/classical/labels";
 import { playWork } from "@/views/classical/playback";
-import { computed, ref, watch } from "vue";
+import { navigateOnRowClick } from "@/views/classical/rowClick";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ComposerDetail" });
@@ -79,89 +77,34 @@ const props = defineProps<{ id: string }>();
 
 const router = useRouter();
 
-// Flattened to the fields the rows show and filter on.
-interface WorkRow {
-  // what the play button plays
-  work: Work;
-  item_id: string;
-  name: string;
-  // tells apart works sharing a title, e.g. 1888 version
-  version: string;
-  catalog_number: string;
-  work_type?: WorkType | null;
-  recording_count: number;
-  // title, catalog numbers and part names, folded for the works filter
-  haystack: string;
-}
-
-const artistItem = ref<Artist | undefined>();
-
-useDetailItemUpdates(artistItem);
+// the server lists a composer's works in catalogue order
+const { artist, works, loading } = useClassicalArtistPage(
+  () => props.id,
+  "composer",
+);
 
 // e.g. Romantic · 1810–1849 · Poland
 const heroMeta = computed(() =>
   [
-    artistItem.value?.period ? periodLabel(artistItem.value.period) : "",
-    lifeYearsLabel(artistItem.value?.metadata.life_span),
-    artistItem.value?.metadata.country
-      ? countryLabel(artistItem.value.metadata.country)
+    artist.value?.period ? periodLabel(artist.value.period) : "",
+    lifeYearsLabel(artist.value?.metadata.life_span),
+    artist.value?.metadata.country
+      ? countryLabel(artist.value.metadata.country)
       : "",
   ]
     .filter(Boolean)
     .join(" · "),
 );
 
-const works = ref<WorkRow[]>([]);
-const loading = ref(true);
-useBackScroll(() => loading.value);
 const workLink = (workId: string) => `/classical/works/${workId}`;
 
 // e.g. op. 27 no. 2 · Sonata · 3 recordings
-const workDetails = (w: WorkRow) =>
+const workDetails = ({ work, recording_count }: ClassicalWorkEntry) =>
   [
-    w.catalog_number,
-    w.work_type && workTypeLabel(w.work_type),
-    recordingCountLabel(w.recording_count),
+    work.catalog_numbers[0],
+    work.work_type && $t(workTypeKey(work.work_type)),
+    recordingCountLabel(recording_count),
   ]
     .filter(Boolean)
     .join(" · ");
-
-const load = async (id: string) => {
-  // the previous composer must not stay actionable under the new route
-  artistItem.value = undefined;
-  works.value = [];
-  loading.value = true;
-  try {
-    const [artist, list] = await Promise.all([
-      getClassicalArtist(id),
-      getComposerWorks(id),
-    ]);
-    // a newer load has taken over the page
-    if (id !== props.id) return;
-    // the server lists a composer's works in catalogue order
-    works.value = list.map(({ work, recording_count, part_names }) => ({
-      work,
-      item_id: work.item_id,
-      name: work.name,
-      version: work.version,
-      catalog_number: work.catalog_numbers[0] ?? "",
-      work_type: work.work_type,
-      recording_count,
-      haystack: normalizeForFilter(
-        [work.name, ...work.catalog_numbers, ...(part_names ?? [])].join(" "),
-      ),
-    }));
-    artistItem.value = artist;
-  } catch {
-    // an unknown id leaves the page on its placeholder, as the artist page does
-    return;
-  }
-  loading.value = false;
-};
-
-watch(
-  () => props.id,
-  (id) => load(id),
-  { immediate: true },
-);
 </script>

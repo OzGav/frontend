@@ -18,7 +18,6 @@ vi.mock("@/helpers/utils", () => ({
 const performer = (id: string, name: string): ClassicalPerformer => ({
   artist: artist({ item_id: id, name }),
   main_role: ArtistRole.CONDUCTOR,
-  roles: [ArtistRole.CONDUCTOR],
   work_count: 1,
   recording_count: 2,
 });

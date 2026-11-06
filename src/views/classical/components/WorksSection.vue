@@ -1,34 +1,14 @@
 <template>
-  <ClassicalSection
+  <FilterableSection
+    v-model="worksFilter"
+    v-model:open="searchOpen"
     :title="title"
     :meta="works.length ? workCountLabel(filtered.length) : undefined"
+    :searchable="works.length > 0"
+    :placeholder="$t('classical_filter_works_placeholder')"
+    :menu="worksMenu"
+    :menu-active="worksMenuActive"
   >
-    <template v-if="works.length" #append>
-      <div class="ms-auto flex items-center">
-        <SectionSearch
-          ref="searchField"
-          v-model="worksFilter"
-          :open="searchOpen"
-          :placeholder="$t('classical_filter_works_placeholder')"
-          @toggle="toggleSearch"
-          @close="closeSearch"
-        />
-        <ToolbarOverflowMenu
-          v-if="worksMenu.length"
-          :items="worksMenu"
-          :active="worksMenuActive"
-        />
-      </div>
-    </template>
-    <template v-if="works.length" #below-head>
-      <ListingSearchRow
-        ref="searchRow"
-        v-model="worksFilter"
-        :open="searchOpen"
-        :placeholder="$t('classical_filter_works_placeholder')"
-        @close="closeSearch"
-      />
-    </template>
     <div v-if="loading">
       <ListViewSkeleton v-for="n in 4" :key="n" />
     </div>
@@ -36,24 +16,16 @@
       <slot :filtered="filtered"></slot>
     </ul>
     <ClassicalEmpty v-else :filtered="works.length > 0" />
-  </ClassicalSection>
+  </FilterableSection>
 </template>
 
-<script
-  setup
-  lang="ts"
-  generic="T extends { haystack: string; work_type?: WorkType | null }"
->
-import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
+<script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
-import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
-import { useListingSearch } from "@/composables/useListingSearch";
 import { normalizeForFilter } from "@/helpers/text_filter";
-import type { WorkType } from "@/plugins/api/interfaces";
+import type { ClassicalWorkEntry } from "@/plugins/api/interfaces";
 import { useBackFilter } from "@/views/classical/backFilter";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
-import ClassicalSection from "@/views/classical/components/ClassicalSection.vue";
-import SectionSearch from "@/views/classical/components/SectionSearch.vue";
+import FilterableSection from "@/views/classical/components/FilterableSection.vue";
 import { workCountLabel } from "@/views/classical/labels";
 import {
   UNKNOWN_WORK_TYPE,
@@ -65,8 +37,7 @@ defineOptions({ name: "WorksSection" });
 
 const props = defineProps<{
   title: string;
-  // each with its haystack, the text the search matches, folded
-  works: T[];
+  works: ClassicalWorkEntry[];
   loading: boolean;
   // the artist whose works these are; another one starts unfiltered
   artistId: string;
@@ -74,17 +45,11 @@ const props = defineProps<{
 
 defineSlots<{
   // the rows of the works the search and type filter keep
-  default(props: { filtered: T[] }): unknown;
+  default(props: { filtered: ClassicalWorkEntry[] }): unknown;
 }>();
 
 const worksFilter = ref("");
-const {
-  open: searchOpen,
-  field: searchField,
-  row: searchRow,
-  toggle: toggleSearch,
-  close: closeSearch,
-} = useListingSearch(worksFilter);
+const searchOpen = ref(false);
 const typeFilter = ref<string[]>([]);
 const restoreWorksFilter = useBackFilter(
   () => ({ text: worksFilter.value, types: typeFilter.value }),
@@ -94,26 +59,48 @@ const restoreWorksFilter = useBackFilter(
   },
 );
 
-const workTypes = computed(() =>
-  props.works.map((w) => w.work_type ?? UNKNOWN_WORK_TYPE),
+const workType = (entry: ClassicalWorkEntry) =>
+  entry.work.work_type ?? UNKNOWN_WORK_TYPE;
+
+const worksMenu = computed(() =>
+  worksMenuItems(props.works.map(workType), typeFilter),
 );
-const worksMenu = computed(() => worksMenuItems(workTypes.value, typeFilter));
 const worksMenuActive = computed(() => worksMenu.value.some((i) => i.active));
+
+// Title, catalog numbers, composers, part names and co-performers of each
+// work, folded once per load rather than per keystroke.
+const searchable = computed(() =>
+  props.works.map((entry) => ({
+    entry,
+    haystack: normalizeForFilter(
+      [
+        entry.work.name,
+        ...entry.work.catalog_numbers,
+        ...entry.work.composers.map((c) => c.name),
+        ...(entry.part_names ?? []),
+        ...(entry.co_performers ?? []),
+      ].join(" "),
+    ),
+  })),
+);
 
 const filtered = computed(() => {
   const q = normalizeForFilter(worksFilter.value.trim());
-  return props.works.filter(
-    (w) =>
-      (!q || w.haystack.includes(q)) &&
-      (!typeFilter.value.length ||
-        typeFilter.value.includes(w.work_type ?? UNKNOWN_WORK_TYPE)),
-  );
+  return searchable.value
+    .filter(
+      ({ entry, haystack }) =>
+        (!q || haystack.includes(q)) &&
+        (!typeFilter.value.length ||
+          typeFilter.value.includes(workType(entry))),
+    )
+    .map(({ entry }) => entry);
 });
 
 watch(
   () => props.artistId,
   () => {
-    closeSearch();
+    worksFilter.value = "";
+    searchOpen.value = false;
     typeFilter.value = [];
     restoreWorksFilter();
   },

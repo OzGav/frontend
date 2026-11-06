@@ -16,9 +16,9 @@ export interface ListingSearchOptions {
 }
 
 /**
- * The search of a listing, opened from its title bar: a ListingSearch (or
- * SectionSearch) in the title bar and a ListingSearchRow under it, used on a
- * phone or when the title bar is narrow. Escape closes an open search before
+ * The search of a listing, opened from its title bar or section heading: a
+ * ListingSearch there and a ListingSearchRow under it, used on a phone or
+ * when the title bar is narrow. Escape closes an open search before
  * the page's back navigation sees it.
  *
  * :param text: The search text; setting it, e.g. when the page restores a

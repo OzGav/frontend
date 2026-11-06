@@ -1,21 +1,21 @@
 <template>
   <section>
-    <ClassicalHero :item="artistItem" section="performers" show-favorite />
+    <ClassicalHero :item="artist" section="performers" show-favorite />
     <DetailTextRow
-      v-if="artistItem?.metadata.description"
-      :text="artistItem.metadata.description"
-      :dialog-title="artistItem.name"
+      v-if="artist?.metadata.description"
+      :text="artist.metadata.description"
+      :dialog-title="artist.name"
       markdown
     />
     <WorksSection
       v-slot="{ filtered }"
       :title="$t('works_performed')"
-      :works="searchableWorks"
+      :works="works"
       :loading="loading"
       :artist-id="id"
     >
       <ClassicalPlayRow
-        v-for="{ entry: w } in filtered"
+        v-for="w in filtered"
         :key="w.work.item_id"
         tag="li"
         class="flex cursor-pointer items-center gap-[0.5rem] py-[0.5rem]"
@@ -80,23 +80,19 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
-import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
-import { normalizeForFilter } from "@/helpers/text_filter";
 import { subscribeOwnFavorites } from "@/helpers/favorites";
 import {
   MediaType,
-  type Artist,
   type ClassicalWorkEntry,
   type Recording,
 } from "@/plugins/api/interfaces";
 import {
-  getClassicalArtist,
+  getArtistWorks,
   getPerformerWorkRecordings,
-  getPerformerWorks,
 } from "@/services/classical";
+import { useClassicalArtistPage } from "@/views/classical/artistPage";
 import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
-import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
@@ -107,7 +103,7 @@ import { playRecording } from "@/views/classical/playback";
 import { openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
 import { useDebounceFn } from "@vueuse/core";
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformerDetail" });
@@ -122,19 +118,16 @@ const CO_PERFORMERS_SHOWN = 3;
 // works' hearts are read again
 const LIKES_SETTLE_MS = 1000;
 
-const artistItem = ref<Artist | undefined>();
-
-useDetailItemUpdates(artistItem);
-
-const works = ref<ClassicalWorkEntry[]>([]);
-const loading = ref(true);
-useBackScroll(() => loading.value);
+const { artist, works, loading } = useClassicalArtistPage(
+  () => props.id,
+  "performer",
+);
 
 // A like or unlike of a track may change a work's heart, so the hearts are
 // read again once the user's changes settle.
 const refreshLikes = useDebounceFn(async () => {
   const id = props.id;
-  const entries = await getPerformerWorks(id).catch(() => undefined);
+  const entries = await getArtistWorks("performer", id).catch(() => undefined);
   if (entries && id === props.id) works.value = entries;
 }, LIKES_SETTLE_MS);
 onBeforeUnmount(
@@ -152,24 +145,6 @@ const coPerformersLabel = (names: string[]) =>
         count: names.length - CO_PERFORMERS_SHOWN,
       })
     : $t("classical_with_performers", { names: names.join(", ") });
-
-// Title, catalog numbers, composer, part names and co-performers of each work,
-// folded for the filter.
-const searchableWorks = computed(() =>
-  works.value.map((entry) => ({
-    entry,
-    work_type: entry.work.work_type,
-    haystack: normalizeForFilter(
-      [
-        entry.work.name,
-        ...entry.work.catalog_numbers,
-        ...entry.work.composers.map((c) => c.name),
-        ...(entry.part_names ?? []),
-        ...(entry.co_performers ?? []),
-      ].join(" "),
-    ),
-  })),
-);
 
 // Open the Work detail page with this performer pre-applied as the
 // contextual filter so the recordings list defaults to ones they appear on.
@@ -213,31 +188,4 @@ const onMenuWork = async (w: ClassicalWorkEntry, evt: Event) => {
     evt,
   );
 };
-
-const load = async (id: string) => {
-  // the previous performer must not stay actionable under the new route
-  artistItem.value = undefined;
-  works.value = [];
-  loading.value = true;
-  try {
-    const [artist, entries] = await Promise.all([
-      getClassicalArtist(id),
-      getPerformerWorks(id),
-    ]);
-    // a newer load has taken over the page
-    if (id !== props.id) return;
-    works.value = entries;
-    artistItem.value = artist;
-  } catch {
-    // an unknown id leaves the page on its placeholder, as the artist page does
-    return;
-  }
-  loading.value = false;
-};
-
-watch(
-  () => props.id,
-  (id) => load(id),
-  { immediate: true },
-);
 </script>

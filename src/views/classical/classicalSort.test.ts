@@ -16,7 +16,7 @@ const { getSortOptions, prefsMock, toastError } = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
-vi.mock("@/plugins/api", () => ({ default: { getSortOptions } }));
+vi.mock("@/plugins/api", () => ({ api: { getSortOptions } }));
 vi.mock("@/plugins/i18n", () => ({ $t: (key: string) => key }));
 vi.mock("vue-sonner", () => ({ toast: { error: toastError } }));
 vi.mock("@/views/classical/preferences", () => ({

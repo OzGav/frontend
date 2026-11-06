@@ -411,6 +411,7 @@ import {
 } from "@/composables/useListingFilters";
 import { useListingCount } from "@/composables/useListingCount";
 import { useListingSaves } from "@/composables/useListingSaves";
+import { useListingSearch } from "@/composables/useListingSearch";
 import { canSavePlaylistMoves } from "@/composables/usePlaylistTrackReorder";
 import { useTrackReorderRows } from "@/composables/useTrackReorderRows";
 import type {
@@ -759,10 +760,21 @@ const supportsGridActions = computed(() =>
     props.itemtype,
   ),
 );
-const showSearch = ref(false);
+const searchText = computed({
+  get: () => params.value.search,
+  set: (value: string) => {
+    params.value.search = value;
+  },
+});
+const {
+  open: showSearch,
+  field: searchInputRef,
+  row: searchRowRef,
+  focus: focusSearch,
+  toggle: toggleSearch,
+  close: closeSearch,
+} = useListingSearch(searchText, { shown: () => showSearchInput.value });
 const searchHasFocus = ref(false);
-const searchInputRef = ref<InstanceType<typeof ListingSearch>>();
-const searchRowRef = ref<InstanceType<typeof ListingSearchRow>>();
 const listingMediaType = computed(() => MEDIA_TYPE_BY_ITEMTYPE[props.itemtype]);
 const searchLabel = computed(() => {
   const mediaType = listingMediaType.value;
@@ -866,24 +878,6 @@ const applyQueryGenreFilter = function () {
   params.value.genreIds = nextGenreIds;
   return changed;
 };
-const closeSearch = function () {
-  params.value.search = "";
-  showSearch.value = false;
-};
-const focusSearch = function () {
-  nextTick(() => {
-    (store.mobileLayout ? searchRowRef : searchInputRef).value?.focus();
-  });
-};
-const toggleSearch = function () {
-  if (showSearch.value) {
-    closeSearch();
-  } else {
-    showSearch.value = true;
-    focusSearch();
-  }
-};
-
 const toggleExpand = function () {
   // If a custom title click handler is provided, use it
   if (props.onTitleClick) {
@@ -2125,13 +2119,6 @@ const restoreSettings = async function () {
 // lifecycle hooks
 const keyListener = function (e: KeyboardEvent) {
   if (store.dialogActive || store.showPlayersMenu) return;
-  if (e.key === "Escape") {
-    if (showSearchInput.value) {
-      e.preventDefault();
-      closeSearch();
-    }
-    return;
-  }
   if (!props.allowKeyHooks || loading.value) return;
   // Let searchInput handle this.
   if (searchHasFocus.value) return;
@@ -2166,8 +2153,6 @@ const keyListener = function (e: KeyboardEvent) {
   }
 };
 
-// Always listen: an open search claims Escape before the window-level
-// back navigation (useEscapeBack) sees it, even without key hooks
 document.addEventListener("keydown", keyListener);
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", keyListener);
@@ -2202,7 +2187,6 @@ if (props.restoreState) {
 watch(
   () => params.value.search,
   (newVal) => {
-    if (newVal) showSearch.value = true;
     loadData(undefined, undefined, true);
     if (props.restoreState) {
       setItemsListingPreference(

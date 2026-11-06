@@ -44,7 +44,7 @@
             :narrow="compactControls"
             @update:model-value="search.setText"
             @toggle="toggleSearch"
-            @close="search.close"
+            @close="closeSearch"
           />
           <ListingToolbarControls
             :sort-options="menu.sort.options"
@@ -70,7 +70,7 @@
       :placeholder="search.placeholder"
       :narrow="compactControls"
       @update:model-value="search.setText"
-      @close="search.close"
+      @close="closeSearch"
     />
     <Separator v-if="!fullBleedContent" />
     <div
@@ -90,6 +90,7 @@ import ListingToolbarControls from "@/components/listing-toolbar/ListingToolbarC
 import Toolbar from "@/components/Toolbar.vue";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useListingSearch } from "@/composables/useListingSearch";
 import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";
 import {
@@ -129,21 +130,25 @@ const activeFilters = computed(() =>
   activeFilterCount(menu.value?.filters ?? []),
 );
 
-const searchField = useTemplateRef("searchField");
-const searchRow = useTemplateRef("searchRow");
-
-// opening the field from its icon puts the cursor in it
-const toggleSearch = () => {
-  const opening = !search.value?.open;
-  search.value?.toggle();
-  if (!opening) return;
-  nextTick(() =>
-    (store.mobileLayout || compactControls.value
-      ? searchRow
-      : searchField
-    ).value?.focus(),
-  );
-};
+// the open tab keeps its search text and whether the search is open
+const {
+  field: searchField,
+  row: searchRow,
+  toggle: toggleSearch,
+  close: closeSearch,
+} = useListingSearch(
+  computed({
+    get: () => search.value?.text ?? "",
+    set: (text: string) => search.value?.setText(text),
+  }),
+  {
+    open: computed({
+      get: () => search.value?.open ?? false,
+      set: (open: boolean) => search.value?.setOpen(open),
+    }),
+    narrow: () => compactControls.value,
+  },
+);
 
 const activeTab = computed<ClassicalTab>(() => {
   const segment = route.path.split("/")[2];

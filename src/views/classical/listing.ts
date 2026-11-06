@@ -60,10 +60,7 @@ interface ClassicalMenuSearch {
   placeholder: string;
   open: boolean;
   setText: (text?: string) => void;
-  // opens the box, or closes it as close does
-  toggle: () => void;
-  // clears the filter as it closes it
-  close: () => void;
+  setOpen: (open: boolean) => void;
 }
 
 export const CLASSICAL_MENU_KEY: InjectionKey<Ref<ClassicalMenu | undefined>> =
@@ -191,19 +188,6 @@ export function useClassicalListing<T, Q extends object = object>(
   // a kept filter opens with the tab, so it shows what narrows the list
   const searchOpen = ref(!!search.value);
 
-  const toggleSearch = () => {
-    if (searchOpen.value) {
-      closeSearch();
-      return;
-    }
-    searchOpen.value = true;
-  };
-
-  const closeSearch = () => {
-    search.value = "";
-    searchOpen.value = false;
-  };
-
   const setViewMode = (mode: string) => {
     if (!isViewMode(mode)) return;
     viewMode.value = mode;
@@ -277,8 +261,9 @@ export function useClassicalListing<T, Q extends object = object>(
       setText: (text = "") => {
         search.value = text;
       },
-      toggle: toggleSearch,
-      close: closeSearch,
+      setOpen: (open) => {
+        searchOpen.value = open;
+      },
     },
     sort: {
       options: sort.options.value,

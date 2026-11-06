@@ -47,6 +47,7 @@
 import ListingSearchRow from "@/components/listing-toolbar/ListingSearchRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import ToolbarOverflowMenu from "@/components/ToolbarOverflowMenu.vue";
+import { useListingSearch } from "@/composables/useListingSearch";
 import { normalizeForFilter } from "@/helpers/text_filter";
 import type { WorkType } from "@/plugins/api/interfaces";
 import { useBackFilter } from "@/views/classical/backFilter";
@@ -58,7 +59,6 @@ import {
   UNKNOWN_WORK_TYPE,
   worksMenuItems,
 } from "@/views/classical/listFilters";
-import { useSectionSearch } from "@/views/classical/sectionSearch";
 import { computed, ref, watch } from "vue";
 
 defineOptions({ name: "WorksSection" });
@@ -84,7 +84,7 @@ const {
   row: searchRow,
   toggle: toggleSearch,
   close: closeSearch,
-} = useSectionSearch(worksFilter);
+} = useListingSearch(worksFilter);
 const typeFilter = ref<string[]>([]);
 const restoreWorksFilter = useBackFilter(
   () => ({ text: worksFilter.value, types: typeFilter.value }),

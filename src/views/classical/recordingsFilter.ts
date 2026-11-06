@@ -1,9 +1,9 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import { useListingSearch } from "@/composables/useListingSearch";
 import { normalizeForFilter } from "@/helpers/text_filter";
 import type { Recording, Work } from "@/plugins/api/interfaces";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useBackFilter } from "@/views/classical/backFilter";
-import { useSectionSearch } from "@/views/classical/sectionSearch";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
 import { CalendarRange } from "@lucide/vue";
 import { computed, markRaw, ref, watch, type Ref } from "vue";
@@ -40,7 +40,7 @@ export function useRecordingsFilter(
     row: searchRow,
     toggle: toggleSearch,
     close: closeSearch,
-  } = useSectionSearch(query);
+  } = useListingSearch(query);
   // the performer the page was opened for, whose recordings alone show
   const performerArtistId = ref<string | null>(null);
 

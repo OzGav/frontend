@@ -1,15 +1,13 @@
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import api from "@/plugins/api";
+import { loadSortOptions } from "@/helpers/sort_options";
 import type {
   ListingType,
   SortField,
   SortOptionInfo,
 } from "@/plugins/api/interfaces";
-import { $t } from "@/plugins/i18n";
 import type { ClassicalSort } from "@/services/classical";
 import { useClassicalPreferences } from "@/views/classical/preferences";
 import { computed, ref } from "vue";
-import { toast } from "vue-sonner";
 
 /** The classical lists the server offers sort choices for. */
 type ClassicalListingType =
@@ -45,17 +43,11 @@ export function useClassicalSort(options: ClassicalSortOptions) {
   const sorting = useLibrarySorting(sortOptions, sortBy);
 
   // Without the choices the list still loads, in the server's default order.
-  const ready = api
-    .getSortOptions(options.listing)
-    .then((list) => {
-      sortOptions.value = list;
-      sortBy.value = sorting.normalizeSortBy(sortBy.value);
-    })
-    .catch(() => {
-      toast.error($t("settings.error_loading_sort_options"), {
-        id: "library-sort-options-error",
-      });
-    });
+  const ready = loadSortOptions(options.listing).then((list) => {
+    if (!list) return;
+    sortOptions.value = list;
+    sortBy.value = sorting.normalizeSortBy(sortBy.value);
+  });
 
   const { selectedOption } = sorting;
 

@@ -429,6 +429,7 @@ import {
 } from "@/helpers/favorites";
 import { handleMenuBtnClick } from "@/helpers/media_item_actions";
 import { selectionRange } from "@/helpers/selection_range";
+import { loadSortOptions } from "@/helpers/sort_options";
 import { listsPlaylistFromStart } from "@/helpers/playlist_reorder";
 import {
   GRID_SIZE_DEFAULT,
@@ -2363,13 +2364,8 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   if (props.sortListing) {
-    try {
-      serverSortOptions.value = await api.getSortOptions(props.sortListing);
-    } catch {
-      toast.error(t("settings.error_loading_sort_options"), {
-        id: "library-sort-options-error",
-      });
-    }
+    const options = await loadSortOptions(props.sortListing);
+    if (options) serverSortOptions.value = options;
     sortOptionsLoaded.value = true;
     if (isDisposed()) return;
     restoreSettings();

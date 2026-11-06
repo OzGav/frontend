@@ -52,6 +52,7 @@
             :view-mode="menu.sort.viewMode ?? ''"
             :show-view-modes="!!menu.sort.viewMode"
             :views="CLASSICAL_VIEWS"
+            :grid-controls="menu.sort.gridControls"
             :filters="menu.filters"
             :active-filter-count="activeFilters"
             :compact="store.mobileLayout || compactControls"

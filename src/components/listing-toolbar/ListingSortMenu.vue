@@ -71,7 +71,7 @@
           @update:model-value="(value) => emit('view-mode', value)"
         />
         <GridSizeSlider
-          v-if="gridControls && viewMode === 'panel'"
+          v-if="gridControls && viewMode !== 'list'"
           v-bind="gridControls"
         />
       </template>
@@ -115,7 +115,7 @@ const props = withDefaults(
     // off where the page picks the view itself
     viewMode?: string;
     views?: readonly ListingViewOption[];
-    // the cover size and action buttons, shown under the panel view
+    // the cover size and action buttons, shown under a grid view
     gridControls?: GridSizeControls;
     // a phone has room for the icon only
     compact: boolean;

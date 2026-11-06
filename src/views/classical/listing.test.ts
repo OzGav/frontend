@@ -22,7 +22,6 @@ const { backMock, prefsMock, sortMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/plugins/i18n", () => ({ $t: (key: string) => key }));
-vi.mock("@/components/GridSizeSlider.vue", () => ({ default: {} }));
 vi.mock("@/views/classical/preferences", () => ({
   useClassicalPreferences: () => prefsMock,
 }));

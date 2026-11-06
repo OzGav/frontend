@@ -1,7 +1,6 @@
-import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { normalizeGridSize } from "@/helpers/grid_size";
+import { normalizeGridSize, type GridSizeControls } from "@/helpers/grid_size";
 import {
   activeFilterCount,
   type ListingFilter,
@@ -16,14 +15,14 @@ import {
 } from "@/views/classical/classicalSort";
 import { CLASSICAL_PAGE_SIZE, usePagedList } from "@/views/classical/paging";
 import { useClassicalPreferences } from "@/views/classical/preferences";
-import { Grid3x3, Heart, LayoutGrid, LayoutList, RefreshCw } from "@lucide/vue";
+import { Heart, LayoutGrid, LayoutList, RefreshCw } from "@lucide/vue";
 import { refDebounced } from "@vueuse/core";
 import {
   computed,
   inject,
-  markRaw,
   onMounted,
   onUnmounted,
+  reactive,
   ref,
   toRaw,
   watch,
@@ -52,6 +51,8 @@ interface ClassicalMenuSort {
   // left out where the page has a single view
   viewMode?: ClassicalViewMode;
   setViewMode: (mode: string) => void;
+  // the cover size, left out where the page has no grid
+  gridControls?: GridSizeControls;
 }
 
 /** A page's text filter, for the Classical view to show in its toolbar. */
@@ -194,28 +195,17 @@ export function useClassicalListing<T, Q extends object = object>(
     save("viewMode", mode);
   };
 
-  const gridSizeItem = (): ToolBarMenuItem => ({
-    label: "grid_size",
-    icon: Grid3x3,
-    overflowAllowed: true,
-    subItems: [
-      {
-        label: "grid_size",
-        // markRaw, as the menu items land in a reactive array; a bare component
-        // definition there would be needlessly made reactive.
-        component: markRaw(GridSizeSlider),
-        componentProps: {
-          size: gridSize.value,
-          onChange: (size: number) => {
-            gridSize.value = size;
-          },
-          onCommit: (size: number) => {
-            gridSize.value = size;
-            save("gridSize", size);
-          },
-        },
-      },
-    ],
+  // the cards have no action buttons, so the slider offers the cover size alone
+  const gridControls = reactive({
+    size: gridSize,
+    supportsActions: false,
+    onChange: (size: number) => {
+      gridSize.value = size;
+    },
+    onCommit: (size: number) => {
+      gridSize.value = size;
+      save("gridSize", size);
+    },
   });
 
   const filters = computed<ListingFilter[]>(() => {
@@ -239,18 +229,15 @@ export function useClassicalListing<T, Q extends object = object>(
     return list;
   });
 
-  const items = computed<ToolBarMenuItem[]>(() => {
-    const list: ToolBarMenuItem[] = [];
-    list.push({
+  const items = computed<ToolBarMenuItem[]>(() => [
+    {
       label: "tooltip.refresh",
       icon: RefreshCw,
       disabled: loading.value,
       overflowAllowed: true,
       action: () => refresh(),
-    });
-    if (options.views && viewMode.value !== "list") list.push(gridSizeItem());
-    return list;
-  });
+    },
+  ]);
 
   useClassicalMenu(() => ({
     items: items.value,
@@ -271,6 +258,7 @@ export function useClassicalListing<T, Q extends object = object>(
       setSort: sort.setSort,
       viewMode: options.views ? viewMode.value : undefined,
       setViewMode,
+      gridControls: options.views ? gridControls : undefined,
     },
     filters: filters.value,
     clearFilters: () => filters.value.forEach(clearFilter),

@@ -122,9 +122,9 @@ const props = withDefaults(
     viewMode: string;
     // the views to pick from, when not the library's own
     views?: readonly ListingViewOption[];
-    // the page picks the view itself: only the thumbs view's controls show
+    // the page picks the view itself: only a grid view's controls show
     fixedView?: boolean;
-    // the cover size and action buttons, shown under the thumbs view
+    // the cover size and action buttons, shown under a grid view
     gridControls?: GridSizeControls;
     // a phone has room for the icon only
     compact: boolean;
@@ -166,7 +166,7 @@ const triggerLabel = computed(() =>
 );
 
 const showGridControls = computed(
-  () => !!props.gridControls && props.viewMode === "panel",
+  () => !!props.gridControls && props.viewMode !== "list",
 );
 
 const showViewSection = computed(

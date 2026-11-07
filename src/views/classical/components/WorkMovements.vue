@@ -10,7 +10,7 @@
       </Button>
     </template>
     <!-- filled down the first column, then the second -->
-    <ul class="m-0 list-none columns-2 gap-x-[2rem] p-0 max-[769px]:columns-1">
+    <ul class="m-0 list-none columns-2 gap-x-[2rem] p-0 max-md:columns-1">
       <!-- a movement and its arias share a column -->
       <li
         v-for="group in groups"

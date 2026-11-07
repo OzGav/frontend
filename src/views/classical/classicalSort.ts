@@ -24,8 +24,6 @@ export interface ClassicalSortOptions {
   onChange: () => void;
   // fields left out of the menu, e.g. while the data they sort on is missing
   exclude?: () => SortField[];
-  // label keys under sort replacing the server's, e.g. a more specific year
-  labels?: Partial<Record<SortField, string>>;
 }
 
 /**
@@ -62,15 +60,10 @@ export function useClassicalSort(options: ClassicalSortOptions) {
       : {},
   );
 
-  // the choices on offer, under the page's own labels
+  // the choices on offer
   const offered = computed(() => {
     const excluded = options.exclude?.() ?? [];
-    return sortOptions.value
-      .filter((o) => !excluded.includes(o.field))
-      .map((o) => ({
-        ...o,
-        label_key: options.labels?.[o.field] ?? o.label_key,
-      }));
+    return sortOptions.value.filter((o) => !excluded.includes(o.field));
   });
 
   const setSort = (value: string | undefined) => {

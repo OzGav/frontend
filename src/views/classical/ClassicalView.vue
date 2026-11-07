@@ -14,7 +14,7 @@
       <Tabs
         ref="tabs"
         :model-value="activeTab"
-        class="group min-w-[8rem] flex-[1_1_auto] pr-[0.75rem] max-[769px]:pr-0"
+        class="group min-w-[8rem] flex-[1_1_auto] pr-[0.75rem] max-md:pr-0"
         :class="{ 'icons-only': iconsOnly }"
       >
         <TabsList class="w-full h-auto">

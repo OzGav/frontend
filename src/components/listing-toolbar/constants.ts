@@ -10,15 +10,17 @@ export const MENU_SECTION_LABEL_CLASS =
   "text-xs text-muted-foreground uppercase";
 
 /** A way a listing can show its items, as the sort menu offers it. */
-export interface ListingViewOption {
-  value: string;
+export interface ListingViewOption<V extends string = string> {
+  value: V;
   label: string;
   shortLabel: string;
   icon: Component;
 }
 
+export type ListingViewMode = "panel" | "list";
+
 // the ways a library page can show its items
-export const VIEW_MODES: readonly ListingViewOption[] = [
+export const VIEW_MODES: readonly ListingViewOption<ListingViewMode>[] = [
   {
     value: "panel",
     label: "view.panel",

@@ -1,6 +1,9 @@
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import { normalizeGridSize, type GridSizeControls } from "@/helpers/grid_size";
+import {
+  normalizeGridSize,
+  type GridSizeOnlyControls,
+} from "@/helpers/grid_size";
 import {
   activeFilterCount,
   type ListingFilter,
@@ -52,7 +55,7 @@ interface ClassicalMenuSort {
   viewMode?: ClassicalViewMode;
   setViewMode: (mode: string) => void;
   // the cover size, left out where the page has no grid
-  gridControls?: GridSizeControls;
+  gridControls?: GridSizeOnlyControls;
 }
 
 /** A page's text filter, for the Classical view to show in its toolbar. */
@@ -73,26 +76,27 @@ export type ClassicalViewMode = "fanart" | "thumbs" | "list";
 export const CLASSICAL_TYPING_DEBOUNCE_MS = 300;
 
 // the views a picture tab offers in its sort menu
-export const CLASSICAL_VIEWS: readonly ListingViewOption[] = [
-  {
-    value: "fanart",
-    label: "classical_view_fanart",
-    shortLabel: "classical_view_fanart_short",
-    icon: LayoutGrid,
-  },
-  {
-    value: "thumbs",
-    label: "view.panel",
-    shortLabel: "view.panel_short",
-    icon: LayoutGrid,
-  },
-  {
-    value: "list",
-    label: "view.list",
-    shortLabel: "view.list_short",
-    icon: LayoutList,
-  },
-];
+export const CLASSICAL_VIEWS: readonly ListingViewOption<ClassicalViewMode>[] =
+  [
+    {
+      value: "fanart",
+      label: "classical_view_fanart",
+      shortLabel: "classical_view_fanart_short",
+      icon: LayoutGrid,
+    },
+    {
+      value: "thumbs",
+      label: "view.panel",
+      shortLabel: "view.panel_short",
+      icon: LayoutGrid,
+    },
+    {
+      value: "list",
+      label: "view.list",
+      shortLabel: "view.list_short",
+      icon: LayoutList,
+    },
+  ];
 
 interface ClassicalListingOptions<T, Q extends object> extends Omit<
   ClassicalSortOptions,
@@ -198,7 +202,7 @@ export function useClassicalListing<T, Q extends object = object>(
   // the cards have no action buttons, so the slider offers the cover size alone
   const gridControls = reactive({
     size: gridSize,
-    supportsActions: false,
+    supportsActions: false as const,
     onChange: (size: number) => {
       gridSize.value = size;
     },

@@ -12,7 +12,7 @@
     @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
     <span
-      class="row-play-disc inline-flex size-[32px] items-center justify-center rounded-[999px] bg-[rgb(var(--v-theme-primary))] text-[#fff]"
+      class="row-play-disc inline-flex size-[32px] items-center justify-center rounded-[999px] bg-primary text-white"
     >
       <Play
         :size="16"
@@ -31,7 +31,7 @@
     @click.stop.prevent="(e: Event) => $emit('play', e)"
   >
     <span
-      class="inline-flex size-[22px] items-center justify-center rounded-[999px] bg-[rgb(var(--v-theme-primary))] text-[#fff]"
+      class="inline-flex size-[22px] items-center justify-center rounded-[999px] bg-primary text-white"
     >
       <Play
         :size="11"

@@ -427,7 +427,8 @@ const completeInitialization = async () => {
     store.libraryPodcastsCount = await api.getLibraryPodcastsCount();
     store.libraryAudiobooksCount = await api.getLibraryAudiobooksCount();
     store.libraryGenresCount = await api.getLibraryGenresCount();
-    store.hasClassicalContent = await hasClassicalContent();
+    // a failed check hides the Classical menu instead of stopping start-up
+    store.hasClassicalContent = await hasClassicalContent().catch(() => false);
   } else if (isDashboardViewer) {
     console.debug("[App] Dashboard viewer - fetching player/queue state only");
     // Dashboards render live player/queue state, which regular guests don't need
@@ -709,7 +710,10 @@ const stopClassicalContentRefresh = onLibrarySyncCompleted(
     if (authManager.isGuestAccessSession() || authManager.isDashboardViewer()) {
       return;
     }
-    store.hasClassicalContent = await hasClassicalContent();
+    // a failed check keeps the Classical menu as it is
+    store.hasClassicalContent = await hasClassicalContent().catch(
+      () => store.hasClassicalContent,
+    );
   },
 );
 

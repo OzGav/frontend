@@ -1,0 +1,60 @@
+<template>
+  <!-- One recording's take on a movement, as the movement filter lists it. -->
+  <ClassicalPlayRow
+    class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
+    :label="`${$t('play')} ${name}`"
+    @click="(e: MouseEvent) => openTrackOnRowClick(e, tracks[0])"
+    @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
+    @play="(e: Event) => $emit('play', tracks, e)"
+  >
+    <!-- indented under the movement's heading -->
+    <RecordingCredits :recording="recording" class="pl-[1.5rem]" />
+    <template #actions>
+      <ClassicalRowActions
+        :name="name"
+        :playing="playing"
+        :duration="duration"
+        :source-item="tracks[0]"
+        :favorite-item="tracks.length === 1 ? tracks[0] : undefined"
+        :favorite="tracks.length > 1 ? liked : undefined"
+        @toggle-favorite="setTracksLiked(tracks, !liked)"
+        @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
+      />
+    </template>
+  </ClassicalPlayRow>
+</template>
+
+<script setup lang="ts">
+import type { Recording, Track } from "@/plugins/api/interfaces";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
+import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
+import { recordingName } from "@/views/classical/credits";
+import { allLiked, setTracksLiked } from "@/views/classical/favorites";
+import { openTrackOnRowClick } from "@/views/classical/rowClick";
+import { isTrackPlaying } from "@/views/classical/playback";
+import { computed } from "vue";
+
+defineOptions({ name: "MovementRecordingRow" });
+
+const props = defineProps<{
+  recording: Recording;
+  // the movement's tracks in this recording, usually one
+  tracks: Track[];
+}>();
+
+defineEmits<{
+  (e: "play", tracks: Track[], evt: Event): void;
+  (e: "menu", track: Track, recording: Recording, evt: Event): void;
+}>();
+
+const name = computed(() => recordingName(props.recording));
+
+const playing = computed(() => props.tracks.some(isTrackPlaying));
+
+const duration = computed(() =>
+  props.tracks.reduce((sum, t) => sum + t.duration, 0),
+);
+
+const liked = computed(() => allLiked(props.tracks));
+</script>

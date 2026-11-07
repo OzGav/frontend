@@ -32,6 +32,8 @@ const { apiMock, hasScope, storeMock } = vi.hoisted(() => ({
     } as Record<string, unknown>,
     getProvider: vi.fn(),
     getLibraryItem: vi.fn(),
+    // the classical entries fetch the full track; none comes back
+    getTrack: vi.fn(async () => undefined),
     sendCommand: vi.fn(),
     players: {},
     state: { value: "initialized" },

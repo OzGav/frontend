@@ -10,7 +10,7 @@
     @update:model-value="select"
   >
     <DropdownMenuRadioItem
-      v-for="view in VIEW_MODES"
+      v-for="view in views"
       :key="view.value"
       :value="view.value"
       :aria-label="$t(view.label)"
@@ -24,7 +24,7 @@
   </DropdownMenuRadioGroup>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="V extends string = ListingViewMode">
 import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -34,18 +34,23 @@ import {
   MENU_SECTION_LABEL_CLASS,
   VIEW_MODES,
   type ListingViewMode,
+  type ListingViewOption,
 } from "./constants";
 
-defineProps<{
-  modelValue: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    views?: readonly ListingViewOption<V>[];
+  }>(),
+  { views: () => VIEW_MODES as readonly ListingViewOption<V>[] },
+);
 
 const emit = defineEmits<{
-  "update:modelValue": [value: ListingViewMode];
+  "update:modelValue": [value: V];
 }>();
 
 const select = (value: unknown) => {
-  const view = VIEW_MODES.find((item) => item.value === value);
+  const view = props.views.find((item) => item.value === value);
   if (view) emit("update:modelValue", view.value);
 };
 </script>

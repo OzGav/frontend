@@ -67,10 +67,11 @@
         <DropdownMenuSeparator />
         <ListingViewModeRow
           :model-value="viewMode"
+          :views="views"
           @update:model-value="(value) => emit('view-mode', value)"
         />
         <GridSizeSlider
-          v-if="gridControls && viewMode === 'panel'"
+          v-if="gridControls && viewMode !== 'list'"
           v-bind="gridControls"
         />
       </template>
@@ -78,7 +79,7 @@
   </DropdownMenu>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="V extends string = ListingViewMode">
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,7 +92,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import type { GridSizeControls } from "@/helpers/grid_size";
+import type {
+  GridSizeControls,
+  GridSizeOnlyControls,
+} from "@/helpers/grid_size";
 import { SortDirection, type SortOptionInfo } from "@/plugins/api/interfaces";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "@lucide/vue";
 import { computed } from "vue";
@@ -100,6 +104,7 @@ import {
   MENU_SECTION_LABEL_CLASS,
   VIEW_MODES,
   type ListingViewMode,
+  type ListingViewOption,
 } from "./constants";
 import ListingViewModeRow from "./ListingViewModeRow.vue";
 
@@ -107,20 +112,28 @@ import ListingViewModeRow from "./ListingViewModeRow.vue";
  * A library page's sort menu: picking the sort it is on flips its order, and
  * with a view given, the menu picks that too.
  */
-const props = defineProps<{
-  options: SortOptionInfo[];
-  sortBy: string;
-  // off where the page picks the view itself
-  viewMode?: string;
-  // the cover size and action buttons, shown under the thumbs view
-  gridControls?: GridSizeControls;
-  // a phone has room for the icon only
-  compact: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    options: SortOptionInfo[];
+    sortBy: string;
+    // off where the page picks the view itself
+    viewMode?: string;
+    views?: readonly ListingViewOption<V>[];
+    // the cover size and action buttons, shown under a grid view
+    gridControls?: GridSizeControls | GridSizeOnlyControls;
+    // a phone has room for the icon only
+    compact: boolean;
+  }>(),
+  {
+    viewMode: undefined,
+    views: () => VIEW_MODES as readonly ListingViewOption<V>[],
+    gridControls: undefined,
+  },
+);
 
 const emit = defineEmits<{
   "sort-by": [value: string];
-  "view-mode": [value: ListingViewMode];
+  "view-mode": [value: V];
 }>();
 
 const { t } = useI18n();
@@ -160,7 +173,7 @@ const titled = computed(() => !props.compact || props.viewMode !== undefined);
 
 // the field shows the view the listing is in beside the sort
 const currentView = computed(() =>
-  VIEW_MODES.find((view) => view.value === props.viewMode),
+  props.views.find((view) => view.value === props.viewMode),
 );
 
 const pickSortOption = (event: Event, option: SortOptionInfo) => {

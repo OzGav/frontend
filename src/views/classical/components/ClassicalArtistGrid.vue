@@ -227,11 +227,11 @@ interface CardLayout {
 }
 
 const SUB_CLASS =
-  "overflow-hidden text-[12px] text-ellipsis whitespace-nowrap text-[color:rgba(var(--v-theme-on-surface),0.6)]";
+  "overflow-hidden text-[12px] text-ellipsis whitespace-nowrap text-muted-foreground";
 
 const PICTURE_LAYOUT: Omit<CardLayout, "thumb"> = {
   grid: "gap-[8px]",
-  card: "flex-col p-[8px] max-[501px]:p-[4px] [&:hover]:bg-[color:rgba(var(--v-theme-on-surface),0.08)]",
+  card: "flex-col p-[8px] max-[501px]:p-[4px] [&:hover]:bg-foreground/8",
   link: "flex-col",
   meta: "mt-[10px] max-[501px]:mt-[4px]",
   name: "font-semibold",

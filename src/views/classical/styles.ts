@@ -6,5 +6,4 @@ export const CLASSICAL_SERIF_CLASS =
 export const MOVEMENT_TITLE_CLASS = `${CLASSICAL_SERIF_CLASS} italic`;
 
 /** The hover overlay of the standard list rows. */
-export const ROW_HOVER_CLASS =
-  "[&:hover]:bg-[color:rgba(var(--v-theme-on-surface),calc(var(--v-hover-opacity)*var(--v-theme-overlay-multiplier)))]";
+export const ROW_HOVER_CLASS = "hover:bg-accent";

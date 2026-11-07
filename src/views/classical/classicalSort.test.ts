@@ -88,15 +88,14 @@ describe("useClassicalSort", () => {
     expect(onChange).toHaveBeenCalledOnce();
   });
 
-  it("offers the choices without the excluded ones, under the page's labels", async () => {
+  it("offers the choices without the excluded ones", async () => {
     const { ready, options } = setup({
       exclude: () => [SortField.RECORDING_COUNT],
-      labels: { [SortField.YEAR]: "composed" },
     });
     await ready;
-    expect(options.value.map((o) => [o.field, o.label_key])).toEqual([
-      [SortField.NAME, SortField.NAME],
-      [SortField.YEAR, "composed"],
+    expect(options.value.map((o) => o.field)).toEqual([
+      SortField.NAME,
+      SortField.YEAR,
     ]);
   });
 

@@ -24,7 +24,7 @@
   </DropdownMenuRadioGroup>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="V extends string = ListingViewMode">
 import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -33,19 +33,20 @@ import {
 import {
   MENU_SECTION_LABEL_CLASS,
   VIEW_MODES,
+  type ListingViewMode,
   type ListingViewOption,
 } from "./constants";
 
 const props = withDefaults(
   defineProps<{
     modelValue: string;
-    views?: readonly ListingViewOption[];
+    views?: readonly ListingViewOption<V>[];
   }>(),
-  { views: () => VIEW_MODES },
+  { views: () => VIEW_MODES as readonly ListingViewOption<V>[] },
 );
 
 const emit = defineEmits<{
-  "update:modelValue": [value: string];
+  "update:modelValue": [value: V];
 }>();
 
 const select = (value: unknown) => {

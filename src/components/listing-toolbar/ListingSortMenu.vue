@@ -79,7 +79,7 @@
   </DropdownMenu>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="V extends string = ListingViewMode">
 import GridSizeSlider from "@/components/GridSizeSlider.vue";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,7 +92,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import type { GridSizeControls } from "@/helpers/grid_size";
+import type {
+  GridSizeControls,
+  GridSizeOnlyControls,
+} from "@/helpers/grid_size";
 import { SortDirection, type SortOptionInfo } from "@/plugins/api/interfaces";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "@lucide/vue";
 import { computed } from "vue";
@@ -100,6 +103,7 @@ import { useI18n } from "vue-i18n";
 import {
   MENU_SECTION_LABEL_CLASS,
   VIEW_MODES,
+  type ListingViewMode,
   type ListingViewOption,
 } from "./constants";
 import ListingViewModeRow from "./ListingViewModeRow.vue";
@@ -114,18 +118,22 @@ const props = withDefaults(
     sortBy: string;
     // off where the page picks the view itself
     viewMode?: string;
-    views?: readonly ListingViewOption[];
+    views?: readonly ListingViewOption<V>[];
     // the cover size and action buttons, shown under a grid view
-    gridControls?: GridSizeControls;
+    gridControls?: GridSizeControls | GridSizeOnlyControls;
     // a phone has room for the icon only
     compact: boolean;
   }>(),
-  { viewMode: undefined, views: () => VIEW_MODES, gridControls: undefined },
+  {
+    viewMode: undefined,
+    views: () => VIEW_MODES as readonly ListingViewOption<V>[],
+    gridControls: undefined,
+  },
 );
 
 const emit = defineEmits<{
   "sort-by": [value: string];
-  "view-mode": [value: string];
+  "view-mode": [value: V];
 }>();
 
 const { t } = useI18n();

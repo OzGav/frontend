@@ -83,7 +83,7 @@
         </ClassicalPlayRow>
       </ol>
       <div
-        v-for="album in albums"
+        v-for="album in recording.albums"
         :key="album.item_id"
         class="ml-[calc(var(--play-offset)_+_2.5rem)] flex items-baseline gap-[0.4rem] text-[0.85rem] text-muted-foreground"
       >
@@ -155,17 +155,6 @@ const coverage = computed(() =>
 
 const trackName = (track: Track) =>
   props.recording.track_names?.[track.uri] ?? track.name;
-
-// each album once, also when the library holds it twice under one name and year
-const albums = computed(() => {
-  const seen = new Set<string>();
-  return props.recording.albums.filter((album) => {
-    const keys = [album.item_id, `${album.name}|${album.year ?? ""}`];
-    if (keys.some((key) => seen.has(key))) return false;
-    keys.forEach((key) => seen.add(key));
-    return true;
-  });
-});
 
 // the covered movements' names, on hover
 const coverageTitle = computed(() => {

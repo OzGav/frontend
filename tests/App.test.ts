@@ -375,6 +375,7 @@ describe("App initialization", () => {
       }),
     );
     apiMock.fetchState.mockResolvedValue(undefined);
+    vi.mocked(hasClassicalContent).mockResolvedValue(false);
     apiMock.fetchProviderManifests.mockResolvedValue(undefined);
     apiMock.fetchProviders.mockResolvedValue(undefined);
     apiMock.initialize.mockResolvedValue(undefined);

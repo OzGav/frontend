@@ -92,7 +92,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
-import type { GridSizeControls } from "@/helpers/grid_size";
+import type {
+  GridSizeControls,
+  GridSizeOnlyControls,
+} from "@/helpers/grid_size";
 import { SortDirection, type SortOptionInfo } from "@/plugins/api/interfaces";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "@lucide/vue";
 import { computed } from "vue";
@@ -116,11 +119,15 @@ const props = withDefaults(
     viewMode?: string;
     views?: readonly ListingViewOption[];
     // the cover size and action buttons, shown under a grid view
-    gridControls?: GridSizeControls;
+    gridControls?: GridSizeControls | GridSizeOnlyControls;
     // a phone has room for the icon only
     compact: boolean;
   }>(),
-  { viewMode: undefined, views: () => VIEW_MODES, gridControls: undefined },
+  {
+    viewMode: undefined,
+    views: () => VIEW_MODES,
+    gridControls: undefined,
+  },
 );
 
 const emit = defineEmits<{

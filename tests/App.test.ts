@@ -3,6 +3,7 @@
 import App from "@/App.vue";
 import {
   EventType,
+  MediaType,
   UserRole,
   type Role,
   type User,
@@ -12,6 +13,7 @@ import {
   useFirstRunSetup,
 } from "@/composables/useFirstRunSetup";
 import { saveDeviceSetting } from "@/helpers/device_settings";
+import { hasClassicalContent } from "@/services/classical";
 import { DASHBOARD_VIEWER_PATH_STORAGE_KEY } from "@/helpers/guest_session";
 import type { MusicAssistantApi } from "@/plugins/api";
 import { flushPromises, shallowMount, type VueWrapper } from "@vue/test-utils";
@@ -146,6 +148,7 @@ const {
       activePlayer: undefined as
         { current_media?: { title?: string; artist?: string } } | undefined,
       forceMobileLayout: false,
+      hasClassicalContent: undefined as boolean | undefined,
       isIngressSession: false,
       roles: [] as Role[],
       roleScopes: {} as Record<string, string[]>,
@@ -188,6 +191,20 @@ vi.mock("@/plugins/auth", () => ({
 
 vi.mock("@/plugins/store", () => ({
   store: storeMock,
+}));
+
+vi.mock("@/services/classical", () => ({
+  hasClassicalContent: vi.fn().mockResolvedValue(false),
+}));
+
+const { syncCompletedMock } = vi.hoisted(() => ({
+  syncCompletedMock: vi.fn<
+    (mediaType: string, callback: () => unknown) => () => void
+  >(() => () => {}),
+}));
+
+vi.mock("@/composables/useLibrarySync", () => ({
+  onLibrarySyncCompleted: syncCompletedMock,
 }));
 
 vi.mock("@/helpers/connection_identity", () => ({
@@ -357,6 +374,7 @@ describe("App initialization", () => {
       }),
     );
     apiMock.fetchState.mockResolvedValue(undefined);
+    vi.mocked(hasClassicalContent).mockResolvedValue(false);
     apiMock.fetchProviderManifests.mockResolvedValue(undefined);
     apiMock.fetchProviders.mockResolvedValue(undefined);
     apiMock.initialize.mockResolvedValue(undefined);
@@ -794,6 +812,17 @@ describe("App initialization", () => {
     expect(apiMock.getCurrentUserInfo).toHaveBeenCalledOnce();
     // and the prune takes a turn of its own, after the refresh is in
     expect(mockPruneStaleProviderFilters).toHaveBeenCalledOnce();
+  });
+
+  it("checks for classical content again once a track sync finishes", async () => {
+    wrapper = await mountApp();
+    vi.mocked(hasClassicalContent).mockResolvedValue(true);
+
+    const [mediaType, refresh] = syncCompletedMock.mock.calls.at(-1)!;
+    expect(mediaType).toBe(MediaType.TRACK);
+    await refresh();
+
+    expect(storeMock.hasClassicalContent).toBe(true);
   });
 
   it("leaves an account that was signed in since the event alone", async () => {

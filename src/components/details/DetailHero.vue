@@ -115,6 +115,8 @@ export interface Props {
   phoneHeight?: number;
   // off for a page with a fixed layout, which leaves "Edit rows" out of the menu
   editableRows?: boolean;
+  // page-specific entries put first in the menu
+  leadingMenuItems?: ContextMenuItem[];
 }
 const props = withDefaults(defineProps<Props>(), {
   item: undefined,
@@ -124,6 +126,7 @@ const props = withDefaults(defineProps<Props>(), {
   height: 440,
   phoneHeight: 340,
   editableRows: true,
+  leadingMenuItems: () => [],
 });
 
 const emit = defineEmits<{
@@ -135,6 +138,7 @@ const STICKY_BAR_HEIGHT = 56;
 
 const router = useRouter();
 const menuItems = ref<ContextMenuItem[]>([]);
+let menuBuild = 0;
 
 const isPhone = computed(() => isPhoneSizedScreen());
 
@@ -180,7 +184,7 @@ const backdropStyle = computed(() =>
 
 watch(() => props.item, buildMenu, { immediate: true });
 watch(
-  () => props.editableRows,
+  () => [props.editableRows, props.leadingMenuItems],
   () => buildMenu(props.item),
 );
 
@@ -195,15 +199,21 @@ const backButtonClick = function () {
 
 useEscapeBack(backButtonClick);
 
-/** The item's overflow menu, plus "Edit rows" last on an editable page. */
+/**
+ * The item's overflow menu after any leading entries, plus "Edit rows" last on
+ * an editable page.
+ */
 async function buildMenu(item?: MediaItemType) {
+  const build = ++menuBuild;
   if (!item) {
     menuItems.value = [];
     return;
   }
-  const items = await getContextMenuItems([item], item);
-  // a slower response for a previous item must not replace the current one
-  if (props.item?.uri !== item.uri) return;
+  const base = await getContextMenuItems([item], item);
+  // a slower build, for a previous item or older leading entries, must not
+  // replace the current one
+  if (build !== menuBuild) return;
+  const items = [...props.leadingMenuItems, ...base];
   menuItems.value = props.editableRows
     ? [
         ...items,

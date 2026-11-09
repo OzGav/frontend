@@ -4,6 +4,7 @@ import { DASHBOARD_VIEWER_PATH_STORAGE_KEY } from "@/helpers/guest_session";
 import { returnedByHistory } from "@/helpers/navigation";
 import { parseStatisticsPeriod } from "@/helpers/statistics_period";
 import { $t } from "@/plugins/i18n";
+import { getLastVisitedClassicalTab } from "@/views/classical/tabs";
 import { nextTick, watch } from "vue";
 import {
   createRouter,
@@ -403,6 +404,85 @@ export const routes: RouteRecordRaw[] = [
                 /* webpackChunkName: "podcast_episode" */ "@/views/PodcastEpisodeDetails.vue"
               ),
             props: true,
+          },
+        ],
+      },
+      {
+        path: "/classical",
+        component: () =>
+          import(
+            /* webpackChunkName: "classical" */ "@/views/classical/ClassicalView.vue"
+          ),
+        children: [
+          {
+            path: "",
+            name: "classical",
+            redirect: () => ({
+              path: `/classical/${getLastVisitedClassicalTab()}`,
+            }),
+          },
+          {
+            path: "composers",
+            name: "classical-composers",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/ComposersTab.vue"
+              ),
+          },
+          {
+            path: "composers/:id",
+            name: "classical-composer",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/ComposerDetail.vue"
+              ),
+            props: true,
+            meta: { fullBleed: true },
+          },
+          {
+            path: "works",
+            name: "classical-works",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/WorksTab.vue"
+              ),
+          },
+          {
+            path: "works/:id",
+            name: "classical-work",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/WorkDetail.vue"
+              ),
+            props: (route: {
+              params: Record<string, string | string[]>;
+              query: Record<
+                string,
+                string | (string | null)[] | null | undefined
+              >;
+            }) => ({
+              ...route.params,
+              ...route.query,
+            }),
+            meta: { fullBleed: true },
+          },
+          {
+            path: "performers",
+            name: "classical-performers",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/PerformersTab.vue"
+              ),
+          },
+          {
+            path: "performers/:id",
+            name: "classical-performer",
+            component: () =>
+              import(
+                /* webpackChunkName: "classical" */ "@/views/classical/PerformerDetail.vue"
+              ),
+            props: true,
+            meta: { fullBleed: true },
           },
         ],
       },

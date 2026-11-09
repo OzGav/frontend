@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultShowActions,
+  fittingGridColumns,
   GRID_SIZE_DEFAULT,
   GRID_SIZE_MAX,
   GRID_SIZE_MIN,
@@ -66,5 +67,27 @@ describe("defaultShowActions", () => {
 
   it("hides them when the caller asks", () => {
     expect(defaultShowActions("panel", "albums", true)).toBe(false);
+  });
+});
+
+describe("fittingGridColumns", () => {
+  it("fits as many cards of the minimum width as the width holds", () => {
+    // 3 cards of 200 with 2 gaps of 10 take 620
+    expect(fittingGridColumns(620, 200, 10, GRID_SIZE_DEFAULT)).toBe(3);
+    expect(fittingGridColumns(619, 200, 10, GRID_SIZE_DEFAULT)).toBe(2);
+  });
+
+  it("steps from the fitting count by the cover size", () => {
+    expect(fittingGridColumns(620, 200, 10, 1)).toBe(2);
+    expect(fittingGridColumns(620, 200, 10, -2)).toBe(5);
+  });
+
+  it("allows a single column but never fewer", () => {
+    expect(fittingGridColumns(100, 200, 10, GRID_SIZE_DEFAULT)).toBe(1);
+    expect(fittingGridColumns(620, 200, 10, GRID_SIZE_MAX)).toBe(1);
+  });
+
+  it("caps the columns at the most the slider allows elsewhere", () => {
+    expect(fittingGridColumns(5000, 100, 0, GRID_SIZE_MIN)).toBe(12);
   });
 });

@@ -20,6 +20,8 @@ const { apiMock, storeMock } = vi.hoisted(() => ({
     } as Record<string, unknown>,
     getProvider: vi.fn(),
     getLibraryItem: vi.fn(),
+    // the classical entries fetch the full track; none comes back
+    getTrack: vi.fn(async () => undefined),
     addItemToFavorites: vi.fn(),
     removeItemFromFavorites: vi.fn(),
     setFavorite: vi.fn(),

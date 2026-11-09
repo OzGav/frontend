@@ -385,6 +385,7 @@ import {
 import { authManager } from "@/plugins/auth";
 import { $t } from "@/plugins/i18n";
 import { toast } from "vue-sonner";
+import { classicalTrackEntries } from "@/helpers/classical_track_menu";
 
 import GenreIcon from "@/components/icons/GenreIcon.vue";
 import {
@@ -433,6 +434,7 @@ import type { Component } from "vue";
 // The item type lives in a plain .ts module (editor-friendly); re-exported
 // here for convenience since most consumers already import from this file.
 import {
+  ContextMenuItemId,
   menuItemLabel,
   type ContextMenuItem,
 } from "@/helpers/context_menu_item";
@@ -597,6 +599,8 @@ export interface ContextMenuOptions {
   // true when the menu is opened from the sidebar shortcuts list,
   // enabling actions that only make sense there (e.g. move up/down).
   shortcutContext?: boolean;
+  // true when the caller adds its own classical entries (the Classical pages)
+  withoutClassicalEntries?: boolean;
 }
 
 export const getContextMenuItems = async function (
@@ -631,6 +635,7 @@ export const getContextMenuItems = async function (
     (itemIsAvailable(items[0]) || isMusicBrainzItem(items[0]))
   ) {
     contextMenuItems.push({
+      id: ContextMenuItemId.SHOW_INFO,
       label: "show_info",
       labelArgs: [],
       action: () => {
@@ -708,6 +713,7 @@ export const getContextMenuItems = async function (
   ) {
     for (const artist of (items[0] as Track).artists) {
       contextMenuItems.push({
+        id: ContextMenuItemId.GOTO_ARTIST,
         label: "goto_artist",
         labelArgs: [artist.name],
         action: () => {
@@ -730,6 +736,7 @@ export const getContextMenuItems = async function (
       : null;
   if (trackAlbum) {
     contextMenuItems.push({
+      id: ContextMenuItemId.GOTO_ALBUM,
       label: "goto_album",
       labelArgs: [trackAlbum.name],
       action: () => {
@@ -743,6 +750,18 @@ export const getContextMenuItems = async function (
       },
       icon: Disc3,
     });
+  }
+
+  // go to composer, work and performer, for a classical library track
+  if (
+    items.length === 1 &&
+    firstItem.media_type === MediaType.TRACK &&
+    firstItem.provider === "library" &&
+    !options?.withoutClassicalEntries
+  ) {
+    contextMenuItems.push(
+      ...(await classicalTrackEntries(firstItem as Track, router)),
+    );
   }
 
   // go to <type> radio (a dynamic playlist generated from this item as the
@@ -870,6 +889,7 @@ export const getContextMenuItems = async function (
     ].includes(resolvedItem.media_type)
   ) {
     contextMenuItems.push({
+      id: ContextMenuItemId.REMOVE_LIBRARY,
       label: "remove_library",
       labelArgs: [],
       action: () => {
@@ -1211,12 +1231,13 @@ export const getContextMenuItems = async function (
   }
 
   // update metadata
-  // podcast episodes are never stored in the library, so there is nothing to write to
+  // podcast episodes are never stored in the library, so there is nothing to
+  // write to; a work's data all comes from MusicBrainz, which Refresh item reads
   if (
     managesLibrary &&
     items.length === 1 &&
     items[0] == parentItem &&
-    ![MediaType.COLLECTION, MediaType.PODCAST_EPISODE].includes(
+    ![MediaType.COLLECTION, MediaType.PODCAST_EPISODE, MediaType.WORK].includes(
       items[0].media_type,
     )
   ) {
@@ -1300,7 +1321,12 @@ export const getContextMenuItems = async function (
       label: unavailable ? "find_on_music_services" : "refresh_item",
       labelArgs: [],
       action: async () => {
+        // a work is read again from MusicBrainz with all the works of its
+        // tree, which takes a while for a large one
+        const isWork = items[0].media_type === MediaType.WORK;
+        if (isWork) toast.info($t("refreshing_work", [items[0].name]));
         const updatedInfo = await api.refreshItem(items[0]);
+        if (isWork) toast.success($t("refreshed_work", [items[0].name]));
         if (updatedInfo) {
           // Emit synthetic MEDIA_ITEM_UPDATED event to trigger UI refresh
           // This ensures child components (like track listings) also refresh
@@ -1464,9 +1490,9 @@ export const getContextMenuItems = async function (
     managesLibrary &&
     items.every(
       (i) =>
-        i.media_type !== MediaType.GENRE &&
-        i.media_type !== MediaType.COLLECTION &&
-        i.provider === "library",
+        ![MediaType.GENRE, MediaType.COLLECTION, MediaType.WORK].includes(
+          i.media_type,
+        ) && i.provider === "library",
     )
   ) {
     contextMenuItems.push({
@@ -1727,27 +1753,34 @@ export const getPlaybackContextMenuItems = async function (
 const LIVE_SOURCE_MEDIA_TYPES = [MediaType.RADIO, MediaType.AUDIO_SOURCE];
 
 /**
- * The configured default enqueue option for the given item's media type, or
- * undefined for a role that may not read it: a play command without an option
- * gets the same default from the server.
+ * The configured default enqueue option for the given media type, or undefined
+ * for a role that may not read it: a play command without an option gets the
+ * same default from the server.
  *
- * Only "play" and "replace" are configurable, so either way the item starts
+ * Only "play" and "replace" are configurable, so either way the media starts
  * playing right away.
  */
-const getDefaultEnqueueOption = async function (
-  item: MediaItemTypeOrItemMapping,
+export const getDefaultEnqueueOptionFor = async function (
+  mediaType: MediaType,
 ): Promise<QueueOption | undefined> {
   // the server's own defaults apply to a role that may not read the core settings
   if (!authManager.hasScope(Scope.CONFIG_CORE_READ)) {
     return undefined;
   }
-  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(item.media_type)
+  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(mediaType)
     ? "default_enqueue_option_live_sources"
-    : `default_enqueue_option_${item.media_type}`;
+    : `default_enqueue_option_${mediaType}`;
   return (await api.getCoreConfigValue(
     "player_queues",
     configKey,
   )) as QueueOption;
+};
+
+/** The configured default enqueue option for the given item's media type. */
+const getDefaultEnqueueOption = function (
+  item: MediaItemTypeOrItemMapping,
+): Promise<QueueOption | undefined> {
+  return getDefaultEnqueueOptionFor(item.media_type);
 };
 
 /**

@@ -202,6 +202,7 @@ export enum MediaType {
   GENRE = "genre",
   GENRE_ALIAS = "genre_alias",
   FOLDER = "folder",
+  WORK = "work",
   UNKNOWN = "unknown",
 }
 
@@ -231,6 +232,10 @@ export enum ListingType {
   GENRE_TRACKS = "genre_tracks",
   GENRE_ALBUMS = "genre_albums",
   BROWSE = "browse",
+  CLASSICAL_COMPOSERS = "classical_composers",
+  CLASSICAL_PERFORMERS = "classical_performers",
+  CLASSICAL_WORKS = "classical_works",
+  CLASSICAL_OTHER_TRACKS = "classical_other_tracks",
 }
 
 export enum SortField {
@@ -251,6 +256,9 @@ export enum SortField {
   PROVIDER = "provider",
   FAVORITE_TIMESTAMP = "favorite_timestamp",
   ORIGINAL = "original",
+  COMPOSER = "composer",
+  RECORDING_COUNT = "recording_count",
+  WORK_COUNT = "work_count",
 }
 
 export enum SortDirection {
@@ -315,6 +323,7 @@ export enum ExternalID {
   MB_RELEASEGROUP = "musicbrainz_releasegroupid", // MusicBrainz ReleaseGroupID
   MB_TRACK = "musicbrainz_trackid", // MusicBrainz Track ID
   MB_RECORDING = "musicbrainz_recordingid", // MusicBrainz Recording ID
+  MB_WORK = "musicbrainz_workid", // MusicBrainz Work ID
   ISRC = "isrc", // used to identify unique recordings
   BARCODE = "barcode", // EAN-13 barcode for identifying albums
   ACOUSTID = "acoustid", //unique fingerprint (id) for a recording
@@ -508,6 +517,8 @@ export enum EventType {
   // setup_flow_updated: a running setup flow produced a new/updated step;
   // object_id is the flow_id, data is the SetupFlowStep
   SETUP_FLOW_UPDATED = "setup_flow_updated",
+  // data is the ClassicalLinkProgress left after a MusicBrainz linking run
+  CLASSICAL_LINK_PROGRESS = "classical_link_progress",
   // special types for local subscriptions only
   CONNECTED = "connected",
   DISCONNECTED = "disconnected",
@@ -1092,6 +1103,8 @@ export interface MediaItemMetadata {
   collections?: MediaItemCollection[] | null;
   life_span?: LifeSpan | null;
   artist_entity_type?: ArtistEntityType | null;
+  // ISO 3166-1 code of the country the artist is from, e.g. PL
+  country?: string | null;
 }
 
 interface _MediaItemBase {
@@ -1174,6 +1187,8 @@ export interface StatisticsListeningTimeItem {
 
 export interface Artist extends MediaItem {
   artist_type: ArtistType;
+  period?: Period | null;
+  is_classical?: boolean;
 }
 
 export interface Album extends MediaItem {
@@ -1200,6 +1215,243 @@ export interface Track extends MediaItem {
   track_number: number;
   // only populated when the full track is requested (get_track), never on listings
   audio_metadata?: AudioMetadata | null;
+  // credits are only sent with the full track, never on listings
+  credits?: Credit[];
+  work?: ItemMapping | null;
+  is_classical?: boolean;
+}
+
+export enum ArtistRole {
+  MAIN_ARTIST = "main_artist",
+  COMPOSER = "composer",
+  LYRICIST = "lyricist",
+  ARRANGER = "arranger",
+  CONDUCTOR = "conductor",
+  ORCHESTRA = "orchestra",
+  ENSEMBLE = "ensemble",
+  CHOIR = "choir",
+  SOLOIST = "soloist",
+  PERFORMER = "performer",
+}
+
+export enum WorkType {
+  SYMPHONY = "symphony",
+  CONCERTO = "concerto",
+  SONATA = "sonata",
+  SUITE = "suite",
+  OPERA = "opera",
+  ORATORIO = "oratorio",
+  CANTATA = "cantata",
+  MASS = "mass",
+  SONG_CYCLE = "song_cycle",
+  QUARTET = "quartet",
+  OVERTURE = "overture",
+  BALLET = "ballet",
+  ARIA = "aria",
+  MOTET = "motet",
+  MADRIGAL = "madrigal",
+  PARTITA = "partita",
+  SYMPHONIC_POEM = "symphonic_poem",
+  ETUDE = "etude",
+  OPERETTA = "operetta",
+  ZARZUELA = "zarzuela",
+  INCIDENTAL_MUSIC = "incidental_music",
+  OTHER = "other",
+}
+
+export enum Period {
+  MEDIEVAL = "medieval",
+  RENAISSANCE = "renaissance",
+  BAROQUE = "baroque",
+  CLASSICAL = "classical",
+  ROMANTIC = "romantic",
+  MODERN = "modern",
+  CONTEMPORARY = "contemporary",
+}
+
+export interface Credit {
+  artist: ItemMapping | Artist;
+  role: ArtistRole;
+  // the instrument as shown after the name, empty when nothing should show
+  instrument_label?: string;
+  // ordering within a role group
+  position: number;
+}
+
+export interface Work extends MediaItem {
+  composers: Array<ItemMapping | Artist>;
+  catalog_numbers: string[];
+  work_type?: WorkType | null;
+  // on a part, the work it belongs to
+  parent_work?: ItemMapping | null;
+  // the next three are only filled when one work is fetched
+  arrangement_of: Array<Work | ItemMapping>;
+  arrangements?: Array<Work | ItemMapping>;
+  // e.g. the arias of an opera
+  parts?: Array<Work | ItemMapping>;
+  composition_year?: number | null;
+  language?: string | null;
+  musical_key?: string | null;
+  // in number order; empty for works whose parts are works, such as operas
+  movements?: WorkMovement[];
+  // true when the movements are MusicBrainz's, false when read from the tracks
+  movements_from_musicbrainz?: boolean;
+}
+
+export interface WorkMovement {
+  number: number;
+  // e.g. II. Andante con moto
+  name: string;
+  mbid: string | null;
+  // the number of the movement it sits under, e.g. an aria's act
+  parent?: number | null;
+  // the part's library work, for movements that are the work's parts
+  work_id?: string | null;
+  // the name shortened to its quoted words, without any excerpt mark
+  short_name?: string | null;
+  // the name marks the movement as an excerpt
+  excerpt?: boolean;
+  // whether the work's page lists it under a part, e.g. an aria under its act
+  under_part?: boolean;
+}
+
+export enum RecordingHeadingKind {
+  // the work itself or one of its parts, e.g. an act
+  WORK = "work",
+  // the recordings of the whole work
+  COMPLETE = "complete",
+  // a top-level movement of the work, e.g. an act
+  MOVEMENT = "movement",
+  // the recordings that fit under no other heading
+  OTHER = "other",
+}
+
+// The heading a recording shows under on its work's page.
+export interface RecordingHeading {
+  kind: RecordingHeadingKind;
+  // for a work heading, the work it stands for, with its full name and no
+  // composers
+  work?: ItemMapping | null;
+  // for a movement heading, the top-level movement's number
+  movement?: number | null;
+  // the heading's position on the page
+  order: number;
+  // the recording's position under the heading
+  rank: number;
+}
+
+export enum RecordingCoverageKind {
+  // one movement whole, e.g. an act
+  MOVEMENT = "movement",
+  // some of the pieces of one movement, e.g. two arias
+  MOVEMENT_PIECES = "movement_pieces",
+  // some of the movements of the work
+  MOVEMENTS = "movements",
+}
+
+// What part of its work a recording holds, when not all of it.
+export interface RecordingCoverage {
+  kind: RecordingCoverageKind;
+  // the movement it holds whole or pieces of
+  movement?: number | null;
+  // the pieces or movements it holds, 0 for a whole movement
+  held: number;
+  // the pieces or movements there are, 0 when unknown or for a whole movement
+  total: number;
+}
+
+// One performance of a work, grouped by the server from its movement tracks.
+export interface Recording {
+  key: string;
+  work: ItemMapping;
+  // the work `work` is part of, if any
+  parent_work?: ItemMapping | null;
+  // movements in movement order
+  tracks: Track[];
+  // performing credits, the composer excluded
+  credits: Credit[];
+  year: number | null;
+  // every album it appears on, the album its tracks come from first
+  albums: ItemMapping[];
+  // seconds, sum of the movements
+  duration: number;
+  // the numbers of the movements it covers, sorted
+  movement_numbers?: number[];
+  // the next three are only filled when requested for a work's page
+  // the heading it shows under; null when it shows under none
+  heading?: RecordingHeading | null;
+  // what it holds; null for the whole work or when nothing is known
+  coverage?: RecordingCoverage | null;
+  // the movement numbers each track counts towards, by track uri
+  track_movements?: Record<string, number[]>;
+  // each track's name in the recording's track list, by track uri
+  track_names?: Record<string, string>;
+}
+
+// What the server still has to look up on MusicBrainz for the classical view
+export interface ClassicalLinkProgress {
+  albums: number;
+  // tracks whose recording is still to be read
+  recordings: number;
+  works: number;
+  composers: number;
+}
+
+export interface ClassicalComposer {
+  artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalPerformer {
+  artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
+  // the performing role with the most credits
+  main_role: ArtistRole;
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalWorkEntry {
+  work: Work;
+  // scoped to the performer when the list is filtered by one
+  recording_count: number;
+  // names of all the work's parts, for filtering
+  part_names?: string[];
+  // the period of the work's first composer
+  period?: Period | null;
+  // the next two are only filled when the list is filtered by a performer
+  // everyone else on the performer's recordings, most important role first
+  co_performers?: string[];
+  // whether the user likes every track of the performer's recordings; null
+  // without tracks
+  liked?: boolean | null;
+}
+
+// The filter values present across a classical list, for its filter panel.
+export interface ClassicalComposerFilters {
+  periods: Period[];
+  // ISO 3166-1 codes
+  countries: string[];
+  // whether some composer has no country
+  country_unknown: boolean;
+}
+
+export interface ClassicalPerformerFilters {
+  roles: ArtistRole[];
+}
+
+export interface ClassicalWorkFilters {
+  periods: Period[];
+  work_types: WorkType[];
+  // whether some work has no type
+  work_type_unknown: boolean;
+  // both null when no work has a composition year
+  earliest_year: number | null;
+  latest_year: number | null;
 }
 
 export interface Playlist extends MediaItem {
@@ -1343,7 +1595,8 @@ export type MediaItemType =
   | PodcastEpisode
   | Genre
   | MediaCollection<MediaItemType>
-  | BrowseFolder;
+  | BrowseFolder
+  | Work;
 
 export type PlayableMediaItemType =
   Track | Radio | AudioSource | Audiobook | PodcastEpisode;

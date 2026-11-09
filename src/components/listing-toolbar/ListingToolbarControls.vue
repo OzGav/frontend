@@ -12,6 +12,7 @@
       :sort-by="sortBy"
       :view-mode="showViewModes ? viewMode : undefined"
       :grid-controls="gridControls"
+      :views="views"
       @sort-by="(value) => emit('sort-by', value)"
       @view-mode="(value) => emit('view-mode', value)"
     />
@@ -26,10 +27,13 @@
 </template>
 
 <script setup lang="ts">
-import type { GridSizeControls } from "@/helpers/grid_size";
+import type {
+  GridSizeControls,
+  GridSizeOnlyControls,
+} from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
 import type { SortOptionInfo } from "@/plugins/api/interfaces";
-import type { ListingViewMode } from "./constants";
+import type { ListingViewOption } from "./constants";
 import ListingFiltersButton from "./ListingFiltersButton.vue";
 import ListingSortMenu from "./ListingSortMenu.vue";
 
@@ -39,7 +43,9 @@ defineProps<{
   viewMode: string;
   // off where the page picks the view itself
   showViewModes: boolean;
-  gridControls: GridSizeControls;
+  gridControls?: GridSizeControls | GridSizeOnlyControls;
+  // the views it offers, the library ones unless given
+  views?: readonly ListingViewOption[];
   filters: ListingFilter[];
   activeFilterCount: number;
   // a phone has room for icons only
@@ -48,7 +54,7 @@ defineProps<{
 
 const emit = defineEmits<{
   "sort-by": [value: string];
-  "view-mode": [value: ListingViewMode];
+  "view-mode": [value: string];
   "clear-filters": [];
 }>();
 </script>

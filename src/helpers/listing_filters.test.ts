@@ -4,7 +4,10 @@ import {
   activeFilterCount,
   clearedFilters,
   listingItemCount,
+  offeredFilterValues,
+  toggledValue,
   type ListingChoiceFilter,
+  type ListingCustomFilter,
   type ListingMultiFilter,
   type ListingToggleFilter,
 } from "./listing_filters";
@@ -45,6 +48,16 @@ const choiceFilter = (selected: string): ListingChoiceFilter => ({
   select: vi.fn(),
 });
 
+const customFilter = (activeCount: number): ListingCustomFilter => ({
+  kind: "custom",
+  id: "year",
+  label: "Year",
+  component: {},
+  props: {},
+  activeCount,
+  clear: vi.fn(),
+});
+
 describe("activeFilterCount", () => {
   it("counts nothing while nothing narrows the listing", () => {
     expect(
@@ -52,18 +65,20 @@ describe("activeFilterCount", () => {
         toggleFilter(false),
         multiFilter([]),
         choiceFilter("all"),
+        customFilter(0),
       ]),
     ).toBe(0);
   });
 
-  it("counts an active toggle, each picked value and a narrowing choice", () => {
+  it("counts an active toggle, each picked value, a narrowing choice and a custom filter's count", () => {
     expect(
       activeFilterCount([
         toggleFilter(true),
         multiFilter(["spotify--1", "tidal--1"]),
         choiceFilter("hide_empty"),
+        customFilter(1),
       ]),
-    ).toBe(4);
+    ).toBe(5);
   });
 });
 
@@ -158,5 +173,40 @@ describe("clearedFilters", () => {
       params: {},
       prefs: {},
     });
+  });
+});
+
+describe("offeredFilterValues", () => {
+  const all = ["a", "b", "c"];
+
+  it("offers the values the items have, in the order of all values", () => {
+    expect(offeredFilterValues(all, new Set(["c", "a"]), [])).toEqual([
+      "a",
+      "c",
+    ]);
+  });
+
+  it("keeps a chosen value no item has any more", () => {
+    expect(offeredFilterValues(all, new Set(["a"]), ["b"])).toEqual(["a", "b"]);
+  });
+
+  it("puts a chosen value outside all values last", () => {
+    expect(offeredFilterValues(all, new Set(["a"]), ["z"])).toEqual(["a", "z"]);
+  });
+});
+
+describe("toggledValue", () => {
+  it("adds a value not chosen at the end", () => {
+    expect(toggledValue(["a"], "b")).toEqual(["a", "b"]);
+  });
+
+  it("removes a chosen value", () => {
+    expect(toggledValue(["a", "b"], "a")).toEqual(["b"]);
+  });
+
+  it("leaves the given list untouched", () => {
+    const chosen = ["a"];
+    toggledValue(chosen, "b");
+    expect(chosen).toEqual(["a"]);
   });
 });

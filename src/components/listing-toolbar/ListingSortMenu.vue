@@ -133,7 +133,6 @@ const props = withDefaults(
     compact: boolean;
   }>(),
   {
-    viewMode: undefined,
     views: () => VIEW_MODES,
     gridControls: undefined,
   },

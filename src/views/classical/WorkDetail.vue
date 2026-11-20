@@ -36,7 +36,7 @@
         <PerformerFilterLine
           v-if="performerName"
           :performer="performerName"
-          :count="displayedRecordings.length"
+          :count="shownCount"
           @clear="clearPerformer"
         />
       </template>

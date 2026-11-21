@@ -37,14 +37,6 @@ export interface GridSizeControls {
   onToggleActions: (show: boolean) => void;
 }
 
-/** The live props of the cover size slider for a grid without action buttons. */
-export interface GridSizeOnlyControls {
-  size: number;
-  supportsActions: false;
-  onChange: (size: number) => void;
-  onCommit: (size: number) => void;
-}
-
 // the range the `col-N` classes in the listing cover
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 12;

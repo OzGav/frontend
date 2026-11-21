@@ -80,6 +80,7 @@
         </router-link>
         <!-- the actions row of the standard panel cards -->
         <div
+          v-if="actionsShown"
           class="flex h-[32px] items-center gap-[10px]"
           :class="layout.actions"
           @click.stop
@@ -117,7 +118,11 @@ import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import PanelViewSkeleton from "@/components/skeletons/PanelViewSkeleton.vue";
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
 import { canHoldFavorite } from "@/helpers/favorites";
-import { fittingGridColumns, GRID_SIZE_DEFAULT } from "@/helpers/grid_size";
+import {
+  fittingGridColumns,
+  GRID_SIZE_DEFAULT,
+  PANEL_ACTIONS_MIN_WIDTH,
+} from "@/helpers/grid_size";
 import type { Artist } from "@/plugins/api/interfaces";
 import { getBreakpointValue } from "@/plugins/breakpoint";
 import type { ClassicalViewMode } from "@/views/classical/listing";
@@ -129,7 +134,7 @@ import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
 import { useElementSize } from "@vueuse/core";
-import { computed, ref, type Component } from "vue";
+import { computed, ref, watch, type Component } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalArtistGrid" });
@@ -153,13 +158,17 @@ const props = withDefaults(
     // a further page can be loaded
     hasMore: boolean;
     loadingMore: boolean;
+    // the heart and menu under the covers; list rows always show them
+    showActions?: boolean;
   }>(),
-  { gridSize: GRID_SIZE_DEFAULT, loading: false },
+  { gridSize: GRID_SIZE_DEFAULT, loading: false, showActions: true },
 );
 
 const emit = defineEmits<{
   // asks for the next page
   more: [];
+  // whether the covers are wide enough for the heart and menu under them
+  "actions-fit": [fit: boolean];
 }>();
 
 const router = useRouter();
@@ -189,30 +198,47 @@ const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event, artist: Artist) => openArtistMenu(artist, router, evt),
 );
 
+const minWidth = computed(() =>
+  props.viewMode === "thumbs" ? SQUARE_MIN_WIDTH : props.minCardWidth,
+);
+
+// unknown until the grid is measured
+const columns = computed(() =>
+  props.viewMode === "list" || !width.value
+    ? undefined
+    : fittingGridColumns(width.value, minWidth.value, GRID_GAP, props.gridSize),
+);
+
 // Until the grid is measured the stylesheet's auto-fill columns apply.
 const gridStyle = computed(() => {
   if (props.viewMode === "list") return undefined;
-  const minWidth =
-    props.viewMode === "thumbs" ? SQUARE_MIN_WIDTH : props.minCardWidth;
-  const style = { "--artist-card-min": `${minWidth}px` };
-  if (!width.value) return style;
-  const columns = fittingGridColumns(
-    width.value,
-    minWidth,
-    GRID_GAP,
-    props.gridSize,
-  );
+  const style = { "--artist-card-min": `${minWidth.value}px` };
+  if (!columns.value) return style;
   return {
     ...style,
-    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${columns.value}, minmax(0, 1fr))`,
   };
 });
+
+const actionsFit = computed(() => {
+  if (!columns.value) return true;
+  const cardWidth =
+    (width.value - GRID_GAP * (columns.value - 1)) / columns.value;
+  return cardWidth - 2 * CARD_PADDING >= PANEL_ACTIONS_MIN_WIDTH;
+});
+watch(actionsFit, (fit) => emit("actions-fit", fit), { immediate: true });
+
+const actionsShown = computed(
+  () => props.viewMode === "list" || (props.showActions && actionsFit.value),
+);
 
 const layout = computed(() => LAYOUTS[props.viewMode]);
 
 const SQUARE_MIN_WIDTH = 160;
 // matches the grid gap
 const GRID_GAP = 8;
+// matches the picture cards' p-[8px]
+const CARD_PADDING = 8;
 
 /** The classes of a card's elements that differ between the views. */
 interface CardLayout {

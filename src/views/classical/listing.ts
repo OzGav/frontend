@@ -1,9 +1,6 @@
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
-import {
-  normalizeGridSize,
-  type GridSizeOnlyControls,
-} from "@/helpers/grid_size";
+import { normalizeGridSize, type GridSizeControls } from "@/helpers/grid_size";
 import {
   activeFilterCount,
   type ListingFilter,
@@ -54,8 +51,8 @@ interface ClassicalMenuSort {
   // left out where the page has a single view
   viewMode?: ClassicalViewMode;
   setViewMode: (mode: string) => void;
-  // the cover size, left out where the page has no grid
-  gridControls?: GridSizeOnlyControls;
+  // the cover size and action buttons, left out where the page has no grid
+  gridControls?: GridSizeControls;
 }
 
 /** A page's text filter, for the Classical view to show in its toolbar. */
@@ -122,15 +119,17 @@ interface ClassicalListingOptions<T, Q extends object> extends Omit<
 
 /**
  * State and toolbar menu for a classical browse tab, with sort, refresh and,
- * optionally, the favourites filter, view mode, cover size and the tab's own
- * filters. The settings are kept per user like those of the other library
- * listings, the menu, text filter, sort and filters show in the Classical
+ * optionally, the favourites filter, view mode, cover size, action buttons and
+ * the tab's own filters. The settings are kept per user like those of the other
+ * library listings, the menu, text filter, sort and filters show in the Classical
  * view's toolbar while the tab is open, and going back to the tab returns it
  * to where it was scrolled.
  *
  * The list loads as the tab opens, page by page: place a LoadMoreSentinel
  * after its last row while `hasMore`, with `loadingMore` and `loadMore`.
- * `filtered` tells whether a search or filter narrows the list.
+ * `filtered` tells whether a search or filter narrows the list. A grid shows
+ * its action buttons by `showActions` and reports whether they fit its covers
+ * into `actionsFit`.
  */
 export function useClassicalListing<T, Q extends object = object>(
   options: ClassicalListingOptions<T, Q>,
@@ -151,6 +150,9 @@ export function useClassicalListing<T, Q extends object = object>(
   );
   const favoritesOnly = ref(options.views === true && !!prefs.favoriteFilter);
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
+  const showActions = ref(prefs.showActions ?? true);
+  // set by the grid, which hides the action buttons when the covers get too small
+  const actionsFit = ref(true);
 
   const { loading, loadingMore, hasMore, reload, loadMore } = usePagedList({
     items: options.items,
@@ -199,16 +201,21 @@ export function useClassicalListing<T, Q extends object = object>(
     save("viewMode", mode);
   };
 
-  // the cards have no action buttons, so the slider offers the cover size alone
   const gridControls = reactive({
     size: gridSize,
-    supportsActions: false as const,
+    showActions,
+    actionsFit,
+    supportsActions: true,
     onChange: (size: number) => {
       gridSize.value = size;
     },
     onCommit: (size: number) => {
       gridSize.value = size;
       save("gridSize", size);
+    },
+    onToggleActions: (show: boolean) => {
+      showActions.value = show;
+      save("showActions", show);
     },
   });
 
@@ -275,6 +282,8 @@ export function useClassicalListing<T, Q extends object = object>(
   return {
     viewMode,
     gridSize,
+    showActions,
+    actionsFit,
     loading,
     loadingMore,
     hasMore,

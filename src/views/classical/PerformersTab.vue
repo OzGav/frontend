@@ -10,7 +10,9 @@
       :filtered="filtered"
       :has-more="hasMore"
       :loading-more="loadingMore"
+      :show-actions="showActions"
       @more="loadMore"
+      @actions-fit="(fit) => (actionsFit = fit)"
     />
   </div>
 </template>
@@ -71,6 +73,8 @@ const roleFilter = useListFilter({
 const {
   viewMode,
   gridSize,
+  showActions,
+  actionsFit,
   loading,
   loadingMore,
   hasMore,

@@ -28,10 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import type {
-  GridSizeControls,
-  GridSizeOnlyControls,
-} from "@/helpers/grid_size";
+import type { GridSizeControls } from "@/helpers/grid_size";
 import type { ListingFilter } from "@/helpers/listing_filters";
 import type { SortOptionInfo } from "@/plugins/api/interfaces";
 import type { ListingViewOption } from "./constants";
@@ -44,7 +41,7 @@ defineProps<{
   viewMode: string;
   // off where the page picks the view itself
   showViewModes: boolean;
-  gridControls?: GridSizeControls | GridSizeOnlyControls;
+  gridControls?: GridSizeControls;
   // the views it offers, the library ones unless given
   views?: readonly ListingViewOption[];
   filters: ListingFilter[];

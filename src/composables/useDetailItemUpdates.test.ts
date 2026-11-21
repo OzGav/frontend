@@ -66,6 +66,17 @@ describe("useDetailItemUpdates", () => {
     expect(onUpdate).toHaveBeenCalledOnce();
   });
 
+  it("only calls onUpdate when told to keep the item", () => {
+    const onUpdate = vi.fn();
+    const { item } = setup(artist(), { onUpdate, keepItem: true });
+
+    emit(EventType.MEDIA_ITEM_UPDATED, artist({ name: "Renamed" }));
+    vi.runAllTimers();
+
+    expect(item.value?.name).toBe("Artist");
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
   it("ignores an update of another item", () => {
     const onUpdate = vi.fn();
     const { item } = setup(artist(), { onUpdate });
@@ -88,6 +99,34 @@ describe("useDetailItemUpdates", () => {
     const added = artist({
       item_id: "7",
       provider_mappings: [providerMapping()],
+    });
+
+    emit(EventType.MEDIA_ITEM_UPDATED, added);
+    vi.runAllTimers();
+
+    expect(item.value?.uri).toBe(added.uri);
+  });
+
+  // an external address names no provider item: the item it was found as is
+  // what gets added to the library
+  it("matches a page opened on an external address against the item it was found as", () => {
+    const found = artist({ item_id: "sp1", provider: "spotify" });
+    const { item } = setup(found, {
+      providerItem: {
+        itemId: "musicbrainz_artistid:mb-1",
+        provider: "external",
+        mediaType: MediaType.ARTIST,
+      },
+    });
+    const added = artist({
+      item_id: "42",
+      provider_mappings: [
+        providerMapping({
+          item_id: "sp1",
+          provider_domain: "spotify",
+          provider_instance: "spotify--1",
+        }),
+      ],
     });
 
     emit(EventType.MEDIA_ITEM_UPDATED, added);

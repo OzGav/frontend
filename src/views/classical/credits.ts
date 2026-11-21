@@ -1,0 +1,69 @@
+import { PERFORMER_ROLES } from "@/helpers/classical_credits";
+import {
+  ArtistRole,
+  type Credit,
+  type Recording,
+} from "@/plugins/api/interfaces";
+
+export interface CreditedArtist {
+  id: string;
+  name: string;
+  instrument?: string;
+}
+
+/**
+ * A recording's credits as its header shows them: conductors and orchestras
+ * lead, then ensembles, choirs, soloists and other performers. Without a
+ * conductor or orchestra those performers lead instead, each with their
+ * instrument.
+ */
+export function recordingCredits(recording: Recording) {
+  const { credits } = recording;
+  const conductors = creditedArtists(credits, [ArtistRole.CONDUCTOR]);
+  const orchestras = creditedArtists(credits, [ArtistRole.ORCHESTRA]);
+  const performers = creditedArtists(credits, NON_CONDUCTING_ROLES);
+  const leadPerformers =
+    conductors.length || orchestras.length
+      ? []
+      : creditedArtists(credits, NON_CONDUCTING_ROLES, true);
+  return { conductors, orchestras, performers, leadPerformers };
+}
+
+/** The names leading a recording's header, or its work's name without any. */
+export function recordingName(recording: Recording): string {
+  const { conductors, orchestras, leadPerformers } =
+    recordingCredits(recording);
+  return (
+    [...conductors, ...orchestras, ...leadPerformers]
+      .map((a) => a.name)
+      .join(", ") || recording.work.name
+  );
+}
+
+// the performing roles besides conductor and orchestra
+const NON_CONDUCTING_ROLES = PERFORMER_ROLES.filter(
+  (role) => role !== ArtistRole.CONDUCTOR && role !== ArtistRole.ORCHESTRA,
+);
+
+/**
+ * The artists credited with any of the given roles, in credit order and
+ * without repeats. With instruments, each credit's instrument is kept, so an
+ * artist playing two instruments appears once per instrument.
+ */
+function creditedArtists(
+  credits: Credit[],
+  roles: readonly ArtistRole[],
+  withInstruments = false,
+): CreditedArtist[] {
+  const seen = new Set<string>();
+  const artists: CreditedArtist[] = [];
+  for (const c of credits) {
+    if (!roles.includes(c.role)) continue;
+    const instrument = (withInstruments && c.instrument_label) || undefined;
+    const key = `${c.artist.item_id}|${instrument ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    artists.push({ id: c.artist.item_id, name: c.artist.name, instrument });
+  }
+  return artists;
+}

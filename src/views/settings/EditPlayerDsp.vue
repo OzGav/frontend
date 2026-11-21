@@ -92,15 +92,6 @@
           <div
             class="flex min-h-12 items-center gap-1 border-b bg-muted px-2 py-1.5"
           >
-            <Button
-              v-if="mobileLayout"
-              variant="ghost"
-              size="icon-sm"
-              :aria-label="$t('back')"
-              @click="selectedStage = null"
-            >
-              <ArrowLeft />
-            </Button>
             <h3 class="min-w-0 flex-1 truncate px-2 font-medium">
               {{ stageTitle(selectedStage) }}
             </h3>
@@ -329,6 +320,7 @@
 <script setup lang="ts">
 import { ref, computed, toRaw, watch, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "@/plugins/api";
 import { eventbus } from "@/plugins/eventbus";
 import { store } from "@/plugins/store";
@@ -369,7 +361,6 @@ import { DEFAULT_HIGH_PASS_FREQUENCY } from "@/components/dsp/highLowPass";
 import DSPHelp from "@/components/dsp/DSPHelp.vue";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   Download,
   Save,
@@ -403,14 +394,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { useDSPPresets } from "@/composables/useDSPPresets";
+import { useSettingsPageBack } from "@/composables/useSettingsPageBack";
 import {
   areDSPConfigsEqual,
   areDSPSettingsEqual,
+  DSP_STAGE_QUERY_KEY,
   dspFilterTypeLabel,
+  type DSPStage,
+  parseDSPStage,
   sanitizeDSPPresetConfig,
 } from "@/helpers/audioProcessing";
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 const props = defineProps<{
   playerId?: string;
@@ -418,7 +415,7 @@ const props = defineProps<{
 
 const dsp = ref<DSPConfig>();
 const { getPresetName, presets: dspPresets } = useDSPPresets();
-const selectedStage = ref<number | null | "input" | "output">(null);
+const selectedStage = ref<DSPStage | null>(null);
 const showAddFilterDialog = ref(false);
 const showSavePresetDialog = ref(false);
 const newFilterType = ref(DSPFilterType.PARAMETRIC_EQ);
@@ -426,6 +423,12 @@ const newPresetName = ref("");
 // The app's own definition of a mobile layout, which also covers tablets and
 // the force-mobile setting, rather than Vuetify's width-only breakpoint.
 const mobileLayout = computed(() => store.mobileLayout);
+// on a phone the open stage fills the page, so back returns to the stages first
+useSettingsPageBack(() => {
+  if (!mobileLayout.value || selectedStage.value === null) return false;
+  selectedStage.value = null;
+  return true;
+});
 let updatedFromServer = false;
 // Last config received from the server, used to tell whether a local edit
 // still matches the selected preset.
@@ -476,11 +479,11 @@ const selectedPresetLabel = computed(() => {
 });
 
 // Methods
-const selectStage = (index: number | "input" | "output") => {
+const selectStage = (index: DSPStage) => {
   selectedStage.value = index;
 };
 
-const stageTitle = (index: number | "input" | "output") => {
+const stageTitle = (index: DSPStage) => {
   if (index === "input") return t("settings.dsp.input");
   if (index === "output") return t("settings.dsp.output");
   const filter = dsp.value?.filters[index];
@@ -751,9 +754,25 @@ watch(
         return;
       }
       setServerDSPConfig(config, val);
+      selectStageFromQuery();
     }
   },
   { immediate: true },
+);
+
+// a link into an already open page, e.g. from the signal path; a link to
+// another player is handled once that player's config has loaded
+watch(
+  () => route.query[DSP_STAGE_QUERY_KEY],
+  (value) => {
+    if (
+      value !== undefined &&
+      dsp.value &&
+      route.params.playerId === props.playerId
+    ) {
+      selectStageFromQuery();
+    }
+  },
 );
 
 onBeforeUnmount(() => {
@@ -820,6 +839,18 @@ function setServerDSPConfig(
   updatedFromServer = true;
   serverDSPConfig = structuredClone(config);
   dsp.value = structuredClone(config);
+}
+
+// Opens the stage a link asked for, once, so it never overrides what the user
+// picks afterwards; an unknown stage keeps the default.
+function selectStageFromQuery(): void {
+  const value = route.query[DSP_STAGE_QUERY_KEY];
+  if (value === undefined) return;
+  const stage = parseDSPStage(value, dsp.value?.filters.length ?? 0);
+  if (stage !== undefined) selectStage(stage);
+  const query = { ...route.query };
+  delete query[DSP_STAGE_QUERY_KEY];
+  void router.replace({ query });
 }
 
 function clearServerDSPConfig(): void {

@@ -15,12 +15,13 @@ import {
   stopServerTimeSync,
 } from "@/composables/useServerTime";
 import { $t, i18n } from "../i18n";
-import type { ITransport } from "../remote/transport";
+import { MessageTooLargeError, type ITransport } from "../remote/transport";
 import { WebSocketTransport } from "../remote/websocket-transport";
 import { AccountApi } from "./account";
 import type { CommandOptions } from "./commandOptions";
 export type { CommandOptions } from "./commandOptions";
 import { ApiCommandError } from "./errors";
+import { eventbus } from "../eventbus";
 import { getDeviceName, itemSupportsPlayLog } from "./helpers";
 import { StatisticsApi } from "./statistics";
 import {
@@ -54,18 +55,23 @@ import {
   type SetupFlowStep,
   type SuccessResultMessage,
   type TaskSchedule,
+  type LetterIndexEntry,
   type Track,
   type SortOptionInfo,
   type User,
   type UserSummary,
+  type AIEngine,
+  type AIEngineUsage,
   AlbumType,
   Audiobook,
   AuthExchangeResult,
   AuthorizationStart,
   AuthProvider,
+  CatalogRecommendation,
   ConfigActionResult,
   ConfigEntry,
   ConfigValueType,
+  CommunityProvider,
   CoreConfig,
   DSPConfig,
   DSPConfigPreset,
@@ -95,17 +101,18 @@ import {
   Scope,
   NetworkShareSettings,
   SearchResults,
+  SleepTimerMode,
   ShareType,
   SortDirection,
   SortField,
   SmartPlaylistRules,
   SoundEffect,
+  SpeakerChannel,
   StatisticsTopItemResult,
   StatisticsUsers,
   SourceFolder,
   StorageInfo,
   StorageLocation,
-  StreamServerInfo,
   TranscriptCue,
   MediaCollection,
   ArtistType,
@@ -116,11 +123,14 @@ const DEBUG = process.env.NODE_ENV === "development";
 // The oldest server API schema this frontend works with. Only the public web app
 // (app.music-assistant.io) can meet an older server, the bundled frontend always
 // matches its own. Raise it when a change would break the previous stable server.
-export const MIN_SERVER_SCHEMA_VERSION = 103;
+export const MIN_SERVER_SCHEMA_VERSION = 113;
 
 // Server error codes of a missing or rejected sign-in; the login UI reports these itself
 const AUTHENTICATION_REQUIRED_ERROR_CODE = 20;
 const AUTHENTICATION_FAILED_ERROR_CODE = 21;
+// Server error code of a playback refused because another player's playback holds the
+// only stream of a provider; answered with the stream held dialog instead of a toast
+const PROVIDER_STREAM_HELD_ERROR_CODE = 29;
 
 export interface PlayMediaOptions {
   start_item?: PlayableMediaItemType | string;
@@ -135,6 +145,18 @@ export interface PlayMediaOptions {
   shuffle?: boolean;
   /** Keep the global error toast quiet for a caller that reports the failure itself. */
   suppressGlobalError?: CommandOptions["suppressGlobalError"];
+}
+
+export interface LetterIndexFilters {
+  favorite?: boolean;
+  search?: string;
+  sort_field?: SortField;
+  sort_direction?: SortDirection;
+  provider?: string | string[];
+  genre?: number | number[];
+  album_artists_only?: boolean;
+  album_types?: Array<AlbumType | string>;
+  artist_type?: ArtistType;
 }
 
 export enum ConnectionState {
@@ -199,6 +221,8 @@ export class MusicAssistantApi {
   private commands: Map<
     string,
     {
+      command: string;
+      args?: Record<string, unknown>;
       resolve: (result: unknown) => void;
       reject: (err: unknown) => void;
       suppressGlobalError?: CommandOptions["suppressGlobalError"];
@@ -546,6 +570,7 @@ export class MusicAssistantApi {
     sort_direction?: SortDirection,
     provider?: string | string[],
     genre?: number | number[],
+    random_seed?: number,
   ): Promise<Track[]> {
     return this.sendCommand("music/tracks/library_items", {
       favorite,
@@ -556,6 +581,7 @@ export class MusicAssistantApi {
       sort_direction,
       provider,
       genre,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -563,12 +589,17 @@ export class MusicAssistantApi {
     item_id: string,
     provider_instance_id_or_domain: string,
     album_uri?: string,
+    options?: CommandOptions,
   ): Promise<Track> {
-    return this.sendCommand("music/tracks/get_track", {
-      item_id,
-      provider_instance_id_or_domain,
-      album_uri: album_uri,
-    });
+    return this.sendCommand(
+      "music/tracks/get_track",
+      {
+        item_id,
+        provider_instance_id_or_domain,
+        album_uri: album_uri,
+      },
+      options,
+    );
   }
 
   public getTrackVersions(
@@ -669,6 +700,17 @@ export class MusicAssistantApi {
     return this.sendCommand("music/tracks/count", { favorite_only });
   }
 
+  /**
+   * The first row of each letter in the library listing sorted by name, for
+   * the same filters as its listing. Empty for any other sort or a search.
+   */
+  public getLibraryLetterIndex(
+    media: "artists" | "albums" | "tracks",
+    filters: LetterIndexFilters,
+  ): Promise<LetterIndexEntry[]> {
+    return this.sendCommand(`music/${media}/letter_index`, { ...filters });
+  }
+
   public getSortOptions(listing: ListingType): Promise<SortOptionInfo[]> {
     const cached = this._librarySortOptions.get(listing);
     if (cached) return cached;
@@ -744,6 +786,7 @@ export class MusicAssistantApi {
     provider?: string | string[],
     genre?: number | number[],
     artist_type?: ArtistType,
+    random_seed?: number,
   ): Promise<Artist[]> {
     return this.sendCommand("music/artists/library_items", {
       favorite,
@@ -756,6 +799,7 @@ export class MusicAssistantApi {
       provider,
       genre,
       artist_type,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -791,6 +835,22 @@ export class MusicAssistantApi {
       offset,
       sort_field,
       sort_direction,
+      favorite,
+    });
+  }
+
+  public getArtistTracksCount(
+    item_id: string,
+    provider_instance_id_or_domain: string,
+    provider_filter?: string,
+    search?: string,
+    favorite?: boolean,
+  ): Promise<number> {
+    return this.sendCommand("music/artists/artist_tracks_count", {
+      item_id,
+      provider_instance_id_or_domain,
+      provider_filter,
+      search,
       favorite,
     });
   }
@@ -843,6 +903,24 @@ export class MusicAssistantApi {
     });
   }
 
+  public getArtistAlbumsCount(
+    item_id: string,
+    provider_instance_id_or_domain: string,
+    provider_filter?: string,
+    search?: string,
+    album_types?: AlbumType[],
+    favorite?: boolean,
+  ): Promise<number> {
+    return this.sendCommand("music/artists/artist_albums_count", {
+      item_id,
+      provider_instance_id_or_domain,
+      provider_filter,
+      search,
+      album_types,
+      favorite,
+    });
+  }
+
   public getArtistAppearsOn(
     item_id: string,
     provider_instance_id_or_domain: string,
@@ -862,6 +940,20 @@ export class MusicAssistantApi {
       offset,
       sort_field,
       sort_direction,
+    });
+  }
+
+  public getArtistAppearsOnCount(
+    item_id: string,
+    provider_instance_id_or_domain: string,
+    provider_filter?: string,
+    search?: string,
+  ): Promise<number> {
+    return this.sendCommand("music/artists/artist_appears_on_count", {
+      item_id,
+      provider_instance_id_or_domain,
+      provider_filter,
+      search,
     });
   }
 
@@ -891,9 +983,9 @@ export class MusicAssistantApi {
    * Every album, EP and single MusicBrainz credits to a library artist, newest first.
    *
    * Only library artists are supported; the list is empty when MusicBrainz doesn't know
-   * the artist. The releases that are not in the library come back as MusicBrainz items
-   * (provider "musicbrainz", without provider mappings), which the server resolves to a
-   * real album when one is opened or added.
+   * the artist. The releases that are not in the library come back as external items
+   * (provider "external", without provider mappings), which the server looks up when one
+   * is opened or added. `album_types` limits the list to releases of those types.
    */
   public getArtistDiscography(
     item_id: string,
@@ -902,6 +994,7 @@ export class MusicAssistantApi {
     offset?: number,
     sort_field?: SortField,
     sort_direction?: SortDirection,
+    album_types?: AlbumType[],
   ): Promise<Album[]> {
     return this.sendCommand("music/artists/discography", {
       item_id,
@@ -911,6 +1004,20 @@ export class MusicAssistantApi {
       offset,
       sort_field,
       sort_direction,
+      album_types,
+    });
+  }
+
+  public getArtistDiscographyCount(
+    item_id: string,
+    search?: string,
+    album_types?: AlbumType[],
+  ): Promise<number> {
+    return this.sendCommand("music/artists/discography_count", {
+      item_id,
+      provider_instance_id_or_domain: "library",
+      search,
+      album_types,
     });
   }
 
@@ -990,6 +1097,7 @@ export class MusicAssistantApi {
     album_types?: Array<AlbumType | string>,
     provider?: string | string[],
     genre?: number | number[],
+    random_seed?: number,
   ): Promise<Album[]> {
     return this.sendCommand("music/albums/library_items", {
       favorite,
@@ -1001,6 +1109,7 @@ export class MusicAssistantApi {
       album_types,
       provider,
       genre,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -1078,6 +1187,7 @@ export class MusicAssistantApi {
     sort_direction?: SortDirection,
     provider?: string | string[],
     genre?: number | number[],
+    random_seed?: number,
   ): Promise<Playlist[]> {
     return this.sendCommand("music/playlists/library_items", {
       favorite,
@@ -1088,6 +1198,7 @@ export class MusicAssistantApi {
       sort_direction,
       provider,
       genre,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -1165,12 +1276,14 @@ export class MusicAssistantApi {
   public removePlaylistTracks(
     db_playlist_id: string | number,
     positions_to_remove: number[],
+    uris?: string[],
   ): Promise<BackgroundTask> {
     return this.sendCommand<BackgroundTask>(
       "music/playlists/remove_playlist_tracks",
       {
         db_playlist_id,
         positions_to_remove,
+        uris,
       },
     ).then((task) => {
       this._notifyBackgroundTaskStarted(task);
@@ -1182,11 +1295,13 @@ export class MusicAssistantApi {
     db_playlist_id: string | number,
     from_position: number,
     to_position: number,
+    uri?: string,
   ): Promise<void> {
     return this.sendCommand("music/playlists/move_playlist_track", {
       db_playlist_id,
       from_position,
       to_position,
+      uri,
     });
   }
 
@@ -1194,11 +1309,13 @@ export class MusicAssistantApi {
     db_playlist_id: string | number,
     positions: number[],
     to_position?: number,
+    uris?: string[],
   ): Promise<void> {
     return this.sendCommand("music/playlists/move_playlist_tracks", {
       db_playlist_id,
       positions,
       to_position,
+      uris,
     });
   }
 
@@ -1244,6 +1361,25 @@ export class MusicAssistantApi {
       match_providers,
       match_policy,
     });
+  }
+
+  public generateShareLink(uri: string): Promise<string> {
+    return this.sendCommand(
+      "share/generate",
+      { uri },
+      { suppressGlobalError: true },
+    );
+  }
+
+  public resolveSharedItem(
+    encoded: string,
+    allow_search = true,
+  ): Promise<MediaItemType | null> {
+    return this.sendCommand(
+      "share/resolve",
+      { encoded, allow_search },
+      { suppressGlobalError: true },
+    );
   }
 
   public migratePlaylist(
@@ -1324,6 +1460,7 @@ export class MusicAssistantApi {
     sort_direction?: SortDirection,
     provider?: string | string[],
     genre?: number | number[],
+    random_seed?: number,
   ): Promise<Radio[]> {
     return this.sendCommand("music/radios/library_items", {
       favorite,
@@ -1334,6 +1471,7 @@ export class MusicAssistantApi {
       sort_direction,
       provider,
       genre,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -1399,6 +1537,7 @@ export class MusicAssistantApi {
     provider?: string | string[],
     genre?: number | number[],
     collapse_collections?: boolean,
+    random_seed?: number,
   ): Promise<(Audiobook | MediaCollection<Audiobook>)[]> {
     return this.sendCommand("music/audiobooks/library_items", {
       favorite,
@@ -1410,17 +1549,20 @@ export class MusicAssistantApi {
       provider,
       genre,
       collapse_collections,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
   public getAudiobook(
     item_id: string,
     provider_instance_id_or_domain: string,
+    options?: CommandOptions,
   ): Promise<Audiobook> {
-    return this.sendCommand("music/audiobooks/get_audiobook", {
-      item_id,
-      provider_instance_id_or_domain,
-    });
+    return this.sendCommand(
+      "music/audiobooks/get_audiobook",
+      { item_id, provider_instance_id_or_domain },
+      options,
+    );
   }
 
   public getAudiobookCollection(
@@ -1429,14 +1571,19 @@ export class MusicAssistantApi {
     limit?: number,
     offset?: number,
     favorite?: boolean,
+    options?: CommandOptions,
   ): Promise<MediaCollection<Audiobook>> {
-    return this.sendCommand("music/audiobooks/get_collection", {
-      item_id,
-      search,
-      limit,
-      offset,
-      favorite,
-    });
+    return this.sendCommand(
+      "music/audiobooks/get_collection",
+      {
+        item_id,
+        search,
+        limit,
+        offset,
+        favorite,
+      },
+      options,
+    );
   }
 
   public getAudiobookVersions(
@@ -1532,6 +1679,7 @@ export class MusicAssistantApi {
     sort_direction?: SortDirection,
     provider?: string | string[],
     genre?: number | number[],
+    random_seed?: number,
   ): Promise<Podcast[]> {
     return this.sendCommand("music/podcasts/library_items", {
       favorite,
@@ -1542,6 +1690,7 @@ export class MusicAssistantApi {
       sort_direction,
       provider,
       genre,
+      ...(random_seed === undefined ? {} : { random_seed }),
     });
   }
 
@@ -1572,6 +1721,7 @@ export class MusicAssistantApi {
       hide_empty?: boolean | null;
       media_type?: MediaType;
       content_type?: MediaType | "music";
+      random_seed?: number;
     } = {},
   ): Promise<Genre[]> {
     return this.sendCommand("music/genres/library_items", opts);
@@ -1965,6 +2115,21 @@ export class MusicAssistantApi {
     });
   }
 
+  /**
+   * Set the signed-in user's state on several items, in order.
+   *
+   * :param items: The items (uris or media items) to set the state on.
+   * :param favorite: true to like, false to dislike, null to clear the state.
+   * :return: How many items were handled; when fewer than given, the item at
+   *   that index failed and the rest were left alone.
+   */
+  public async setFavorites(
+    items: Array<string | MediaItemType | ItemMapping>,
+    favorite: boolean | null,
+  ): Promise<number> {
+    return this.sendCommand("music/favorites/set_items", { items, favorite });
+  }
+
   public browse(
     path?: string,
     player_id?: string,
@@ -2027,6 +2192,7 @@ export class MusicAssistantApi {
     provider: string,
     item_id: string,
     providers?: string[],
+    hidePlayed?: boolean,
   ): Promise<MediaItemTypeOrItemMapping[]> {
     // Fetches a single recommendation row's items. Per-row timeout/error
     // isolation lives server-side: an unknown id or a failing provider
@@ -2035,12 +2201,14 @@ export class MusicAssistantApi {
     // global error toast.
     // providers: source provider instance ids to include (only rows with
     // supports_provider_filter accept this); omit for the unfiltered row.
+    // hidePlayed: leave out fully played podcast episodes and audiobooks.
     return this.sendCommand(
       "music/recommendations/items",
       {
         provider,
         item_id,
         providers,
+        ...(hidePlayed && { hide_played: true }),
       },
       { suppressGlobalError: true },
     );
@@ -2183,26 +2351,50 @@ export class MusicAssistantApi {
     });
   }
 
+  public queueCommandAddToPlaylist(
+    queueId: string,
+    db_playlist_id: string | number,
+  ): Promise<BackgroundTask> {
+    // Add the queue's items to an existing library playlist.
+    return this.sendCommand<BackgroundTask>("player_queues/add_to_playlist", {
+      queue_id: queueId,
+      db_playlist_id,
+    }).then((task) => {
+      this._notifyBackgroundTaskStarted(task);
+      return task;
+    });
+  }
+
   public queueCommandClear(queueId: string) {
     // Clear all items in the queue.
     this.playerQueueCommand(queueId, "clear");
   }
-  public queueCommandPlayIndex(queueId: string, index: number | string) {
+  public queueCommandPlayIndex(
+    queueId: string,
+    index: number | string,
+  ): Promise<void> {
     // Play item at index (or item_id) X in queue.
-    this.playerQueueCommand(queueId, "play_index", { index });
+    return this.sendCommand("player_queues/play_index", {
+      queue_id: queueId,
+      index,
+    });
   }
   public queueCommandMoveItem(
     queueId: string,
     queue_item_id: string,
     pos_shift = 1,
-  ) {
-    // Move queue item x up/down the queue.
+  ): Promise<void> {
+    // Move queue item x up/down the queue; resolves once the server has moved it.
     // - queue_id: id of the queue to process this request.
     // - queue_item_id: the item_id of the queueitem that needs to be moved.
     // - pos_shift: move item x positions down if positive value
     // - pos_shift: move item x positions up if negative value
     // - pos_shift:  move item to top of queue as next item if 0
-    this.playerQueueCommand(queueId, "move_item", { queue_item_id, pos_shift });
+    return this.sendCommand("player_queues/move_item", {
+      queue_id: queueId,
+      queue_item_id,
+      pos_shift,
+    });
   }
   public queueCommandMoveItemEnd(queueId: string, queue_item_id: string) {
     // Move queue item to the end of the queue.
@@ -2304,6 +2496,10 @@ export class MusicAssistantApi {
       ...args,
     });
   }
+  public queueCommandStop(queueId: string): Promise<void> {
+    // Stop the queue; resolves once the server has stopped it.
+    return this.sendCommand("player_queues/stop", { queue_id: queueId });
+  }
   public queueCommandTransfer(
     sourceQueue: string,
     targetQueue: string,
@@ -2316,23 +2512,6 @@ export class MusicAssistantApi {
       auto_play: autoPlay,
     });
   }
-  public queueCommandSaveAsPlaylist(
-    queueId: string,
-    name: string,
-    options: { showBackgroundTaskToast?: boolean } = {},
-  ): Promise<BackgroundTask> {
-    // Save the current queue items as a new playlist.
-    return this.sendCommand<BackgroundTask>("player_queues/save_as_playlist", {
-      queue_id: queueId,
-      name,
-    }).then((task) => {
-      if (options.showBackgroundTaskToast !== false) {
-        this._notifyBackgroundTaskStarted(task);
-      }
-      return task;
-    });
-  }
-
   // Player related functions/commands
 
   public async getPlayers(): Promise<Player[]> {
@@ -2344,6 +2523,30 @@ export class MusicAssistantApi {
       player_id,
       raise_unavailable: true,
     });
+  }
+
+  /**
+   * Get the track that plays on a player; for a radio station, the song it
+   * names.
+   *
+   * :param player_id: The player to ask about.
+   * :param library_only: Look in the library only, without asking any music
+   *   provider.
+   * :param options: Options for the command, such as keeping the global error
+   *   toast quiet.
+   * :return: The track with the signed-in user's favorite state, or null when
+   *   it can not be told which track plays.
+   */
+  public getCurrentlyPlayingTrack(
+    player_id: string,
+    library_only = false,
+    options?: CommandOptions,
+  ): Promise<Track | null> {
+    return this.sendCommand(
+      "players/currently_playing_track",
+      { player_id, library_only },
+      options,
+    );
   }
 
   public playerCommandPlay(playerId: string): Promise<void> {
@@ -2590,6 +2793,40 @@ export class MusicAssistantApi {
     return this.sendCommand("players/remove", { player_id: playerId });
   }
 
+  /**
+   * Remove every player whose device is gone, and return the ids of those removed.
+   *
+   * @param dry_run Remove nothing, and return the ids of the players it would remove.
+   */
+  public removeUnavailablePlayers(dry_run = false): Promise<string[]> {
+    return this.sendCommand("players/remove_unavailable", { dry_run });
+  }
+
+  /**
+   * Merge a player into another one, when the two turn out to be one device.
+   *
+   * @param playerId The player that goes; its outputs move to the target player.
+   * @param targetPlayer The player that stays.
+   */
+  public mergePlayers(playerId: string, targetPlayer: string): Promise<void> {
+    return this.sendCommand("players/merge", {
+      player_id: playerId,
+      target_player: targetPlayer,
+    });
+  }
+
+  /**
+   * Take an output off its player and give it a player of its own, and return
+   * the id of that new player.
+   *
+   * @param protocolId The protocol_id of the output.
+   */
+  public unlinkProtocol(protocolId: string): Promise<string> {
+    return this.sendCommand("players/unlink_protocol", {
+      protocol_id: protocolId,
+    });
+  }
+
   // Sleep timer related functions/commands
 
   public getSleepTimer(playerId: string): Promise<number | null> {
@@ -2601,14 +2838,20 @@ export class MusicAssistantApi {
     });
   }
 
-  public setSleepTimer(playerId: string, seconds: number): Promise<number> {
+  public setSleepTimer(
+    playerId: string,
+    seconds?: number,
+    mode?: SleepTimerMode,
+  ): Promise<number | null> {
     /*
-      Set a sleep timer that stops playback after the given number of seconds.
-      Returns the expiry (unix utc timestamp).
+      Set a sleep timer that stops playback after the given number of seconds, or
+      at the end of the current queue item or chapter (mode).
+      Returns the (estimated) expiry (unix utc timestamp), null while paused.
     */
     return this.sendCommand("players/sleep_timer/set", {
       player_id: playerId,
       seconds,
+      mode,
     });
   }
 
@@ -2671,6 +2914,44 @@ export class MusicAssistantApi {
     });
   }
 
+  /**
+   * Combine speakers into one new multi-channel player, and return that player.
+   * The output of each speaker on the provider moves into it.
+   *
+   * @param provider The instance id of the provider whose speakers to combine.
+   * @param name The name of the new player.
+   * @param members The channel each speaker plays, by the player id of the speaker.
+   */
+  public createMultiChannelPlayer(
+    provider: string,
+    name: string,
+    members: Record<string, SpeakerChannel>,
+  ): Promise<Player> {
+    return this.sendCommand("players/create_multi_channel_player", {
+      provider,
+      name,
+      members,
+    });
+  }
+
+  /**
+   * Return the ids of the players whose output on a provider can be a speaker of a new
+   * multi-channel player.
+   *
+   * @param provider The instance id of the provider that combines the speakers.
+   * @param options Options for the command, such as keeping a failure quiet.
+   */
+  public getMultiChannelCandidates(
+    provider: string,
+    options?: CommandOptions,
+  ): Promise<string[]> {
+    return this.sendCommand(
+      "players/multi_channel_candidates",
+      { provider },
+      options,
+    );
+  }
+
   public playerCommandGroupSelectSource(
     playerId: string,
     source: string,
@@ -2689,18 +2970,10 @@ export class MusicAssistantApi {
     option?: QueueOption,
     options: PlayMediaOptions = {},
   ): Promise<void> {
-    let queue_id = options.queue_id;
-    if (
-      !queue_id &&
-      store.activePlayer?.active_source &&
-      store.activePlayer.active_source in this.queues
-    ) {
-      queue_id = store.activePlayer.active_source;
-    } else if (!queue_id) {
-      queue_id = store.activePlayer?.player_id;
-    }
     const payload = {
-      queue_id,
+      // a player's own queue id is its player id; the server routes a grouped
+      // or synced player's request to the queue that should handle it
+      queue_id: options.queue_id ?? store.activePlayer?.player_id,
       media,
       option,
       start_item: options.start_item,
@@ -2722,11 +2995,15 @@ export class MusicAssistantApi {
   public async getProviderConfigs(
     provider_type?: ProviderType,
     provider_domain?: string,
+    include_unavailable?: boolean,
   ): Promise<ProviderConfig[]> {
     // Return all known provider configurations, optionally filtered by ProviderType or domain.
+    // include_unavailable: also return the configurations of providers that are not
+    // available, with status UNAVAILABLE and the reason in last_error.
     return this.sendCommand("config/providers", {
       provider_type,
       provider_domain,
+      include_unavailable,
     });
   }
 
@@ -2755,6 +3032,29 @@ export class MusicAssistantApi {
       instance_id,
       action,
     });
+  }
+
+  public async invokeProviderMenuAction(
+    instance_id: string,
+    action_id: string,
+    uri: string,
+    player_id?: string,
+  ): Promise<ConfigActionResult | null> {
+    // Run a menu action a provider instance declares, for a media item, and
+    // on the given player for an action that requires one. Returns nothing,
+    // or the outcome to show the user.
+    return this.sendCommand("providers/invoke_menu_action", {
+      instance_id,
+      action_id,
+      uri,
+      player_id,
+    });
+  }
+
+  public async openProviderPage(instance_id: string): Promise<string> {
+    // Open the page a provider instance declares in its manifest. Returns a
+    // short-lived address of it, relative to the server's address.
+    return this.sendCommand("providers/open_page", { instance_id });
   }
 
   public async saveProviderConfig(
@@ -2818,13 +3118,84 @@ export class MusicAssistantApi {
     );
   }
 
-  public getShareCandidates(): Promise<UserSummary[]> {
+  public getShareCandidates(includeGuests = false): Promise<UserSummary[]> {
     // Get the users a music source or playlist can be shared with, the caller
     // included.
-    return this.sendCommand("config/providers/share_candidates", undefined, {
-      // callers show their own error toast; avoid a duplicate global one
+    return this.sendCommand(
+      "config/providers/share_candidates",
+      includeGuests ? { include_guests: true } : undefined,
+      {
+        // callers show their own error toast; avoid a duplicate global one
+        suppressGlobalError: true,
+      },
+    );
+  }
+
+  public getCatalogRecommendations(): Promise<CatalogRecommendation[]> {
+    // What the Marketplace suggests the calling user adds, and why. The page
+    // shows itself without suggestions when this fails, so it reports nothing.
+    return this.sendCommand("catalog/recommendations", undefined, {
       suppressGlobalError: true,
     });
+  }
+
+  // Community catalog related functions (admin only, refused in safe mode)
+  // Callers report a failure themselves, so these opt out of the global error toast.
+
+  public getCommunityProviders(): Promise<CommunityProvider[]> {
+    // Return the installed community providers and, while the community catalog is
+    // switched on, what it offers.
+    return this.sendCommand("community_catalog/providers", undefined, {
+      suppressGlobalError: true,
+    });
+  }
+
+  public refreshCommunityProviders(): Promise<CommunityProvider[]> {
+    // Fetch the community catalog now and return its providers.
+    return this.sendCommand("community_catalog/refresh", undefined, {
+      suppressGlobalError: true,
+    });
+  }
+
+  public installCommunityProvider(domain: string): Promise<CommunityProvider> {
+    // Install a provider of the community catalog. This creates no ProviderConfig:
+    // its manifest is then listed among the provider manifests to add it the usual way.
+    return this.sendCommand(
+      "community_catalog/install",
+      { domain },
+      { suppressGlobalError: true },
+    );
+  }
+
+  public removeCommunityProvider(domain: string): Promise<void> {
+    // Remove an installed community provider; its ProviderConfigs stay.
+    return this.sendCommand(
+      "community_catalog/remove",
+      { domain },
+      { suppressGlobalError: true },
+    );
+  }
+
+  public updateCommunityProviders(
+    domain?: string,
+  ): Promise<CommunityProvider[]> {
+    // Update one installed community provider, or without a domain every one with
+    // an update on offer, and return its providers. By domain this also installs
+    // its failed_version again.
+    return this.sendCommand(
+      "community_catalog/update",
+      { domain },
+      { suppressGlobalError: true },
+    );
+  }
+
+  public dismissCommunityNotice(domain: string): Promise<void> {
+    // Dismiss the notice of an installed community provider.
+    return this.sendCommand(
+      "community_catalog/dismiss_notice",
+      { domain },
+      { suppressGlobalError: true },
+    );
   }
 
   // PlayerConfig related functions
@@ -2844,9 +3215,12 @@ export class MusicAssistantApi {
     });
   }
 
-  public async getPlayerConfig(player_id: string): Promise<PlayerConfig> {
+  public async getPlayerConfig(
+    player_id: string,
+    options?: CommandOptions,
+  ): Promise<PlayerConfig> {
     // Return configuration for a single player.
-    return this.sendCommand("config/players/get", { player_id });
+    return this.sendCommand("config/players/get", { player_id }, options);
   }
 
   public async getPlayerConfigEntries(
@@ -3072,9 +3446,10 @@ export class MusicAssistantApi {
 
   // Core Config related functions
 
-  public async getCoreConfigs(): Promise<CoreConfig[]> {
-    // Return all known core configurations
-    return this.sendCommand("config/core");
+  public async getCoreConfigs(includeValues = false): Promise<CoreConfig[]> {
+    // Return all known core configurations; without includeValues, the configs
+    // carry no entries.
+    return this.sendCommand("config/core", { include_values: includeValues });
   }
 
   public async getCoreConfig(domain: string): Promise<CoreConfig> {
@@ -3123,15 +3498,17 @@ export class MusicAssistantApi {
   public async saveCoreConfig(
     domain: string,
     values: Record<string, ConfigValueType>,
+    options?: CommandOptions,
   ): Promise<CoreConfig> {
     // Save Core controller Config.
     // domain: (mandatory) domain of the core controller.
     // values: the raw values for config entries that need to be stored/updated.
     // action: [optional] action key called from config entries UI.
-    const config = await this.sendCommand<CoreConfig>("config/core/save", {
-      domain,
-      values,
-    });
+    const config = await this.sendCommand<CoreConfig>(
+      "config/core/save",
+      { domain, values },
+      options,
+    );
     this._coreConfigValues.clear();
     return config;
   }
@@ -3261,6 +3638,8 @@ export class MusicAssistantApi {
     // Imported dynamically: router.ts imports this module statically, so a
     // static import here would make the api client and the router directly circular.
     const { default: router } = await import("../router");
+    // the task list would otherwise open underneath the full screen player
+    store.showFullscreenPlayer = false;
     if (router.currentRoute.value.name === "backgroundtasks") {
       return;
     }
@@ -3388,16 +3767,20 @@ export class MusicAssistantApi {
       this.players[player.player_id] = player;
     } else if (msg.event == EventType.PLAYER_UPDATED) {
       const player = msg.data as Player;
-      if (player.player_id in this.players)
+      // a disabled player leaves the server with this last update, and its queue with it
+      if (!player.enabled) this.dropPlayer(player.player_id);
+      else if (player.player_id in this.players)
         Object.assign(this.players[player.player_id], player);
       else this.players[player.player_id] = player;
     } else if (msg.event == EventType.PLAYER_REMOVED) {
-      delete this.players[msg.object_id!];
-      delete this.queues[msg.object_id!];
-      delete this.queueElapsedTime[msg.object_id!];
+      this.dropPlayer(msg.object_id!);
     } else if (msg.event == EventType.CORE_STATE_UPDATED) {
       // Update serverInfo with the new server state
       this.serverInfo.value = msg.data as ServerInfoMessage;
+    } else if (msg.event == EventType.COMMUNITY_CATALOG_UPDATED) {
+      // a community provider was installed, removed or stopped; a failed fetch
+      // shows the global error toast
+      this.fetchProviderManifests().catch(() => {});
     } else if (msg.event == EventType.PROVIDERS_UPDATED) {
       // Clear and repopulate the existing reactive object to preserve reactivity
       Object.keys(this.providers).forEach((key) => delete this.providers[key]);
@@ -3408,6 +3791,13 @@ export class MusicAssistantApi {
     // signal + log all events
     if (DEBUG) console.log("[event]", msg);
     this.signalEvent(msg);
+  }
+
+  /** Forget a player that left the server, and its queue. */
+  private dropPlayer(playerId: string): void {
+    delete this.players[playerId];
+    delete this.queues[playerId];
+    delete this.queueElapsedTime[playerId];
   }
 
   private handleTransportStateChange(state: string): void {
@@ -3484,7 +3874,7 @@ export class MusicAssistantApi {
           msg.error_code === AUTHENTICATION_REQUIRED_ERROR_CODE ||
           msg.error_code === AUTHENTICATION_FAILED_ERROR_CODE;
 
-        if (!isAuthError) {
+        if (!isAuthError && !this.offerStreamHeldDialog(msg, resultPromise)) {
           toast.error(msg.details || String(msg.error_code));
         }
       }
@@ -3517,6 +3907,7 @@ export class MusicAssistantApi {
           msg.details || String(msg.error_code),
           msg.error_code,
           msg.details || undefined,
+          msg.data || undefined,
         ),
       );
     } else {
@@ -3751,6 +4142,18 @@ export class MusicAssistantApi {
     return this.accountApi.disableUser(userId);
   }
 
+  // AI methods
+
+  public async getAIEngines(): Promise<AIEngine[]> {
+    // Return the available AI engines of all kinds.
+    return this.sendCommand<AIEngine[]>("ai/engines");
+  }
+
+  public async getAIUsage(): Promise<AIEngineUsage[]> {
+    // Return each engine setting of the core modules and providers, with its engine.
+    return this.sendCommand<AIEngineUsage[]>("ai/usage");
+  }
+
   // Remote Access methods
 
   public async getRemoteAccessInfo(): Promise<RemoteAccessInfo> {
@@ -3765,19 +4168,6 @@ export class MusicAssistantApi {
     return this.sendCommand<RemoteAccessInfo>("remote_access/configure", {
       enabled,
     });
-  }
-
-  // Stream server methods
-
-  public async getStreamServerInfo(
-    options?: CommandOptions,
-  ): Promise<StreamServerInfo> {
-    // Get the address the stream server hands to players
-    return this.sendCommand<StreamServerInfo>(
-      "streams/info",
-      undefined,
-      options,
-    );
   }
 
   // Storage methods
@@ -3878,6 +4268,8 @@ export class MusicAssistantApi {
     const cmdId = this._genCmdId();
     return new Promise((resolve, reject) => {
       this.commands.set(cmdId, {
+        command,
+        args,
         resolve: resolve as (result: unknown) => void,
         reject,
         suppressGlobalError: options?.suppressGlobalError,
@@ -3930,7 +4322,9 @@ export class MusicAssistantApi {
 
     try {
       this.transport.send(msgStr);
-    } catch {
+    } catch (error) {
+      // an oversized message is not a dropped connection, so let the caller see why
+      if (error instanceof MessageTooLargeError) throw error;
       // transport throws untyped errors; callers filter on ConnectionLostError
       throw new ConnectionLostError();
     }
@@ -3959,6 +4353,11 @@ export class MusicAssistantApi {
     const manifests = await this.sendCommand<ProviderManifest[]>(
       "providers/manifests",
     );
+    // a community provider that was removed or stopped is no longer listed
+    const domains = new Set(manifests.map((prov) => prov.domain));
+    Object.keys(this.providerManifests)
+      .filter((domain) => !domains.has(domain))
+      .forEach((domain) => delete this.providerManifests[domain]);
     for (const prov of manifests) {
       this.providerManifests[prov.domain] = prov;
     }
@@ -4004,6 +4403,36 @@ export class MusicAssistantApi {
       console.error("[resultMessage] suppression check failed", err);
       return false;
     }
+  }
+
+  /**
+   * Offer to stop the player holding a provider's only stream and run the command again.
+   *
+   * Returns whether the error is a refusal the dialog can act on, and so needs no toast.
+   */
+  private offerStreamHeldDialog(
+    msg: ErrorResultMessage,
+    pending?: { command: string; args?: Record<string, unknown> },
+  ): boolean {
+    const { queue_id, player_name, provider_instance } = msg.data ?? {};
+    if (
+      msg.error_code !== PROVIDER_STREAM_HELD_ERROR_CODE ||
+      !pending ||
+      // layouts without the dialog, such as the party guest pages, keep the toast
+      !eventbus.all.get("streamHeldDialog")?.length ||
+      typeof queue_id !== "string" ||
+      typeof player_name !== "string" ||
+      typeof provider_instance !== "string"
+    ) {
+      return false;
+    }
+    eventbus.emit("streamHeldDialog", {
+      holderQueueId: queue_id,
+      holderName: player_name,
+      providerName: this.getProviderName(provider_instance),
+      retry: () => this.sendCommand(pending.command, pending.args),
+    });
+    return true;
   }
 
   /**

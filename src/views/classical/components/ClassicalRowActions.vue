@@ -35,18 +35,19 @@
         <Heart class="size-5.5" :fill="favorite ? 'currentColor' : 'none'" />
       </Button>
     </div>
-    <MAButton
-      variant="icon"
-      :aria-label="name ? `${$t('more_options')}: ${name}` : $t('more_options')"
+    <Button
+      variant="ghost"
+      size="icon-lg"
+      :aria-label="menuLabel"
+      :title="menuLabel"
       @click.stop.prevent="(e: Event) => $emit('menu', e)"
     >
       <EllipsisVertical class="size-6" />
-    </MAButton>
+    </Button>
   </div>
 </template>
 
 <script setup lang="ts">
-import MAButton from "@/components/Button.vue";
 import FavouriteButton from "@/components/FavoriteButton.vue";
 import NowPlayingBadge from "@/components/NowPlayingBadge.vue";
 import ProviderIcon from "@/components/ProviderIcon.vue";
@@ -61,12 +62,13 @@ import {
 } from "@/plugins/api/interfaces";
 import { authManager } from "@/plugins/auth";
 import { getBreakpointValue } from "@/plugins/breakpoint";
+import { $t } from "@/plugins/i18n";
 import { EllipsisVertical, Heart } from "@lucide/vue";
 import { computed } from "vue";
 
 defineOptions({ name: "ClassicalRowActions" });
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     // the row's title, which names its menu button for screen readers
     name?: string;
@@ -90,6 +92,10 @@ withDefaults(
     favoriteItem: undefined,
     favorite: undefined,
   },
+);
+
+const menuLabel = computed(() =>
+  props.name ? `${$t("more_options")}: ${props.name}` : $t("more_options"),
 );
 
 // as the standard heart, only for those who may change the library

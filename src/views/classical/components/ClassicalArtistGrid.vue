@@ -90,15 +90,16 @@
             v-if="showHeart && canHoldFavorite(item.artist)"
             :item="item.artist"
           />
-          <MAButton
-            variant="list"
-            :icon="true"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             class="ml-auto"
             :aria-label="`${$t('more_options')}: ${item.name}`"
+            :title="`${$t('more_options')}: ${item.name}`"
             @click.stop="openArtistMenu(item.artist, router, $event)"
           >
             <EllipsisVertical class="size-6" />
-          </MAButton>
+          </Button>
         </div>
       </li>
     </template>
@@ -117,7 +118,6 @@
 </template>
 
 <script setup lang="ts">
-import MAButton from "@/components/Button.vue";
 import { bannerBackground } from "@/components/discover/editorialArtwork";
 import FavouriteButton from "@/components/FavoriteButton.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";

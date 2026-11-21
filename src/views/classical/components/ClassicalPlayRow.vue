@@ -7,7 +7,7 @@
   <component
     :is="tag"
     v-hold="onRowHold"
-    class="classical-play-row ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px]"
+    class="group ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px]"
     :class="ROW_HOVER_CLASS"
     :role="focusable ? 'button' : undefined"
     :tabindex="focusable ? 0 : undefined"
@@ -18,26 +18,28 @@
     @touchstart.passive="onTouchStart"
   >
     <RowPlayButton
-      side="start"
+      reserved
       :label="label"
-      :disabled="disabled"
-      @play="(e: Event) => $emit('play', e)"
+      :disabled="playDisabled"
+      @click="(e: MouseEvent) => $emit('play', e)"
     />
     <slot></slot>
     <RowPlayButton
-      side="end"
+      class="ml-auto"
       :label="label"
-      :disabled="disabled"
-      @play="(e: Event) => $emit('play', e)"
+      :disabled="playDisabled"
+      @click="(e: MouseEvent) => $emit('play', e)"
     />
     <slot name="actions"></slot>
   </component>
 </template>
 
 <script setup lang="ts">
+import RowPlayButton from "@/components/RowPlayButton.vue";
 import { useHoldToOpenMenu } from "@/composables/useHoldToOpenMenu";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
+import { usePlayActionInProgress } from "@/composables/usePlayActionInProgress";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
+import { computed } from "vue";
 
 defineOptions({ name: "ClassicalPlayRow" });
 
@@ -47,7 +49,7 @@ const props = withDefaults(
     tag?: string;
     // names the play buttons for screen readers
     label: string;
-    // nothing to play; the start slot keeps its space so rows stay aligned
+    // nothing to play, which dims the play buttons
     disabled?: boolean;
     // a prop rather than an emit, so a row without one keeps the browser's menu
     onMenu?: (evt: Event) => void;
@@ -61,6 +63,12 @@ const props = withDefaults(
 defineEmits<{
   (e: "play", evt: Event): void;
 }>();
+
+// a play still starting holds the buttons, so a second tap can't queue it twice
+const playActionInProgress = usePlayActionInProgress();
+const playDisabled = computed(
+  () => props.disabled || playActionInProgress.value,
+);
 
 const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event) => props.onMenu?.(evt),

@@ -3,12 +3,13 @@
     <template v-for="g in groups" :key="g.key">
       <!-- lines up with the rows below, whose highlight starts 7px early -->
       <div
-        class="classical-play-row mt-[1rem] mr-0 mb-[0.25rem] ml-[-7px] flex items-center gap-[0.4rem] pl-[7px] first:mt-0"
+        class="group mt-[1rem] mr-0 mb-[0.25rem] ml-[-7px] flex items-center gap-[0.4rem] pl-[7px] first:mt-0"
       >
         <RowPlayButton
-          side="start"
+          reserved
           :label="`${$t('play')} ${g.name}`"
-          @play="(e: Event) => playGroup(g.rows, e)"
+          :disabled="playActionInProgress"
+          @click="(e: MouseEvent) => playGroup(g.rows, e)"
         />
         <!-- in the movements' own italic, as the Movements section lists them -->
         <h3
@@ -18,9 +19,9 @@
           {{ g.name }}
         </h3>
         <RowPlayButton
-          side="end"
           :label="`${$t('play')} ${g.name}`"
-          @play="(e: Event) => playGroup(g.rows, e)"
+          :disabled="playActionInProgress"
+          @click="(e: MouseEvent) => playGroup(g.rows, e)"
         />
       </div>
       <MovementRecordingRow
@@ -36,9 +37,10 @@
 </template>
 
 <script setup lang="ts">
+import RowPlayButton from "@/components/RowPlayButton.vue";
+import { usePlayActionInProgress } from "@/composables/usePlayActionInProgress";
 import type { Recording, Track } from "@/plugins/api/interfaces";
 import MovementRecordingRow from "@/views/classical/components/MovementRecordingRow.vue";
-import RowPlayButton from "@/views/classical/components/RowPlayButton.vue";
 import { playRecording, playTracks } from "@/views/classical/playback";
 import type {
   MovementGroup,
@@ -55,6 +57,9 @@ defineProps<{
 const emit = defineEmits<{
   (e: "menu", track: Track, recording: Recording, evt: Event): void;
 }>();
+
+// a play still starting holds the buttons, so a second tap can't queue it twice
+const playActionInProgress = usePlayActionInProgress();
 
 const playGroup = (rows: MovementRow[], evt: Event) => {
   playRecording(

@@ -36,11 +36,12 @@
         >
           <div class="relative block overflow-hidden" :class="layout.thumb">
             <img
-              v-if="image"
+              v-if="image && !failedImages.has(image)"
               :src="image"
               :alt="item.name"
               loading="lazy"
               class="block size-full object-cover"
+              @error="failedImages.add(image)"
             />
             <!-- the standard banner artwork, kept quiet in grey -->
             <div
@@ -139,7 +140,7 @@ import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
 import { EllipsisVertical } from "@lucide/vue";
 import { useElementSize } from "@vueuse/core";
-import { computed, ref, watch, type Component } from "vue";
+import { computed, reactive, ref, watch, type Component } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ClassicalArtistGrid" });
@@ -202,6 +203,9 @@ const rows = computed(() =>
     listLine: [item.role, ...item.lines].filter(Boolean).join(" · "),
   })),
 );
+
+// pictures that did not load, which show the placeholder instead
+const failedImages = reactive(new Set<string>());
 
 const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
   (evt: Event, artist: Artist) => openArtistMenu(artist, router, evt),

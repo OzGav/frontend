@@ -65,7 +65,12 @@
         </template>
       </ClassicalPlayRow>
     </ul>
-    <ClassicalEmpty v-else :filtered="filtered" />
+    <ClassicalEmpty
+      v-else
+      :filtered="filtered"
+      :failed="failed"
+      @retry="refresh()"
+    />
     <LoadMoreSentinel v-if="hasMore" :loading="loadingMore" @more="loadMore" />
   </div>
 </template>
@@ -197,7 +202,7 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
     : undefined,
 );
 
-const { loading, loadingMore, hasMore, loadMore, filtered } =
+const { loading, loadingMore, hasMore, loadMore, filtered, failed, refresh } =
   useClassicalListing({
     itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_WORKS,

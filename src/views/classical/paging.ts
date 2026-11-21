@@ -14,15 +14,16 @@ interface PagedListOptions<T> {
  *
  * Returns `reload`, which fetches the first page afresh; `loadMore`, which
  * appends the next page; `loading` and `loadingMore`, set while either runs;
- * and `hasMore`, whether a further page may follow the loaded list. A page
- * from before the latest reload is dropped, and a failed page stops paging
- * until the next reload.
+ * `hasMore`, whether a further page may follow the loaded list; and `failed`,
+ * set when the first page could not be loaded. A page from before the latest
+ * reload is dropped, and a failed page stops paging until the next reload.
  */
 export function usePagedList<T>(options: PagedListOptions<T>) {
   // the tabs load on mount, so they start out loading
   const loading = ref(true);
   const loadingMore = ref(false);
   const more = ref(false);
+  const failed = ref(false);
 
   let loadCount = 0;
 
@@ -37,6 +38,7 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
     loading.value = true;
     loadingMore.value = false;
     more.value = false;
+    failed.value = false;
     try {
       const page = await options.fetch(0, limit);
       // a newer load has taken over the list
@@ -45,6 +47,7 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
       more.value = page.length >= limit;
     } catch {
       // the api has already reported the failure
+      if (count === loadCount) failed.value = true;
     } finally {
       if (count === loadCount) loading.value = false;
     }
@@ -75,6 +78,7 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
     loading,
     loadingMore,
     hasMore: computed(() => more.value && !loading.value),
+    failed,
     reload,
     loadMore,
   };

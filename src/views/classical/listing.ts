@@ -127,9 +127,10 @@ interface ClassicalListingOptions<T, Q extends object> extends Omit<
  *
  * The list loads as the tab opens, page by page: place a LoadMoreSentinel
  * after its last row while `hasMore`, with `loadingMore` and `loadMore`.
- * `filtered` tells whether a search or filter narrows the list. A grid shows
- * its action buttons by `showActions` and reports whether they fit its covers
- * into `actionsFit`.
+ * `filtered` tells whether a search or filter narrows the list, and `failed`
+ * whether the first page could not be loaded, which `refresh` tries again. A
+ * grid shows its action buttons by `showActions` and reports whether they fit
+ * its covers into `actionsFit`.
  */
 export function useClassicalListing<T, Q extends object = object>(
   options: ClassicalListingOptions<T, Q>,
@@ -154,20 +155,21 @@ export function useClassicalListing<T, Q extends object = object>(
   // set by the grid, which hides the action buttons when the covers get too small
   const actionsFit = ref(true);
 
-  const { loading, loadingMore, hasMore, reload, loadMore } = usePagedList({
-    items: options.items,
-    fetch: async (offset, limit) => {
-      await sort.ready;
-      return options.load({
-        ...sort.sort.value,
-        search: searchText.value || undefined,
-        favorite: favoritesOnly.value || undefined,
-        offset,
-        limit,
-        ...(options.query?.() as Q),
-      });
-    },
-  });
+  const { loading, loadingMore, hasMore, failed, reload, loadMore } =
+    usePagedList({
+      items: options.items,
+      fetch: async (offset, limit) => {
+        await sort.ready;
+        return options.load({
+          ...sort.sort.value,
+          search: searchText.value || undefined,
+          favorite: favoritesOnly.value || undefined,
+          offset,
+          limit,
+          ...(options.query?.() as Q),
+        });
+      },
+    });
   const { returnRows } = useBackScroll(
     () => loading.value,
     () => options.items.value.length,
@@ -289,6 +291,8 @@ export function useClassicalListing<T, Q extends object = object>(
     hasMore,
     loadMore,
     filtered,
+    failed,
+    refresh,
   };
 }
 

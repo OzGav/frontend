@@ -102,7 +102,12 @@
       </li>
     </template>
   </ul>
-  <ClassicalEmpty v-else :filtered="filtered" />
+  <ClassicalEmpty
+    v-else
+    :filtered="filtered"
+    :failed="failed"
+    @retry="emit('retry')"
+  />
   <LoadMoreSentinel
     v-if="hasMore"
     :loading="loadingMore"
@@ -155,6 +160,8 @@ const props = withDefaults(
     placeholderIcon: Component;
     // a filter is narrowing the list, for its empty state
     filtered: boolean;
+    // the list could not be loaded, for its empty state
+    failed?: boolean;
     // a further page can be loaded
     hasMore: boolean;
     loadingMore: boolean;
@@ -167,6 +174,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   // asks for the next page
   more: [];
+  // asks to load the list again after it failed
+  retry: [];
   // whether the covers are wide enough for the heart and menu under them
   "actions-fit": [fit: boolean];
 }>();

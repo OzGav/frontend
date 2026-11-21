@@ -138,4 +138,34 @@ describe("usePagedList", () => {
     expect(list.loading.value).toBe(false);
     expect(list.hasMore.value).toBe(false);
   });
+
+  it("says the first page failed until a reload succeeds", async () => {
+    const items = ref<number[]>([]);
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce([1, 2]);
+    const list = usePagedList({ items, fetch });
+
+    await list.reload();
+    expect(list.failed.value).toBe(true);
+
+    await list.reload();
+    expect(list.failed.value).toBe(false);
+    expect(items.value).toEqual([1, 2]);
+  });
+
+  it("does not count a failed further page as a failed list", async () => {
+    const items = ref<number[]>([]);
+    const fetch = vi
+      .fn()
+      .mockImplementationOnce(numbers(1000))
+      .mockRejectedValueOnce(new Error("offline"));
+    const list = usePagedList({ items, fetch });
+
+    await list.reload();
+    await list.loadMore();
+    expect(list.failed.value).toBe(false);
+    expect(items.value).toHaveLength(CLASSICAL_PAGE_SIZE);
+  });
 });

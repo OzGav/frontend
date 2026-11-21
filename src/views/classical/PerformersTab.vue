@@ -8,10 +8,12 @@
       :loading="loading"
       :placeholder-icon="Users"
       :filtered="filtered"
+      :failed="failed"
       :has-more="hasMore"
       :loading-more="loadingMore"
       :show-actions="showActions"
       @more="loadMore"
+      @retry="refresh()"
       @actions-fit="(fit) => (actionsFit = fit)"
     />
   </div>
@@ -80,6 +82,8 @@ const {
   hasMore,
   loadMore,
   filtered,
+  failed,
+  refresh,
 } = useClassicalListing({
   itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_PERFORMERS,

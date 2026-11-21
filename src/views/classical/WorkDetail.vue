@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <section ref="pageRoot">
     <!-- The work has no artwork of its own; the hero borrows the composer's. -->
     <ClassicalHero :item="heroItem" section="works">
       <template v-if="work" #meta>
@@ -66,6 +66,7 @@
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
+import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
 import {
   ImageType,
   type Artist,
@@ -78,7 +79,6 @@ import {
   getWork,
   getWorkRecordings,
 } from "@/services/classical";
-import { useBackScroll } from "@/views/classical/backScroll";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import FilterableSection from "@/views/classical/components/FilterableSection.vue";
@@ -117,7 +117,8 @@ const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
 const recordings = ref<Recording[]>([]);
 const loading = ref(true);
-useBackScroll(() => loading.value);
+const pageRoot = ref<HTMLElement>();
+useHistoryScrollRestore(pageRoot);
 
 useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
 

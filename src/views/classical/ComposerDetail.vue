@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <section ref="pageRoot">
     <ClassicalHero :item="artist" section="composers" show-favorite>
       <template v-if="heroMeta" #meta>{{ heroMeta }}</template>
     </ClassicalHero>
@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
 import type { ClassicalWorkEntry } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { useClassicalArtistPage } from "@/views/classical/artistPage";
@@ -68,7 +69,7 @@ import {
 } from "@/views/classical/labels";
 import { playWork } from "@/views/classical/playback";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "ComposerDetail" });
@@ -76,6 +77,9 @@ defineOptions({ name: "ComposerDetail" });
 const props = defineProps<{ id: string }>();
 
 const router = useRouter();
+
+const pageRoot = ref<HTMLElement>();
+useHistoryScrollRestore(pageRoot);
 
 // the server lists a composer's works in catalogue order
 const { artist, works, loading } = useClassicalArtistPage(

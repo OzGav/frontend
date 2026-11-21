@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-4">
+  <div ref="tabRoot" class="flex flex-col gap-4">
     <ClassicalArtistGrid
       :items="gridItems"
       :view-mode="viewMode"
@@ -55,6 +55,7 @@ const ROLE_LABELS = {
   [ArtistRole.PERFORMER]: "classical_role.other",
 } satisfies Partial<Record<ArtistRole, string>>;
 
+const tabRoot = ref<HTMLElement>();
 const performers = ref<ClassicalPerformer[]>([]);
 const choices = ref<ClassicalPerformerFilters>();
 
@@ -88,6 +89,7 @@ const {
   itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_PERFORMERS,
   items: performers,
+  content: tabRoot,
   load: getPerformers,
   query: () => ({ role: roleFilter.selected.value }),
   loadFilterChoices: async () => {

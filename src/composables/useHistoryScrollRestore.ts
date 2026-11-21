@@ -11,7 +11,7 @@ import {
 // when the page never grows tall enough, e.g. a row failed to load
 const RESTORE_TIMEOUT_MS = 5000;
 
-const savedPositions = new Map<string, number>();
+const savedPositions = new Map<string, { top: number; rows?: number }>();
 
 /**
  * Brings a view back to where it was scrolled when the user returns to it
@@ -19,8 +19,15 @@ const savedPositions = new Map<string, number>();
  *
  * `returning()` is true for the whole visit that came back through history,
  * so the view can skip its own reset to the top, also after the restore.
+ *
+ * A paged list passes `rows`, the number of rows it has loaded; on such a
+ * visit `returnRows()` gives the number it had when the user left, so it can
+ * load that many again for the restore to reach.
  */
-export function useHistoryScrollRestore(content: Ref<HTMLElement | undefined>) {
+export function useHistoryScrollRestore(
+  content: Ref<HTMLElement | undefined>,
+  rows?: () => number,
+) {
   const route = useRoute();
   const router = useRouter();
   let stopRestore: (() => void) | undefined;
@@ -32,7 +39,9 @@ export function useHistoryScrollRestore(content: Ref<HTMLElement | undefined>) {
 
   const save = () => {
     const scroller = getScroller();
-    if (scroller) savedPositions.set(entryKey, scroller.scrollTop);
+    if (scroller) {
+      savedPositions.set(entryKey, { top: scroller.scrollTop, rows: rows?.() });
+    }
   };
   onBeforeRouteLeave(save);
   onBeforeRouteUpdate(save);
@@ -43,7 +52,7 @@ export function useHistoryScrollRestore(content: Ref<HTMLElement | undefined>) {
       stopRestore?.();
       returning = false;
       entryKey = `${router.options.history.state.position}:${fullPath}`;
-      const top = savedPositions.get(entryKey);
+      const top = savedPositions.get(entryKey)?.top;
       if (top && returnedByHistory(router)) {
         returning = true;
         startRestore(top);
@@ -90,7 +99,11 @@ export function useHistoryScrollRestore(content: Ref<HTMLElement | undefined>) {
     };
   }
 
-  return { returning: () => returning };
+  return {
+    returning: () => returning,
+    returnRows: () =>
+      returning ? savedPositions.get(entryKey)?.rows : undefined,
+  };
 }
 
 /** The scroll container most views share. */

@@ -57,11 +57,11 @@ describe("useHistoryScrollRestore", () => {
     vi.useRealTimers();
   });
 
-  function mount() {
+  function mount(rows?: () => number) {
     const scope = effectScope();
     scopes.push(scope);
     const restore = scope.run(() =>
-      useHistoryScrollRestore(ref(document.createElement("section"))),
+      useHistoryScrollRestore(ref(document.createElement("section")), rows),
     )!;
     return { scope, restore };
   }
@@ -73,9 +73,9 @@ describe("useHistoryScrollRestore", () => {
     });
   }
 
-  function leaveAt(top: number) {
+  function leaveAt(top: number, rows?: number) {
     guards.leave = [];
-    const { scope } = mount();
+    const { scope } = mount(rows === undefined ? undefined : () => rows);
     scroller.scrollTop = top;
     guards.leave.forEach((guard) => guard({}, { fullPath: route.fullPath }));
     scope.stop();
@@ -196,5 +196,23 @@ describe("useHistoryScrollRestore", () => {
     resize();
     expect(scroller.scrollTop).toBe(0);
     expect(restore.returning()).toBe(false);
+  });
+
+  it("gives a paged list the rows it had when the user left", async () => {
+    leaveAt(1200, 60);
+    historyMock.returned = true;
+    const { restore } = mount(() => 20);
+    await nextTick();
+
+    expect(restore.returnRows()).toBe(60);
+  });
+
+  it("gives a paged list no rows on a fresh navigation", async () => {
+    leaveAt(1200, 60);
+    historyMock.returned = false;
+    const { restore } = mount(() => 20);
+    await nextTick();
+
+    expect(restore.returnRows()).toBeUndefined();
   });
 });

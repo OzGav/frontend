@@ -1,5 +1,6 @@
 import type { ListingViewOption } from "@/components/listing-toolbar/constants";
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
+import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
 import { normalizeGridSize, type GridSizeControls } from "@/helpers/grid_size";
 import {
   activeFilterCount,
@@ -8,7 +9,6 @@ import {
 import { $t } from "@/plugins/i18n";
 import type { SortOptionInfo } from "@/plugins/api/interfaces";
 import type { ClassicalListQuery } from "@/services/classical";
-import { useBackScroll } from "@/views/classical/backScroll";
 import {
   useClassicalSort,
   type ClassicalSortOptions,
@@ -101,6 +101,8 @@ interface ClassicalListingOptions<T, Q extends object> extends Omit<
 > {
   // the tab's list, replaced by each reload and extended by each page
   items: Ref<T[]>;
+  // the tab's root element, which grows as its rows load
+  content: Ref<HTMLElement | undefined>;
   // fetches a page of the list
   load: (query: ClassicalListQuery & Q) => Promise<T[]>;
   // the list arguments of the tab's own filters; a change reloads the list
@@ -170,8 +172,8 @@ export function useClassicalListing<T, Q extends object = object>(
         });
       },
     });
-  const { returnRows } = useBackScroll(
-    () => loading.value,
+  const { returnRows } = useHistoryScrollRestore(
+    options.content,
     () => options.items.value.length,
   );
 

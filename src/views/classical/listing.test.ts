@@ -12,8 +12,8 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, ref } from "vue";
 
-const { backMock, prefsMock, sortMock } = vi.hoisted(() => ({
-  backMock: { returnRows: undefined as number | undefined },
+const { restoreMock, prefsMock, sortMock } = vi.hoisted(() => ({
+  restoreMock: { returnRows: undefined as number | undefined },
   prefsMock: {
     preferences: {} as Record<string, unknown>,
     save: () => {},
@@ -25,8 +25,8 @@ vi.mock("@/plugins/i18n", () => ({ $t: (key: string) => key }));
 vi.mock("@/views/classical/preferences", () => ({
   useClassicalPreferences: () => prefsMock,
 }));
-vi.mock("@/views/classical/backScroll", () => ({
-  useBackScroll: () => ({ returnRows: () => backMock.returnRows }),
+vi.mock("@/composables/useHistoryScrollRestore", () => ({
+  useHistoryScrollRestore: () => ({ returnRows: () => restoreMock.returnRows }),
 }));
 vi.mock("@/views/classical/classicalSort", async () => {
   const { computed, ref } = await import("vue");
@@ -58,6 +58,7 @@ function mountListing() {
           itemtype: "composers",
           listing: ListingType.CLASSICAL_COMPOSERS,
           items: ref<number[]>([]),
+          content: ref<HTMLElement>(),
           load,
           query: () => ({ period: period.value }),
           loadFilterChoices,
@@ -80,7 +81,7 @@ function toggleFavorites(menu: ClassicalMenu | undefined) {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  backMock.returnRows = undefined;
+  restoreMock.returnRows = undefined;
   prefsMock.preferences = {};
 });
 
@@ -103,7 +104,7 @@ describe("useClassicalListing", () => {
   });
 
   it("loads again the rows the tab had when the user goes back to it", async () => {
-    backMock.returnRows = CLASSICAL_PAGE_SIZE * 3;
+    restoreMock.returnRows = CLASSICAL_PAGE_SIZE * 3;
     const { load } = mountListing();
     await flushPromises();
     expect(load).toHaveBeenCalledWith(

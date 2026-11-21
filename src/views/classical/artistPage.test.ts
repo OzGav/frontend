@@ -13,7 +13,6 @@ vi.mock("@/services/classical", () => ({ getClassicalArtist, getArtistWorks }));
 vi.mock("@/composables/useDetailItemUpdates", () => ({
   useDetailItemUpdates: vi.fn(),
 }));
-vi.mock("@/views/classical/backScroll", () => ({ useBackScroll: vi.fn() }));
 
 const artist = (id: string) => ({ item_id: id }) as Artist;
 const entry = (id: string) =>

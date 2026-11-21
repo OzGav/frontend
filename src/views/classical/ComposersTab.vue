@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-3">
+  <div ref="tabRoot" class="flex flex-col gap-3">
     <ClassicalArtistGrid
       :items="gridItems"
       :view-mode="viewMode"
@@ -43,6 +43,7 @@ defineOptions({ name: "ComposersTab" });
 
 const { t } = useI18n();
 
+const tabRoot = ref<HTMLElement>();
 const composers = ref<ClassicalComposer[]>([]);
 const choices = ref<ClassicalComposerFilters>();
 
@@ -73,6 +74,7 @@ const {
   itemtype: ITEMTYPE,
   listing: ListingType.CLASSICAL_COMPOSERS,
   items: composers,
+  content: tabRoot,
   load: getComposers,
   query: () => ({
     period: periodFilter.selected.value,

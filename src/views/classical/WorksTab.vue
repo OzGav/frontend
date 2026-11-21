@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-3">
+  <div ref="tabRoot" class="flex flex-col gap-3">
     <div v-if="loading && !works.length">
       <ListViewSkeleton v-for="n in SKELETONS" :key="n" />
     </div>
@@ -118,6 +118,7 @@ const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
 
 const { t } = useI18n();
 
+const tabRoot = ref<HTMLElement>();
 const works = ref<ClassicalWorkEntry[]>([]);
 const choices = ref<ClassicalWorkFilters>();
 
@@ -216,6 +217,7 @@ const { loading, loadingMore, hasMore, loadMore, filtered, failed, refresh } =
       yearFilter.value,
     ],
     items: works,
+    content: tabRoot,
     query: () => ({
       period: periodFilter.selected.value,
       ...workTypeFilter.query.value,

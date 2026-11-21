@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <section ref="pageRoot">
     <ClassicalHero :item="artist" section="performers" show-favorite />
     <DetailTextRow
       v-if="artist?.metadata.description"
@@ -80,6 +80,7 @@
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
 import { subscribeOwnFavorites } from "@/helpers/favorites";
 import {
   MediaType,
@@ -103,7 +104,7 @@ import { playRecording } from "@/views/classical/playback";
 import { openRecordingMenu } from "@/views/classical/menu";
 import { $t } from "@/plugins/i18n";
 import { useDebounceFn } from "@vueuse/core";
-import { onBeforeUnmount } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "PerformerDetail" });
@@ -122,6 +123,8 @@ const { artist, works, loading } = useClassicalArtistPage(
   () => props.id,
   "performer",
 );
+const pageRoot = ref<HTMLElement>();
+useHistoryScrollRestore(pageRoot);
 
 // A like or unlike of a track may change a work's heart, so the hearts are
 // read again once the user's changes settle.

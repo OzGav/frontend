@@ -5,7 +5,6 @@ import {
   getClassicalArtist,
   type ClassicalArtistRole,
 } from "@/services/classical";
-import { useBackScroll } from "@/views/classical/backScroll";
 import { ref, watch } from "vue";
 
 /**
@@ -26,7 +25,6 @@ export function useClassicalArtistPage(
   const loading = ref(true);
 
   useDetailItemUpdates(artist);
-  useBackScroll(() => loading.value);
 
   const load = async (artistId: string) => {
     // the previous artist must not stay actionable under the new route

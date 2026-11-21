@@ -22,6 +22,7 @@
         tag="li"
         class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem] [--play-row-inset:0.25rem]"
         :label="`${$t('play')} ${t.name}`"
+        focusable
         @click="openTrackOnRowClick($event, t)"
         @menu="(e: Event) => openOtherTrackMenu(t, router, e)"
         @play="(e: Event) => playTracks([t], e)"

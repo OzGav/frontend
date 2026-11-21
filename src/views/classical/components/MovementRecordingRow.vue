@@ -3,6 +3,7 @@
   <ClassicalPlayRow
     class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
     :label="`${$t('play')} ${name}`"
+    focusable
     @click="(e: MouseEvent) => openTrackOnRowClick(e, tracks[0])"
     @menu="(e: Event) => $emit('menu', tracks[0], recording, e)"
     @play="(e: Event) => $emit('play', tracks, e)"

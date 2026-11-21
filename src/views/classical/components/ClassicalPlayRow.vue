@@ -9,7 +9,11 @@
     v-hold="onRowHold"
     class="classical-play-row ml-[calc(var(--play-row-inset,0px)_-_7px)] rounded-[4px] pr-[var(--play-row-inset,0px)] pl-[7px]"
     :class="ROW_HOVER_CLASS"
+    :role="focusable ? 'button' : undefined"
+    :tabindex="focusable ? 0 : undefined"
     @click.capture="swallowClickAfterHold"
+    @keydown.enter.self="onKeyOpen"
+    @keydown.space.self="onKeyOpen"
     @contextmenu="onContextMenu"
     @touchstart.passive="onTouchStart"
   >
@@ -47,8 +51,11 @@ const props = withDefaults(
     disabled?: boolean;
     // a prop rather than an emit, so a row without one keeps the browser's menu
     onMenu?: (evt: Event) => void;
+    // reachable with the keyboard, where Enter or Space clicks the row, for a
+    // row without a link or button of its own to open it by
+    focusable?: boolean;
   }>(),
-  { tag: "div", onMenu: undefined },
+  { tag: "div", onMenu: undefined, focusable: false },
 );
 
 defineEmits<{
@@ -61,6 +68,12 @@ const { onHold, onTouchStart, swallowClickAfterHold } = useHoldToOpenMenu(
 
 const onRowHold = (evt: TouchEvent) => {
   if (props.onMenu) onHold(evt);
+};
+
+const onKeyOpen = (evt: KeyboardEvent) => {
+  if (!props.focusable) return;
+  evt.preventDefault();
+  (evt.currentTarget as HTMLElement).click();
 };
 
 const onContextMenu = (evt: MouseEvent) => {

@@ -17,6 +17,7 @@ const { replace, back } = vi.hoisted(() => ({
 }));
 
 vi.mock("vue-router", () => ({ useRouter: () => ({ replace }) }));
+vi.mock("@/plugins/i18n", () => ({ $t: (key: string) => key }));
 vi.mock("@/views/classical/backFilter", () => ({
   useBackFilter:
     (_state: () => unknown, apply: (saved: unknown) => void) => () => {

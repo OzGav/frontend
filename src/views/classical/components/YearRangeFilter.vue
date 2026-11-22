@@ -1,59 +1,69 @@
 <template>
-  <!-- Both boxes share one mat so the pair reads as a single control. The
-       keys that move within and between the boxes stay here, so a menu
-       holding the control does not take them for its own navigation. It is as
-       tall as the standard search box beside it, growing only when it wraps. -->
-  <div
-    class="inline-flex min-h-[2.25rem] flex-wrap items-center gap-[0.35rem_0.6rem] rounded-[8px] border-[1px] border-solid bg-muted p-[0_0.15rem_0_0.7rem]"
-    role="group"
-    :class="isActive ? 'border-ring' : 'border-border'"
-    @keydown.left.stop
-    @keydown.right.stop
-    @keydown.up.stop
-    @keydown.down.stop
-    @keydown.home.stop
-    @keydown.end.stop
-    @keydown.tab.stop
-  >
-    <!-- the boxes share any room the control is stretched to -->
-    <div class="flex flex-auto items-center gap-[0.35rem]">
-      <input
-        :value="from"
-        type="text"
-        inputmode="numeric"
-        maxlength="4"
-        :class="INPUT_CLASS"
-        :placeholder="fromPlaceholder"
-        :aria-label="$t('classical_date_range_from')"
-        @input="onInput('from', $event)"
-        @blur="settle('from')"
-        @keydown.enter="settle('from')"
-      />
-      <span class="text-muted-foreground" aria-hidden="true">–</span>
-      <input
-        :value="to"
-        type="text"
-        inputmode="numeric"
-        maxlength="4"
-        :class="INPUT_CLASS"
-        :placeholder="toPlaceholder"
-        :aria-label="$t('classical_date_range_to')"
-        @input="onInput('to', $event)"
-        @blur="settle('to')"
-        @keydown.enter="settle('to')"
-      />
-    </div>
-    <!-- Always laid out, so the mat keeps its width as a range is typed in. -->
-    <button
-      type="button"
-      class="flex size-[1.5rem] cursor-pointer items-center justify-center rounded-[50%] border-0 bg-[transparent] text-muted-foreground disabled:invisible [&:hover]:bg-accent [&:hover]:text-inherit"
-      :disabled="!isActive"
-      :title="$t('classical_date_range_clear')"
-      :aria-label="$t('classical_date_range_clear')"
-      @click="clear"
+  <div class="inline-flex flex-col gap-[0.4rem]">
+    <!-- Both boxes share one mat so the pair reads as a single control. The
+         keys that move within and between the boxes stay here, so a menu
+         holding the control does not take them for its own navigation. It is
+         as tall as the standard search box beside it, growing only when it
+         wraps. -->
+    <div
+      class="inline-flex min-h-[2.25rem] flex-wrap items-center gap-[0.35rem_0.6rem] rounded-[8px] border-[1px] border-solid bg-muted p-[0_0.15rem_0_0.7rem]"
+      role="group"
+      :class="isActive ? 'border-ring' : 'border-border'"
+      @keydown.left.stop
+      @keydown.right.stop
+      @keydown.up.stop
+      @keydown.down.stop
+      @keydown.home.stop
+      @keydown.end.stop
+      @keydown.tab.stop
     >
-      <X class="size-3.5" />
-    </button>
+      <!-- the boxes share any room the control is stretched to -->
+      <div class="flex flex-auto items-center gap-[0.35rem]">
+        <input
+          :value="from"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          :class="INPUT_CLASS"
+          :placeholder="fromPlaceholder"
+          :aria-label="$t('classical_date_range_from')"
+          @input="onInput('from', $event)"
+          @blur="settle('from')"
+          @keydown.enter="settle('from')"
+        />
+        <span class="text-muted-foreground" aria-hidden="true">–</span>
+        <input
+          :value="to"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          :class="INPUT_CLASS"
+          :placeholder="toPlaceholder"
+          :aria-label="$t('classical_date_range_to')"
+          @input="onInput('to', $event)"
+          @blur="settle('to')"
+          @keydown.enter="settle('to')"
+        />
+      </div>
+      <!-- Always laid out, so the mat keeps its width as a range is typed in. -->
+      <button
+        type="button"
+        class="flex size-[1.5rem] cursor-pointer items-center justify-center rounded-[50%] border-0 bg-[transparent] text-muted-foreground disabled:invisible [&:hover]:bg-accent [&:hover]:text-inherit"
+        :disabled="!isActive"
+        :title="$t('classical_date_range_clear')"
+        :aria-label="$t('classical_date_range_clear')"
+        @click="clear"
+      >
+        <X class="size-3.5" />
+      </button>
+    </div>
+    <!-- wraps to the width of the boxes rather than widening them -->
+    <p
+      v-if="note && isActive"
+      class="m-0 w-0 min-w-full text-[0.8rem] text-muted-foreground"
+    >
+      {{ note }}
+    </p>
   </div>
 </template>
 
@@ -70,6 +80,8 @@ const props = defineProps<{
   /** Earliest and latest year present in the list, shown as placeholders. */
   earliest?: number;
   latest?: number;
+  /** Shown under the boxes while a year is set, e.g. what the range leaves out. */
+  note?: string;
 }>();
 
 const from = defineModel<string>("from", { required: true });

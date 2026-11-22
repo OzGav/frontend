@@ -1,6 +1,7 @@
 import type { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import { normalizeForFilter } from "@/helpers/text_filter";
 import type { Recording, Work } from "@/plugins/api/interfaces";
+import { $t } from "@/plugins/i18n";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import { useBackFilter } from "@/views/classical/backFilter";
 import { useYearRange, yearBounds } from "@/views/classical/yearRange";
@@ -73,6 +74,7 @@ export function useRecordingsFilter(
               to: yearTo.value,
               earliest,
               latest,
+              note: $t("classical_year_recorded_unknown_hidden"),
               "onUpdate:from": (value: string) => (yearFrom.value = value),
               "onUpdate:to": (value: string) => (yearTo.value = value),
             },

@@ -194,6 +194,7 @@ const yearFilter = computed<ListingCustomFilter | undefined>(() =>
           // the boxes' placeholders, the span the library covers
           earliest: choices.value?.earliest_year ?? undefined,
           latest: choices.value?.latest_year ?? undefined,
+          note: t("classical_year_composed_unknown_hidden"),
           "onUpdate:from": (value: string) => (yearFrom.value = value),
           "onUpdate:to": (value: string) => (yearTo.value = value),
         },

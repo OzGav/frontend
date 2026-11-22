@@ -1635,6 +1635,8 @@
     "classical_movements_from_library": "From your library, may be incomplete",
     "classical_type": "Type",
     "classical_year_recorded": "Year recorded",
+    "classical_year_composed_unknown_hidden": "Works without a known year are not shown.",
+    "classical_year_recorded_unknown_hidden": "Recordings without a known year are not shown.",
     "item_fully_played": "This item has been fully played",
     "item_in_progress": "This item has been partially played",
     "duration_in_seconds": "{0} seconds",

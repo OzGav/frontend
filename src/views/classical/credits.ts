@@ -13,19 +13,21 @@ export interface CreditedArtist {
 
 /**
  * A recording's credits as its header shows them: conductors and orchestras
- * lead, then ensembles, choirs, soloists and other performers. Without a
- * conductor or orchestra those performers lead instead, each with their
- * instrument.
+ * lead, then ensembles, choirs, soloists and other performers, with their
+ * instruments when they come to no more than two names. Without a conductor
+ * or orchestra those performers lead instead, each with their instrument.
  */
 export function recordingCredits(recording: Recording) {
   const { credits } = recording;
   const conductors = creditedArtists(credits, [ArtistRole.CONDUCTOR]);
   const orchestras = creditedArtists(credits, [ArtistRole.ORCHESTRA]);
-  const performers = creditedArtists(credits, NON_CONDUCTING_ROLES);
+  const withInstruments = creditedArtists(credits, NON_CONDUCTING_ROLES, true);
+  const performers =
+    withInstruments.length <= MAX_PERFORMERS_WITH_INSTRUMENTS
+      ? withInstruments
+      : creditedArtists(credits, NON_CONDUCTING_ROLES);
   const leadPerformers =
-    conductors.length || orchestras.length
-      ? []
-      : creditedArtists(credits, NON_CONDUCTING_ROLES, true);
+    conductors.length || orchestras.length ? [] : withInstruments;
   return { conductors, orchestras, performers, leadPerformers };
 }
 
@@ -39,6 +41,9 @@ export function recordingName(recording: Recording): string {
       .join(", ") || recording.work.name
   );
 }
+
+// more performers than this show without instruments, so a cast stays short
+const MAX_PERFORMERS_WITH_INSTRUMENTS = 2;
 
 // the performing roles besides conductor and orchestra
 const NON_CONDUCTING_ROLES = PERFORMER_ROLES.filter(

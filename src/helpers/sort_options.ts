@@ -1,6 +1,11 @@
 import { api } from "@/plugins/api";
-import type { ListingType, SortOptionInfo } from "@/plugins/api/interfaces";
+import {
+  SortDirection,
+  type ListingType,
+  type SortOptionInfo,
+} from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
+import { ArrowDown, ArrowUp } from "@lucide/vue";
 import { toast } from "vue-sonner";
 
 // one toast for every listing whose sort options fail to load
@@ -24,4 +29,9 @@ export async function loadSortOptions(
     });
     return undefined;
   }
+}
+
+/** The arrow a sort button shows for an order: down for descending. */
+export function sortDirectionIcon(direction: SortDirection) {
+  return direction === SortDirection.DESC ? ArrowDown : ArrowUp;
 }

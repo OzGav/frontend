@@ -10,6 +10,10 @@
           @toggle="toggle"
           @close="close"
         />
+        <!-- spaced like the sort and filter buttons of a list's toolbar -->
+        <div v-if="$slots.actions" class="mx-2 flex items-center gap-2">
+          <slot name="actions"></slot>
+        </div>
         <ToolbarOverflowMenu
           v-if="menu.length"
           :items="menu"
@@ -66,6 +70,8 @@ defineSlots<{
   default(): unknown;
   // under the search row, shown while the list has items
   "below-search"(): unknown;
+  // after the search button, e.g. a sort button, shown while the list has items
+  actions(): unknown;
 }>();
 
 const { field, row, toggle, close } = useListingSearch(text, { open });

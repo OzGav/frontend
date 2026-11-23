@@ -5,7 +5,8 @@ import {
   type SortOptionInfo,
 } from "@/plugins/api/interfaces";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadSortOptions } from "./sort_options";
+import { ArrowDown, ArrowUp } from "@lucide/vue";
+import { loadSortOptions, sortDirectionIcon } from "./sort_options";
 
 const { getSortOptions, toastError } = vi.hoisted(() => ({
   getSortOptions: vi.fn(),
@@ -46,5 +47,12 @@ describe("loadSortOptions", () => {
       "settings.error_loading_sort_options",
       { id: "library-sort-options-error" },
     );
+  });
+});
+
+describe("sortDirectionIcon", () => {
+  it("points up for ascending and down for descending", () => {
+    expect(sortDirectionIcon(SortDirection.ASC)).toBe(ArrowUp);
+    expect(sortDirectionIcon(SortDirection.DESC)).toBe(ArrowDown);
   });
 });

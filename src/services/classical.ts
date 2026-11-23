@@ -171,8 +171,15 @@ export function getWork(id: string): Promise<Work> {
 }
 
 /** A work's recordings in their canonical order. */
-export function getWorkRecordings(workId: string): Promise<Recording[]> {
-  return api.sendCommand("music/classical/recordings", { work_id: workId });
+export function getWorkRecordings(
+  workId: string,
+  // oldest first when left out; undated recordings come last either way
+  sortDirection?: SortDirection,
+): Promise<Recording[]> {
+  return api.sendCommand("music/classical/recordings", {
+    work_id: workId,
+    sort_direction: sortDirection,
+  });
 }
 
 /** The recordings an artist performs on of a work, its parts included. */

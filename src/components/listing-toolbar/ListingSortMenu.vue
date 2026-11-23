@@ -100,8 +100,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLibrarySorting } from "@/composables/useLibrarySorting";
 import type { GridSizeControls } from "@/helpers/grid_size";
+import { sortDirectionIcon } from "@/helpers/sort_options";
 import { SortDirection, type SortOptionInfo } from "@/plugins/api/interfaces";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "@lucide/vue";
+import { ArrowUpDown } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -154,7 +155,7 @@ const sortDirectionLabel = (direction: SortDirection) =>
   t(direction === SortDirection.ASC ? "sort.ascending" : "sort.descending");
 
 const directionIcon = computed(() =>
-  current.value.direction === SortDirection.DESC ? ArrowDown : ArrowUp,
+  sortDirectionIcon(current.value.direction),
 );
 
 const currentLabel = computed(() =>

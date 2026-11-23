@@ -32,6 +32,14 @@
       :menu="recordingsMenu"
       :menu-active="yearRangeActive"
     >
+      <template #actions>
+        <SortDirectionToggle
+          :label="$t('classical_sort_date')"
+          :direction="sortDirection"
+          :description="sortDescription"
+          @toggle="toggleSortDirection"
+        />
+      </template>
       <template #below-search>
         <PerformerFilterLine
           v-if="performerName"
@@ -67,8 +75,10 @@ import DetailTextRow from "@/components/details/DetailTextRow.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
+import SortDirectionToggle from "@/components/listing-toolbar/SortDirectionToggle.vue";
 import {
   ImageType,
+  SortDirection,
   type Artist,
   type Recording,
   type Track,
@@ -94,6 +104,8 @@ import {
   shortMovementName,
 } from "@/views/classical/labels";
 import { openMovementMenu, openRecordingMenu } from "@/views/classical/menu";
+import { useClassicalPreferences } from "@/views/classical/preferences";
+import { $t } from "@/plugins/i18n";
 import {
   groupByHeading,
   type MovementGroup,
@@ -112,6 +124,9 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+
+// the name the page's choices are stored under
+const PREFS_ITEMTYPE = "work";
 
 const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
@@ -202,6 +217,25 @@ const heroItem = computed<Work | undefined>(() => {
   return { ...w, metadata: { ...w.metadata, images } };
 });
 
+// The order of the recordings by year, kept per user for every work.
+const { preferences, save } = useClassicalPreferences(PREFS_ITEMTYPE);
+const sortDirection = ref(preferences.sortDirection ?? SortDirection.ASC);
+const sortDescription = computed(() =>
+  $t(
+    sortDirection.value === SortDirection.DESC
+      ? "classical_sort_date_newest_first"
+      : "classical_sort_date_oldest_first",
+  ),
+);
+const toggleSortDirection = () => {
+  sortDirection.value =
+    sortDirection.value === SortDirection.DESC
+      ? SortDirection.ASC
+      : SortDirection.DESC;
+  save("sortDirection", sortDirection.value);
+  fetchPage(props.id);
+};
+
 const load = async (id: string) => {
   // the previous work must not stay actionable under the new route
   work.value = undefined;
@@ -217,7 +251,16 @@ let pageFetch = 0;
 const fetchPage = async (id: string): Promise<boolean> => {
   const fetchId = ++pageFetch;
   try {
-    const [w, recs] = await Promise.all([getWork(id), getWorkRecordings(id)]);
+    const [w, recs] = await Promise.all([
+      getWork(id),
+      // oldest first is the server's own order, so only newest first is sent
+      getWorkRecordings(
+        id,
+        sortDirection.value === SortDirection.DESC
+          ? SortDirection.DESC
+          : undefined,
+      ),
+    ]);
     const composerId = w.composers[0]?.item_id;
     // the composer only lends the banner its pictures, so the page shows without
     const c = composerId

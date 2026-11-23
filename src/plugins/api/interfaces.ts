@@ -1481,6 +1481,9 @@ export interface ClassicalPerformer {
   fanart?: MediaItemImage | null;
   // the performing role with the most credits
   main_role: ArtistRole;
+  // instruments and voices of their soloist and performer credits, short labels such as
+  // "piano" or "soprano", the most credited first; empty when none
+  instruments: string[];
   work_count: number;
   recording_count: number;
 }
@@ -1510,8 +1513,19 @@ export interface ClassicalComposerFilters {
   country_unknown: boolean;
 }
 
+export interface ClassicalInstrument {
+  // the short label, such as "piano" or "soprano"
+  name: string;
+  // how many performers are credited with it
+  performer_count: number;
+}
+
 export interface ClassicalPerformerFilters {
   roles: ArtistRole[];
+  // instruments and voices of the soloist and performer credits, kept apart,
+  // the most performers first, then by name
+  instruments: ClassicalInstrument[];
+  voices: ClassicalInstrument[];
 }
 
 export interface ClassicalWorkFilters {

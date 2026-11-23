@@ -5,9 +5,11 @@ import {
   type ListingMultiFilter,
 } from "@/helpers/listing_filters";
 import {
+  ArtistRole,
   Period,
   WorkType,
   type ClassicalComposerFilters,
+  type ClassicalPerformerFilters,
   type ClassicalWorkFilters,
 } from "@/plugins/api/interfaces";
 import {
@@ -24,7 +26,13 @@ interface ListFilterOptions<T extends string> {
   // the tab the choice is stored under
   itemtype: string;
   // the preference the choice is stored as
-  key: "periodFilter" | "roleFilter" | "workTypeFilter" | "countryFilter";
+  key:
+    | "periodFilter"
+    | "roleFilter"
+    | "instrumentFilter"
+    | "voiceFilter"
+    | "workTypeFilter"
+    | "countryFilter";
   // the filter's id in the Filters panel
   id: string;
   // translation keys of the filter's heading, and of what stands in for the
@@ -191,6 +199,85 @@ export function worksMenuItems(
       })),
     },
   ];
+}
+
+/** The roles credited with instruments and voices. */
+const INSTRUMENT_ROLES: readonly string[] = [
+  ArtistRole.SOLOIST,
+  ArtistRole.PERFORMER,
+];
+
+/**
+ * Whether a performers list filtered on these roles can hold soloists or
+ * other performers; an empty filter keeps every role.
+ */
+export function showsInstrumentRoles(roles: readonly string[]): boolean {
+  return !roles.length || roles.some((role) => INSTRUMENT_ROLES.includes(role));
+}
+
+/**
+ * The performers list argument for the picked instruments and voices, left
+ * out while nothing is picked or the roles picked hide both filters.
+ */
+export function instrumentQuery(
+  roles: readonly string[],
+  instruments: readonly string[],
+  voices: readonly string[],
+): { instrument?: string[] } {
+  const picked = [...instruments, ...voices];
+  return showsInstrumentRoles(roles) && picked.length
+    ? { instrument: picked }
+    : {};
+}
+
+/**
+ * The Instrument and Voice filters of the performers list, shown while its
+ * roles can hold soloists or other performers.
+ *
+ * Returns `filters`, the panel's filters, and `query`, the list arguments for
+ * the picks.
+ *
+ * :param itemtype: The tab the choices are stored under.
+ * :param roles: The roles picked in the list's Role filter.
+ * :param choices: The filter values of the list, absent until loaded.
+ */
+export function useInstrumentFilters(
+  itemtype: string,
+  roles: () => readonly string[],
+  choices: () => ClassicalPerformerFilters | undefined,
+) {
+  const names = (list?: { name: string }[]) => (list ?? []).map((i) => i.name);
+  const instrument = useListFilter<string>({
+    itemtype,
+    key: "instrumentFilter",
+    id: "instrument",
+    label: "classical_filter_instrument",
+    placeholder: "classical_filter_any_instrument",
+    layout: "dropdown",
+    values: () => names(choices()?.instruments),
+    valueLabel: (name) => name,
+    present: () => names(choices()?.instruments),
+  });
+  const voice = useListFilter<string>({
+    itemtype,
+    key: "voiceFilter",
+    id: "voice",
+    label: "classical_filter_voice",
+    placeholder: "classical_filter_any_voice",
+    layout: "dropdown",
+    values: () => names(choices()?.voices),
+    valueLabel: (name) => name,
+    present: () => names(choices()?.voices),
+  });
+  const filters = computed(() =>
+    showsInstrumentRoles(roles())
+      ? [instrument.filter.value, voice.filter.value]
+      : [],
+  );
+  const query = computed(() =>
+    instrumentQuery(roles(), instrument.selected.value, voice.selected.value),
+  );
+  return { filters, query };
 }
 
 /** The choice for composers without a country in the country filter. */

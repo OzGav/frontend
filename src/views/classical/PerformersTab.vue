@@ -29,10 +29,15 @@ import {
 import { getPerformerFilters, getPerformers } from "@/services/classical";
 import { useArtistGridItems } from "@/views/classical/artistGrid";
 import ClassicalArtistGrid from "@/views/classical/components/ClassicalArtistGrid.vue";
-import { roleLabel } from "@/helpers/classical_credits";
-import { recordingCountLabel } from "@/views/classical/labels";
+import {
+  performerRoleLine,
+  recordingCountLabel,
+} from "@/views/classical/labels";
 import { useOwnFavorites } from "@/views/classical/favorites";
-import { useListFilter } from "@/views/classical/listFilters";
+import {
+  useInstrumentFilters,
+  useListFilter,
+} from "@/views/classical/listFilters";
 import { useClassicalListing } from "@/views/classical/listing";
 import { Users } from "@lucide/vue";
 import { ref } from "vue";
@@ -73,6 +78,12 @@ const roleFilter = useListFilter({
   present: () => choices.value?.roles ?? [],
 });
 
+const instrumentFilters = useInstrumentFilters(
+  ITEMTYPE,
+  () => roleFilter.selected.value,
+  () => choices.value,
+);
+
 const {
   viewMode,
   gridSize,
@@ -91,7 +102,10 @@ const {
   items: performers,
   content: tabRoot,
   load: getPerformers,
-  query: () => ({ role: roleFilter.selected.value }),
+  query: () => ({
+    role: roleFilter.selected.value,
+    ...instrumentFilters.query.value,
+  }),
   loadFilterChoices: async () => {
     choices.value = await getPerformerFilters();
   },
@@ -99,14 +113,14 @@ const {
   search: {
     placeholder: () => t("classical_filter_performers_placeholder"),
   },
-  filters: () => [roleFilter.filter.value],
+  filters: () => [roleFilter.filter.value, ...instrumentFilters.filters.value],
 });
 
 const gridItems = useArtistGridItems({
   rows: () => performers.value,
   section: "performers",
   details: (p) => ({
-    role: roleLabel(p.main_role),
+    role: performerRoleLine(p),
     lines: [recordingCountLabel(p.recording_count)],
   }),
 });

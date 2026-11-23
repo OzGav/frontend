@@ -1,10 +1,13 @@
 import {
+  ArtistRole,
   RecordingCoverageKind,
+  type ClassicalPerformer,
   type WorkMovement,
 } from "@/plugins/api/interfaces";
 import {
   countryLabel,
   movementCoverageLabel,
+  performerRoleLine,
   shortMovementName,
 } from "@/views/classical/labels";
 import { describe, expect, it, vi } from "vitest";
@@ -112,5 +115,38 @@ describe("movementCoverageLabel", () => {
         MOVEMENTS,
       ),
     ).toBe("classical_movements_of(3, 22)");
+  });
+});
+
+describe("performerRoleLine", () => {
+  const performer = (main_role: ArtistRole, instruments: string[]) =>
+    ({ main_role, instruments }) as unknown as ClassicalPerformer;
+  const soloist = "classical_artist_role.soloist";
+
+  it("names up to two of a soloist's instruments", () => {
+    expect(performerRoleLine(performer(ArtistRole.SOLOIST, []))).toBe(soloist);
+    expect(performerRoleLine(performer(ArtistRole.SOLOIST, ["piano"]))).toBe(
+      `${soloist} · piano`,
+    );
+    expect(
+      performerRoleLine(performer(ArtistRole.SOLOIST, ["piano", "organ"])),
+    ).toBe(`${soloist} · piano, organ`);
+    expect(
+      performerRoleLine(
+        performer(ArtistRole.SOLOIST, ["piano", "organ", "harpsichord"]),
+      ),
+    ).toBe(`${soloist} · piano, organ`);
+  });
+
+  it("names the instruments of other performers too", () => {
+    expect(performerRoleLine(performer(ArtistRole.PERFORMER, ["tenor"]))).toBe(
+      "classical_artist_role.performer · tenor",
+    );
+  });
+
+  it("shows the role alone for a conductor with instruments", () => {
+    expect(performerRoleLine(performer(ArtistRole.CONDUCTOR, ["violin"]))).toBe(
+      "classical_artist_role.conductor",
+    );
   });
 });

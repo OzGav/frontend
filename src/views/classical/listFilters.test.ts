@@ -1,9 +1,12 @@
-import { Period, WorkType } from "@/plugins/api/interfaces";
+import { ArtistRole, Period, WorkType } from "@/plugins/api/interfaces";
 import {
+  instrumentQuery,
+  showsInstrumentRoles,
   splitUnknown,
   UNKNOWN_COUNTRY,
   UNKNOWN_WORK_TYPE,
   useCountryFilter,
+  useInstrumentFilters,
   usePeriodFilter,
   useWorkTypeFilter,
   withUnknown,
@@ -147,5 +150,73 @@ describe("useCountryFilter", () => {
     prefsMock.preferences = { countryFilter: [UNKNOWN_COUNTRY] };
     const { query } = useCountryFilter("composers", () => undefined);
     expect(query.value).toEqual({ country: [], country_unknown: true });
+  });
+});
+
+describe("showsInstrumentRoles", () => {
+  it("holds soloists or other performers unless only other roles are picked", () => {
+    expect(showsInstrumentRoles([])).toBe(true);
+    expect(
+      showsInstrumentRoles([ArtistRole.CONDUCTOR, ArtistRole.SOLOIST]),
+    ).toBe(true);
+    expect(showsInstrumentRoles([ArtistRole.PERFORMER])).toBe(true);
+    expect(showsInstrumentRoles([ArtistRole.CONDUCTOR])).toBe(false);
+  });
+});
+
+describe("instrumentQuery", () => {
+  it("sends the picks of both filters as one list", () => {
+    expect(instrumentQuery([], ["piano"], ["tenor"])).toEqual({
+      instrument: ["piano", "tenor"],
+    });
+  });
+
+  it("sends nothing while the roles picked hide the filters", () => {
+    expect(instrumentQuery([ArtistRole.CONDUCTOR], ["piano"], [])).toEqual({});
+  });
+
+  it("sends nothing while nothing is picked", () => {
+    expect(instrumentQuery([], [], [])).toEqual({});
+  });
+});
+
+describe("useInstrumentFilters", () => {
+  const choices = (instruments: string[], voices: string[]) => ({
+    roles: [],
+    instruments: instruments.map((name) => ({ name, performer_count: 1 })),
+    voices: voices.map((name) => ({ name, performer_count: 1 })),
+  });
+
+  it("offers instruments and voices in server order and hides an empty one", () => {
+    const { filters } = useInstrumentFilters(
+      "performers",
+      () => [],
+      () => choices(["piano", "organ"], []),
+    );
+    expect(filters.value.map(offered)).toEqual([["piano", "organ"], undefined]);
+  });
+
+  it("hides both filters and their picks for roles without instruments", () => {
+    prefsMock.preferences = { instrumentFilter: ["piano"] };
+    const { filters, query } = useInstrumentFilters(
+      "performers",
+      () => [ArtistRole.CONDUCTOR],
+      () => choices(["piano", "organ"], ["tenor", "soprano"]),
+    );
+    expect(filters.value).toEqual([]);
+    expect(query.value).toEqual({});
+  });
+
+  it("merges the stored picks of both filters", () => {
+    prefsMock.preferences = {
+      instrumentFilter: ["organ"],
+      voiceFilter: ["tenor"],
+    };
+    const { query } = useInstrumentFilters(
+      "performers",
+      () => [ArtistRole.SOLOIST],
+      () => undefined,
+    );
+    expect(query.value).toEqual({ instrument: ["organ", "tenor"] });
   });
 });

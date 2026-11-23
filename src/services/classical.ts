@@ -56,6 +56,8 @@ export interface ClassicalComposerQuery extends ClassicalListQuery {
 /** A page of the performers list. */
 export interface ClassicalPerformerQuery extends ClassicalListQuery {
   role?: ArtistRole[];
+  // keeps performers credited with any of these instrument or voice labels
+  instrument?: string[];
 }
 
 /** A page of the works list. */

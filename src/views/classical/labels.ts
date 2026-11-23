@@ -1,6 +1,9 @@
+import { roleLabel } from "@/helpers/classical_credits";
 import {
+  ArtistRole,
   RecordingCoverageKind,
   type ClassicalLinkProgress,
+  type ClassicalPerformer,
   type LifeSpan,
   type Period,
   type RecordingCoverage,
@@ -14,6 +17,24 @@ import { $t, canonicalizeLocale, i18n } from "@/plugins/i18n";
  */
 export function workTypeKey(type: string): string {
   return `classical_work_type.${type}`;
+}
+
+// how many of a performer's instruments their card names
+const MAX_CARD_INSTRUMENTS = 2;
+
+/**
+ * A performer card's role line, e.g. "Soloist · piano, harpsichord". Only
+ * soloists and other performers name their first instruments.
+ */
+export function performerRoleLine(performer: ClassicalPerformer): string {
+  const role = roleLabel(performer.main_role);
+  const playsInstruments =
+    performer.main_role === ArtistRole.SOLOIST ||
+    performer.main_role === ArtistRole.PERFORMER;
+  const instruments = performer.instruments.slice(0, MAX_CARD_INSTRUMENTS);
+  return playsInstruments && instruments.length
+    ? `${role} · ${instruments.join(", ")}`
+    : role;
 }
 
 /** The display name of a composer's period, e.g. Baroque. */

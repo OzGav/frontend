@@ -19,6 +19,8 @@ export interface ItemsListingPreferences {
   providerFilter?: string[];
   periodFilter?: string[];
   roleFilter?: string[];
+  instrumentFilter?: string[];
+  voiceFilter?: string[];
   workTypeFilter?: string[];
   countryFilter?: string[];
   yearFrom?: string;

@@ -23,6 +23,7 @@
     </template>
 
     <template v-if="item" #aside>
+      <slot name="aside"></slot>
       <!-- on phones they would take a line of their own -->
       <DetailHeroProviders v-if="!isPhone" :item="item" />
     </template>

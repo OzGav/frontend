@@ -5,6 +5,9 @@
       <template v-if="work" #meta>
         <WorkHeroMeta :work="work" :composer="composer" />
       </template>
+      <template v-if="work" #aside>
+        <WorkHeroLinks :work="work" />
+      </template>
     </ClassicalHero>
     <DetailTextRow
       v-if="work?.metadata.description"
@@ -96,6 +99,7 @@ import MovementGroupList from "@/views/classical/components/MovementGroupList.vu
 import PerformerFilterLine from "@/views/classical/components/PerformerFilterLine.vue";
 import RecordingGroupList from "@/views/classical/components/RecordingGroupList.vue";
 import RelatedWorksSection from "@/views/classical/components/RelatedWorksSection.vue";
+import WorkHeroLinks from "@/views/classical/components/WorkHeroLinks.vue";
 import WorkHeroMeta from "@/views/classical/components/WorkHeroMeta.vue";
 import WorkMovements from "@/views/classical/components/WorkMovements.vue";
 import { useOwnFavorites } from "@/views/classical/favorites";

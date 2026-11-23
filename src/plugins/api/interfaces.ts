@@ -293,6 +293,7 @@ export enum LinkType {
   DISCOGS = "discogs",
   WIKIPEDIA = "wikipedia",
   ALLMUSIC = "allmusic",
+  IMSLP = "imslp",
 }
 
 export enum ImageType {

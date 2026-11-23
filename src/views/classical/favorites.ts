@@ -4,10 +4,8 @@ import {
   subscribeOwnFavorites,
 } from "@/helpers/favorites";
 import api from "@/plugins/api";
-import { $t } from "@/plugins/i18n";
 import type { Track } from "@/plugins/api/interfaces";
 import { onBeforeUnmount } from "vue";
-import { toast } from "vue-sonner";
 
 /** Whether every track is liked; an empty list never is. */
 export function allLiked(tracks: Track[]): boolean {
@@ -27,11 +25,11 @@ export async function setTracksLiked(
   for (const track of tracks) setFavoriteState(track, liked ? true : null);
   let saved = 0;
   try {
-    saved = await api.setFavorites(
-      tracks.map((t) => t.uri),
-      liked ? true : null,
-    );
-    if (saved < tracks.length) toast.error($t("favorites_save_failed"));
+    // one at a time, so a failure leaves the tracks after it untouched
+    for (const track of tracks) {
+      await api.setFavorite(track.uri, liked ? true : null);
+      saved++;
+    }
   } catch {
     // the api layer already reports the error
   }

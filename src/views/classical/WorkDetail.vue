@@ -26,7 +26,7 @@
       v-model="query"
       v-model:open="searchOpen"
       :title="$t('recordings')"
-      :meta="recordings.length ? recordingCountLabel(shownCount) : undefined"
+      :meta="recordingsMeta"
       :searchable="recordings.length > 0"
       :placeholder="$t('classical_filter_recordings_placeholder')"
       :menu="recordingsMenu"
@@ -163,6 +163,13 @@ const movementGroups = computed<MovementGroup[]>(() =>
       rows: rowsOf(m),
     }))
     .filter((g) => g.rows.length),
+);
+
+// the work's total, whatever the filters show
+const recordingsMeta = computed(() =>
+  recordings.value.length
+    ? recordingCountLabel(recordings.value.length)
+    : undefined,
 );
 
 const shownCount = computed(() =>

@@ -2,10 +2,12 @@ import {
   ArtistRole,
   RecordingCoverageKind,
   type ClassicalPerformer,
+  type LifeSpan,
   type WorkMovement,
 } from "@/plugins/api/interfaces";
 import {
   countryLabel,
+  lifeYearsLabel,
   movementCoverageLabel,
   performerRoleLine,
   shortMovementName,
@@ -115,6 +117,36 @@ describe("movementCoverageLabel", () => {
         MOVEMENTS,
       ),
     ).toBe("classical_movements_of(3, 22)");
+  });
+});
+
+describe("lifeYearsLabel", () => {
+  const span = (fields: Partial<LifeSpan>): LifeSpan => ({
+    begin: null,
+    end: null,
+    ended: true,
+    ...fields,
+  });
+
+  it("shows the birth and death years", () => {
+    expect(
+      lifeYearsLabel(span({ begin: "1833-05-07", end: "1897-04-03" })),
+    ).toBe("1833 – 1897");
+  });
+
+  it("says born for someone living", () => {
+    expect(lifeYearsLabel(span({ begin: "1982", ended: false }))).toBe(
+      "classical_born_year(1982)",
+    );
+  });
+
+  it("marks an unknown year of death", () => {
+    expect(lifeYearsLabel(span({ begin: "1680" }))).toBe("1680 – ?");
+  });
+
+  it("is empty without a birth year", () => {
+    expect(lifeYearsLabel(span({ end: "1897" }))).toBe("");
+    expect(lifeYearsLabel(null)).toBe("");
   });
 });
 

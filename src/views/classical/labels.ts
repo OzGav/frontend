@@ -92,13 +92,14 @@ export function workCountLabel(count: number): string {
 }
 
 /**
- * A life span as years, e.g. 1833–1897, or 1937– for someone living. Empty
- * without a birth year.
+ * A life span as years, e.g. 1833 – 1897, Born 1982 for someone living, or
+ * 1680 – ? when the year of death is unknown. Empty without a birth year.
  */
 export function lifeYearsLabel(lifeSpan?: LifeSpan | null): string {
   const born = lifeSpan?.begin?.slice(0, 4);
   if (!born) return "";
-  return `${born}–${lifeSpan?.end?.slice(0, 4) ?? ""}`;
+  if (!lifeSpan?.ended) return $t("classical_born_year", { year: born });
+  return `${born} – ${lifeSpan.end?.slice(0, 4) ?? "?"}`;
 }
 
 /**

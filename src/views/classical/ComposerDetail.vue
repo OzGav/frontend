@@ -87,7 +87,7 @@ const { artist, works, loading } = useClassicalArtistPage(
   "composer",
 );
 
-// e.g. Romantic · 1810–1849 · Poland
+// e.g. Romantic · 1810 – 1849 · Poland
 const heroMeta = computed(() =>
   [
     artist.value?.period ? periodLabel(artist.value.period) : "",

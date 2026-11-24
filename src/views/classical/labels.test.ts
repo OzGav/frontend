@@ -62,8 +62,13 @@ describe("countryLabel", () => {
     expect(countryLabel("PL")).toBe("Polen");
     i18nMock.global.locale.value = "en";
   });
-  it("names the Soviet Union itself, not as Russia", () => {
-    expect(countryLabel("SU")).toBe("classical_country_soviet_union");
+  it.each([
+    ["SU", "classical_country_soviet_union"],
+    ["YU", "classical_country_yugoslavia"],
+    ["XC", "classical_country_czechoslovakia"],
+    ["XG", "classical_country_east_germany"],
+  ])("names the former country %s itself, not a successor", (code, key) => {
+    expect(countryLabel(code)).toBe(key);
   });
 });
 

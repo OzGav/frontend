@@ -150,7 +150,11 @@ function heldCount(count: number, total: number): string {
 // the region names of the locale last asked for, built once rather than per name
 let regionNames: { locale: string; names: Intl.DisplayNames } | undefined;
 
-// Former countries the browser names after a successor, e.g. Russia for SU.
+// Former countries, which the browser names after a successor (Russia for SU)
+// or not at all (MusicBrainz's own codes XC and XG)
 const HISTORICAL_COUNTRIES: Partial<Record<string, string>> = {
   SU: "classical_country_soviet_union",
+  XC: "classical_country_czechoslovakia",
+  XG: "classical_country_east_germany",
+  YU: "classical_country_yugoslavia",
 };

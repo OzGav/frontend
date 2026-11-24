@@ -61,10 +61,7 @@ export interface ClassicalPerformerQuery extends ClassicalListQuery {
 }
 
 /** A page of the works list. */
-export interface ClassicalWorkQuery extends Omit<
-  ClassicalListQuery,
-  "favorite"
-> {
+export interface ClassicalWorkQuery extends ClassicalListQuery {
   period?: Period[];
   work_type?: WorkType[];
   // also keeps works without a type

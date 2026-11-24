@@ -1,7 +1,7 @@
 <template>
   <section ref="pageRoot">
     <!-- The work has no artwork of its own; the hero borrows the composer's. -->
-    <ClassicalHero :item="heroItem" section="works">
+    <ClassicalHero :item="heroItem" section="works" show-favorite>
       <template v-if="work" #meta>
         <WorkHeroMeta :work="work" :composer="composer" />
       </template>
@@ -117,7 +117,7 @@ import {
 } from "@/views/classical/recordingGroups";
 import { useRecordingsFilter } from "@/views/classical/recordingsFilter";
 import { useWorkParts } from "@/views/classical/workParts";
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({ name: "WorkDetail" });
@@ -139,7 +139,10 @@ const loading = ref(true);
 const pageRoot = ref<HTMLElement>();
 useHistoryScrollRestore(pageRoot);
 
-useOwnFavorites(() => recordings.value.flatMap((r) => r.tracks));
+useOwnFavorites(() => [
+  ...(work.value ? [work.value] : []),
+  ...recordings.value.flatMap((r) => r.tracks),
+]);
 
 const {
   query,
@@ -211,14 +214,15 @@ const recordingGroups = computed<RecordingGroup[]>(() =>
     : [],
 );
 
-// Skip the composer's logo so the hero shows the work title.
+// Skip the composer's logo so the hero shows the work title. Reactive, so the
+// banner heart shows a like at once.
 const heroItem = computed<Work | undefined>(() => {
   const w = work.value;
   if (!w) return undefined;
   const images = (composer.value?.metadata.images ?? []).filter(
     (img) => img.type !== ImageType.LOGO,
   );
-  return { ...w, metadata: { ...w.metadata, images } };
+  return reactive({ ...w, metadata: { ...w.metadata, images } });
 });
 
 // The order of the recordings by year, kept per user for every work.

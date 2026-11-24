@@ -338,6 +338,7 @@ import {
 } from "@/composables/useShortcuts";
 import { runWithConcurrency } from "@/helpers/concurrency";
 import {
+  canBeDisliked,
   FAVORITABLE_MEDIA_TYPES,
   favoriteState,
   setFavoriteState,
@@ -958,8 +959,10 @@ export const getContextMenuItems = async function (
     // resolved membership while a multi selection reads each item's own flag;
     // a dislike carries no membership implication of its own, so the state
     // alone decides it
+    // a work only exists in the library, so its own state is all there is
     const isFavorite = (item: MediaItemTypeOrItemMapping) =>
-      favoriteState(item) === true && (items.length > 1 || inLibrary);
+      favoriteState(item) === true &&
+      (items.length > 1 || inLibrary || item.media_type === MediaType.WORK);
     const isDisliked = (item: MediaItemTypeOrItemMapping) =>
       favoriteState(item) === false;
 
@@ -1038,67 +1041,72 @@ export const getContextMenuItems = async function (
         });
       }
 
-      // A dislike is a state of its own, so it gets its own pair of entries:
-      // the heart only ever says "liked", and clearing a dislike is not the
-      // same action as removing a favorite.
-      const allDisliked = favoritableItems.every(isDisliked);
-      const noneDisliked = !favoritableItems.some(isDisliked);
+      const dislikableItems = favoritableItems.filter((item) =>
+        canBeDisliked(item.media_type),
+      );
+      if (dislikableItems.length > 0) {
+        // A dislike is a state of its own, so it gets its own pair of entries:
+        // the heart only ever says "liked", and clearing a dislike is not the
+        // same action as removing a favorite.
+        const allDisliked = dislikableItems.every(isDisliked);
+        const noneDisliked = !dislikableItems.some(isDisliked);
 
-      if (allDisliked) {
-        contextMenuItems.push({
-          label: "favorites_dislike_remove",
-          labelArgs: [],
-          action: () => {
-            for (const item of favoritableItems) {
-              api.removeItemFromFavorites(item.media_type, item.item_id);
-            }
-            markFavorite(null);
-            eventbus.emit("clearSelection");
-          },
-          icon: ThumbsDown,
-        });
-      } else if (noneDisliked) {
-        contextMenuItems.push({
-          label: "favorites_dislike",
-          labelArgs: [],
-          action: () => {
-            for (const item of favoritableItems) {
-              api.setFavorite(addableItem(item), false);
-            }
-            markFavorite(false);
-            eventbus.emit("clearSelection");
-          },
-          icon: ThumbsDown,
-        });
-      } else {
-        // mixed selection: both, each acting on the items it applies to
-        contextMenuItems.push({
-          label: "favorites_dislike",
-          labelArgs: [],
-          action: () => {
-            for (const item of favoritableItems.filter(
-              (item) => !isDisliked(item),
-            )) {
-              api.setFavorite(addableItem(item), false);
-              setFavoriteState(item, false);
-            }
-            eventbus.emit("clearSelection");
-          },
-          icon: ThumbsDown,
-        });
+        if (allDisliked) {
+          contextMenuItems.push({
+            label: "favorites_dislike_remove",
+            labelArgs: [],
+            action: () => {
+              for (const item of dislikableItems) {
+                api.removeItemFromFavorites(item.media_type, item.item_id);
+              }
+              markFavorite(null);
+              eventbus.emit("clearSelection");
+            },
+            icon: ThumbsDown,
+          });
+        } else if (noneDisliked) {
+          contextMenuItems.push({
+            label: "favorites_dislike",
+            labelArgs: [],
+            action: () => {
+              for (const item of dislikableItems) {
+                api.setFavorite(addableItem(item), false);
+              }
+              markFavorite(false);
+              eventbus.emit("clearSelection");
+            },
+            icon: ThumbsDown,
+          });
+        } else {
+          // mixed selection: both, each acting on the items it applies to
+          contextMenuItems.push({
+            label: "favorites_dislike",
+            labelArgs: [],
+            action: () => {
+              for (const item of dislikableItems.filter(
+                (item) => !isDisliked(item),
+              )) {
+                api.setFavorite(addableItem(item), false);
+                setFavoriteState(item, false);
+              }
+              eventbus.emit("clearSelection");
+            },
+            icon: ThumbsDown,
+          });
 
-        contextMenuItems.push({
-          label: "favorites_dislike_remove",
-          labelArgs: [],
-          action: () => {
-            for (const item of favoritableItems.filter(isDisliked)) {
-              api.removeItemFromFavorites(item.media_type, item.item_id);
-              setFavoriteState(item, null);
-            }
-            eventbus.emit("clearSelection");
-          },
-          icon: ThumbsDown,
-        });
+          contextMenuItems.push({
+            label: "favorites_dislike_remove",
+            labelArgs: [],
+            action: () => {
+              for (const item of dislikableItems.filter(isDisliked)) {
+                api.removeItemFromFavorites(item.media_type, item.item_id);
+                setFavoriteState(item, null);
+              }
+              eventbus.emit("clearSelection");
+            },
+            icon: ThumbsDown,
+          });
+        }
       }
     }
   }
@@ -1837,9 +1845,12 @@ export const getDefaultEnqueueOptionFor = async function (
   if (!authManager.hasScope(Scope.CONFIG_CORE_READ)) {
     return undefined;
   }
-  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(mediaType)
+  // a work plays like an album and has no setting of its own
+  const settingType =
+    mediaType === MediaType.WORK ? MediaType.ALBUM : mediaType;
+  const configKey = LIVE_SOURCE_MEDIA_TYPES.includes(settingType)
     ? "default_enqueue_option_live_sources"
-    : `default_enqueue_option_${mediaType}`;
+    : `default_enqueue_option_${settingType}`;
   return (await api.getCoreConfigValue(
     "player_queues",
     configKey,

@@ -45,7 +45,9 @@ vi.mock("@/views/classical/classicalSort", async () => {
 });
 
 // Mounts a tab with the listing, its own period choice as its query.
-function mountListing() {
+function mountListing(
+  extras: { views?: boolean; favorites?: boolean } = { views: true },
+) {
   const load = vi.fn(async (_query: ClassicalListQuery) => [] as number[]);
   const loadFilterChoices = vi.fn(async () => {});
   const period = ref<string[]>([]);
@@ -62,7 +64,7 @@ function mountListing() {
           load,
           query: () => ({ period: period.value }),
           loadFilterChoices,
-          views: true,
+          ...extras,
           search: { placeholder: () => "" },
         });
         return () => null;
@@ -140,6 +142,18 @@ describe("useClassicalListing", () => {
     expect(load).toHaveBeenCalledTimes(3);
     expect(load).toHaveBeenLastCalledWith(
       expect.objectContaining({ period: ["baroque"] }),
+    );
+  });
+
+  it("offers the favourites filter without the views when asked for it alone", async () => {
+    const { load, menu } = mountListing({ favorites: true });
+    await flushPromises();
+
+    expect(menu.value?.sort.viewMode).toBeUndefined();
+    toggleFavorites(menu.value);
+    await flushPromises();
+    expect(load).toHaveBeenLastCalledWith(
+      expect.objectContaining({ favorite: true }),
     );
   });
 

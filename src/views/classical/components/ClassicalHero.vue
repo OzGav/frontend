@@ -48,7 +48,7 @@ import { useRouter } from "vue-router";
 
 export interface Props {
   item?: Artist | Work;
-  // the banner heart, as on the artist page; a work cannot be liked
+  // the banner heart, as on the artist page
   showFavorite?: boolean;
   // the Classical section the page belongs to, highlighted in the section links
   section?: ClassicalTab;

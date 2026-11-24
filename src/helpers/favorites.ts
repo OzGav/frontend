@@ -27,7 +27,16 @@ export const FAVORITABLE_MEDIA_TYPES: ReadonlySet<MediaType> = new Set([
   MediaType.PODCAST,
   MediaType.RADIO,
   MediaType.TRACK,
+  MediaType.WORK,
 ]);
+
+// a work can be liked, but nothing uses a dislike on one
+const LIKE_ONLY_MEDIA_TYPES: ReadonlySet<MediaType> = new Set([MediaType.WORK]);
+
+/** Whether an item of a type that holds a favorite state can be disliked. */
+export function canBeDisliked(mediaType: MediaType): boolean {
+  return !LIKE_ONLY_MEDIA_TYPES.has(mediaType);
+}
 
 /**
  * Copy of an item from a media item event that keeps the favorite state the

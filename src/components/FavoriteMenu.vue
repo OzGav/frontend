@@ -1,8 +1,26 @@
 <template>
+  <!-- with liking the only action, e.g. on a work, the heart toggles it with
+       no menu -->
+  <Button
+    v-if="canEditLibrary && likeOnly"
+    type="button"
+    :variant="variant"
+    :size="size"
+    v-bind="$attrs"
+    :data-active="state === true || undefined"
+    :title="$t(state === true ? labels.remove : labels.add)"
+    :aria-label="$t(state === true ? labels.remove : labels.add)"
+    @click.stop="state === true ? clear() : like()"
+  >
+    <Heart
+      :class="iconClass"
+      :fill="state === true ? 'currentColor' : 'none'"
+    />
+  </Button>
   <!-- reka owns the open state; mirroring it here keeps the trigger's hover
        suppression in step with it -->
   <DropdownMenu
-    v-if="canEditLibrary && hasAnyAction"
+    v-else-if="canEditLibrary && hasAnyAction"
     @update:open="menuOpen = $event"
   >
     <DropdownMenuTrigger as-child>
@@ -46,14 +64,16 @@
         </DropdownMenuItem>
         <!-- the heart only ever says "liked", so the dislike gets its own
              entry -->
-        <DropdownMenuItem v-if="state === false" @click="clear">
-          <ThumbsDown class="size-4" />
-          {{ $t(labels.dislikeRemove) }}
-        </DropdownMenuItem>
-        <DropdownMenuItem v-else @click="dislike">
-          <ThumbsDown class="size-4" />
-          {{ $t(labels.dislike) }}
-        </DropdownMenuItem>
+        <template v-if="offersDislike">
+          <DropdownMenuItem v-if="state === false" @click="clear">
+            <ThumbsDown class="size-4" />
+            {{ $t(labels.dislikeRemove) }}
+          </DropdownMenuItem>
+          <DropdownMenuItem v-else @click="dislike">
+            <ThumbsDown class="size-4" />
+            {{ $t(labels.dislike) }}
+          </DropdownMenuItem>
+        </template>
       </template>
       <DropdownMenuItem v-if="offersPlaylist" @click="addToPlaylist">
         <PlusCircle class="size-4" />
@@ -75,6 +95,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { usePopoutTriggerHover } from "@/composables/usePopoutTriggerHover";
 import {
+  canBeDisliked,
   canHoldFavorite,
   clearFavorite,
   favoriteState,
@@ -89,7 +110,7 @@ import { Scope } from "@/plugins/api/interfaces";
 import { authManager } from "@/plugins/auth";
 import { eventbus } from "@/plugins/eventbus";
 import { Heart, PlusCircle, ThumbsDown } from "@lucide/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, useSlots } from "vue";
 
 /** Translation keys of the menu's own entries. */
 export interface FavoriteMenuLabels {
@@ -166,10 +187,21 @@ const canEditLibrary = computed(() =>
 const offersFavorite = computed(
   () => !!props.item && canHoldFavorite(props.item),
 );
+const offersDislike = computed(
+  () => !!props.item && canBeDisliked(props.item.media_type),
+);
 // an item known only by an external id goes into a playlist once it is found
 const offersPlaylist = computed(
   () =>
     !!props.item && canAddToPlaylist(props.item) && !isExternalItem(props.item),
+);
+const slots = useSlots();
+const likeOnly = computed(
+  () =>
+    offersFavorite.value &&
+    !offersDislike.value &&
+    !offersPlaylist.value &&
+    !slots.before,
 );
 // without an item the trigger stays visible but disabled, e.g. while the
 // player bar has nothing loaded yet

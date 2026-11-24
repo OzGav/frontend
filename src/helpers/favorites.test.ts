@@ -9,7 +9,9 @@ import { artist } from "../../tests/fixtures/artist";
 import { audioSource } from "../../tests/fixtures/audioSource";
 import { withoutFavorite } from "../../tests/fixtures/mediaItem";
 import { track } from "../../tests/fixtures/track";
+import { work } from "../../tests/fixtures/work";
 import {
+  canBeDisliked,
   canHoldFavorite,
   clearFavorite,
   favoriteState,
@@ -150,6 +152,10 @@ describe("favoriteState", () => {
 });
 
 describe("canHoldFavorite", () => {
+  it("lets a work hold a like", () => {
+    expect(canHoldFavorite(work())).toBe(true);
+  });
+
   it("tells a media item apart from an item mapping", () => {
     expect(canHoldFavorite(withoutFavorite(track()))).toBe(true);
     expect(canHoldFavorite(artist({ favorite: true }))).toBe(true);
@@ -235,5 +241,13 @@ describe("clearFavorite", () => {
     ).resolves.toBe(false);
 
     expect(apiMock.removeItemFromFavorites).not.toHaveBeenCalled();
+  });
+});
+
+describe("canBeDisliked", () => {
+  it("leaves the dislike out for a work only", () => {
+    expect(canBeDisliked(MediaType.WORK)).toBe(false);
+    expect(canBeDisliked(MediaType.TRACK)).toBe(true);
+    expect(canBeDisliked(MediaType.ARTIST)).toBe(true);
   });
 });

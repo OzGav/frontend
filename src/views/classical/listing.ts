@@ -111,6 +111,8 @@ interface ClassicalListingOptions<T, Q extends object> extends Omit<
   loadFilterChoices?: () => Promise<void>;
   // adds the favourites filter, the view modes and the cover size
   views?: boolean;
+  // adds the favourites filter alone, for a tab without views
+  favorites?: boolean;
   // the tab's own filters, shown in the Filters panel after the favourites
   // filter, with undefined for one left out; read as the panel is built, so
   // their state must exist before this is called
@@ -151,7 +153,8 @@ export function useClassicalListing<T, Q extends object = object>(
   const viewMode = ref<ClassicalViewMode>(
     isViewMode(prefs.viewMode) ? prefs.viewMode : "fanart",
   );
-  const favoritesOnly = ref(options.views === true && !!prefs.favoriteFilter);
+  const withFavorites = options.views === true || options.favorites === true;
+  const favoritesOnly = ref(withFavorites && !!prefs.favoriteFilter);
   const gridSize = ref(normalizeGridSize(prefs.gridSize));
   const showActions = ref(prefs.showActions ?? true);
   // set by the grid, which hides the action buttons when the covers get too small
@@ -225,7 +228,7 @@ export function useClassicalListing<T, Q extends object = object>(
 
   const filters = computed<ListingFilter[]>(() => {
     const list: ListingFilter[] = [];
-    if (options.views) {
+    if (withFavorites) {
       list.push({
         kind: "toggle",
         id: "favorites",

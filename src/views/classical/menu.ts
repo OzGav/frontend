@@ -123,6 +123,11 @@ export async function openArtistMenu(
   emit(await classicalArtistMenuItems(artist, router), evt, false);
 }
 
+/** Open a work's menu at the pointer, the standard entries without play. */
+export async function openWorkMenu(work: Work, evt: Event | MouseEvent) {
+  emit(await getContextMenuItems([work]), evt, false);
+}
+
 interface BuildArgs {
   tracks: Track[];
   credits: Credit[];

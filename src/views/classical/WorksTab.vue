@@ -18,6 +18,7 @@
         :label="`${$t('play')} ${w.work.name}`"
         @click="navigateOnRowClick($event, router, workLink(w))"
         @play="(e: Event) => playWork(w.work, e)"
+        @menu="(e: Event) => openWorkMenu(w.work, e)"
       >
         <div class="flex min-w-0 flex-col text-inherit no-underline">
           <span
@@ -55,13 +56,21 @@
             {{ w.work.version }}
           </span>
         </div>
-        <!-- Rendered even when empty so every row keeps all four columns. -->
+        <!-- Rendered even when empty so every row keeps all its columns. -->
         <template v-if="!mobile">
           <span :class="COLUMN_CLASS">{{ w.work.catalog_numbers[0] }}</span>
           <span :class="COLUMN_CLASS">{{ w.work.composition_year }}</span>
           <span :class="COLUMN_CLASS">{{
             recordingCountLabel(w.recording_count)
           }}</span>
+        </template>
+        <template #actions>
+          <ClassicalRowActions
+            class="self-center"
+            :name="w.work.name"
+            :favorite-item="canHoldFavorite(w.work) ? w.work : undefined"
+            @menu="(e: Event) => openWorkMenu(w.work, e)"
+          />
         </template>
       </ClassicalPlayRow>
     </ul>
@@ -77,6 +86,7 @@
 
 <script setup lang="ts">
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
+import { canHoldFavorite } from "@/helpers/favorites";
 import type { ListingCustomFilter } from "@/helpers/listing_filters";
 import {
   ListingType,
@@ -88,6 +98,7 @@ import { getBreakpointValue } from "@/plugins/breakpoint";
 import { getWorkFilters, getWorks } from "@/services/classical";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
+import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import YearRangeFilter from "@/views/classical/components/YearRangeFilter.vue";
 import {
@@ -95,6 +106,8 @@ import {
   useClassicalListing,
 } from "@/views/classical/listing";
 import { useClassicalPreferences } from "@/views/classical/preferences";
+import { useOwnFavorites } from "@/views/classical/favorites";
+import { openWorkMenu } from "@/views/classical/menu";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
 import { periodLabel, recordingCountLabel } from "@/views/classical/labels";
 import {
@@ -114,12 +127,15 @@ defineOptions({ name: "WorksTab" });
 const ITEMTYPE = "works";
 const SKELETONS = 8;
 
-const COLUMN_CLASS = "text-[0.85rem] whitespace-nowrap text-muted-foreground";
+// centred on the row's two lines, level with the heart and menu
+const COLUMN_CLASS =
+  "self-center text-[0.85rem] whitespace-nowrap text-muted-foreground";
 
 const { t } = useI18n();
 
 const tabRoot = ref<HTMLElement>();
 const works = ref<ClassicalWorkEntry[]>([]);
+useOwnFavorites(() => works.value.map((w) => w.work));
 const choices = ref<ClassicalWorkFilters>();
 
 const { preferences, save } = useClassicalPreferences(ITEMTYPE);
@@ -152,11 +168,11 @@ const phoneDetails = ({ work, recording_count }: ClassicalWorkEntry) =>
 const listColumns = computed(() => {
   if (mobile.value)
     return isTouch.value
-      ? "grid-cols-[minmax(0,1fr)_auto]"
-      : "grid-cols-[auto_minmax(0,1fr)]";
+      ? "grid-cols-[minmax(0,1fr)_auto_auto]"
+      : "grid-cols-[auto_minmax(0,1fr)_auto]";
   return isTouch.value
-    ? "grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
-    : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]";
+    ? "grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]"
+    : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]";
 });
 
 const periodFilter = usePeriodFilter(
@@ -208,6 +224,7 @@ const { loading, loadingMore, hasMore, loadMore, filtered, failed, refresh } =
   useClassicalListing({
     itemtype: ITEMTYPE,
     listing: ListingType.CLASSICAL_WORKS,
+    favorites: true,
     exclude: () => (hasComposedYears.value ? [] : [SortField.YEAR]),
     search: {
       placeholder: () => t("classical_filter_works_placeholder"),

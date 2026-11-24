@@ -5,7 +5,13 @@ import type { Router } from "vue-router";
 import { artist } from "../../../tests/fixtures/artist";
 import { recording } from "../../../tests/fixtures/recording";
 import { track } from "../../../tests/fixtures/track";
-import { openArtistMenu, openMovementMenu, openRecordingMenu } from "./menu";
+import { work } from "../../../tests/fixtures/work";
+import {
+  openArtistMenu,
+  openMovementMenu,
+  openRecordingMenu,
+  openWorkMenu,
+} from "./menu";
 
 const { emit, getContextMenuItems } = vi.hoisted(() => ({
   emit: vi.fn(),
@@ -96,5 +102,17 @@ describe("classical artist menu", () => {
     await openArtistMenu(artist(), router, evt);
 
     expect(shownLabels()).toEqual(["show_info", "favorite"]);
+  });
+});
+
+describe("classical work menu", () => {
+  it("shows the standard entries for the work", async () => {
+    getContextMenuItems.mockResolvedValue([favorite]);
+    const item = work();
+
+    await openWorkMenu(item, evt);
+
+    expect(getContextMenuItems).toHaveBeenCalledWith([item]);
+    expect(shownLabels()).toEqual(["favorite"]);
   });
 });

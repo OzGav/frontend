@@ -1,11 +1,12 @@
 <template>
   <nav
     v-if="links.length"
-    class="min-w-0 text-[14px] text-[rgba(255,255,255,0.85)] [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]"
+    class="inline-flex h-[22px] items-center gap-[5px] whitespace-nowrap rounded-full bg-[rgba(0,0,0,0.45)] px-2 text-[12px] font-medium"
     :aria-label="$t('classical_work_links')"
   >
+    <!-- the look of the providers pill beneath it -->
     <template v-for="(link, index) in links" :key="link.type">
-      <span v-if="index > 0" class="m-[0_4px] opacity-50">·</span>
+      <span v-if="index > 0" class="opacity-40">·</span>
       <a
         :href="link.url"
         target="_blank"

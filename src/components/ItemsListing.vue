@@ -11,7 +11,7 @@
     <!-- eslint-disable vue/no-template-shadow -->
     <!-- inset so the title lines up with the row artwork and the menu with the rows' menu -->
     <Toolbar
-      class="ps-[5px] pe-[7px]"
+      :class="LISTING_TOOLBAR_CLASS"
       :icon="icon"
       :icon-action="iconAction"
       :title="title"
@@ -145,12 +145,15 @@
     <div
       v-if="expanded"
       ref="listContainer"
-      class="overflow-hidden p-2.5"
-      :class="{
-        'bg-background dark:bg-transparent': viewMode != 'list',
-        'flex flex-1 flex-col': fillsHeight,
-        'pr-9 pointer-coarse:pr-10': showLetterBar,
-      }"
+      class="overflow-hidden"
+      :class="[
+        LISTING_CONTENT_CLASS,
+        {
+          'bg-background dark:bg-transparent': viewMode != 'list',
+          'flex flex-1 flex-col': fillsHeight,
+          'pr-9 pointer-coarse:pr-10': showLetterBar,
+        },
+      ]"
     >
       <TrackTableHeader
         v-if="showTrackTable && (loadPending || pagedItems.length)"
@@ -431,6 +434,7 @@ import GenreIcon from "@/components/icons/GenreIcon.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import PanelViewSkeleton from "@/components/skeletons/PanelViewSkeleton.vue";
 import { SMART_PLAYLIST_PROVIDER_DOMAIN } from "@/components/smart_playlist/constants";
+import { LISTING_CONTENT_CLASS, LISTING_TOOLBAR_CLASS } from "@/constants";
 import Toolbar, { ToolBarMenuItem } from "@/components/Toolbar.vue";
 import TrackTableDragGhost from "@/components/track-table/TrackTableDragGhost.vue";
 import TrackTableHeader from "@/components/track-table/TrackTableHeader.vue";

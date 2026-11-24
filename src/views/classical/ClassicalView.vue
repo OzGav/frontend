@@ -8,7 +8,7 @@
       :menu-items="menu?.items"
       :enforce-overflow-menu="true"
       class="classical-toolbar"
-      :class="CLASSICAL_SERIF_CLASS"
+      :class="[LISTING_TOOLBAR_CLASS, CLASSICAL_SERIF_CLASS]"
     >
       <!-- The minimum width leaves room for the three tab icons. -->
       <Tabs
@@ -76,7 +76,7 @@
     <Separator v-if="!fullBleedContent" />
     <div
       class="min-h-0 flex-1"
-      :class="fullBleedContent ? 'p-0' : 'p-[0.75rem_1rem_1rem]'"
+      :class="fullBleedContent ? 'p-0' : LISTING_CONTENT_CLASS"
     >
       <LinkProgressAlert v-if="!fullBleedContent" />
       <router-view />
@@ -92,6 +92,7 @@ import Toolbar from "@/components/Toolbar.vue";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useListingSearch } from "@/composables/useListingSearch";
+import { LISTING_CONTENT_CLASS, LISTING_TOOLBAR_CLASS } from "@/constants";
 import { activeFilterCount } from "@/helpers/listing_filters";
 import { store } from "@/plugins/store";
 import {

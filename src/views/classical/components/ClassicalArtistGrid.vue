@@ -79,9 +79,19 @@
             </template>
           </div>
         </router-link>
+        <!-- a list row ends like the Works rows, so their menus line up -->
+        <ClassicalRowActions
+          v-if="viewMode === 'list'"
+          :name="item.name"
+          :favorite-item="
+            showHeart && canHoldFavorite(item.artist) ? item.artist : undefined
+          "
+          @click.stop
+          @menu="(e: Event) => openArtistMenu(item.artist, router, e)"
+        />
         <!-- the actions row of the standard panel cards -->
         <div
-          v-if="actionsShown"
+          v-else-if="actionsShown"
           class="flex h-[32px] items-center gap-[10px]"
           :class="layout.actions"
           @click.stop
@@ -135,6 +145,7 @@ import type { ClassicalViewMode } from "@/views/classical/listing";
 import { navigateOnRowClick } from "@/views/classical/rowClick";
 import type { ClassicalArtistGridItem } from "@/views/classical/artistGrid";
 import ClassicalEmpty from "@/views/classical/components/ClassicalEmpty.vue";
+import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
 import LoadMoreSentinel from "@/views/classical/components/LoadMoreSentinel.vue";
 import { openArtistMenu } from "@/views/classical/menu";
 import { ROW_HOVER_CLASS } from "@/views/classical/styles";
@@ -241,9 +252,7 @@ const actionsFit = computed(() => {
 });
 watch(actionsFit, (fit) => emit("actions-fit", fit), { immediate: true });
 
-const actionsShown = computed(
-  () => props.viewMode === "list" || (props.showActions && actionsFit.value),
-);
+const actionsShown = computed(() => props.showActions && actionsFit.value);
 
 const layout = computed(() => LAYOUTS[props.viewMode]);
 
@@ -262,7 +271,8 @@ interface CardLayout {
   meta: string;
   name: string;
   sub: string;
-  actions: string;
+  // the actions row under a picture card
+  actions?: string;
 }
 
 const SUB_CLASS =
@@ -288,13 +298,14 @@ const LAYOUTS: Record<ClassicalViewMode, CardLayout> = {
   // Multi-column list, laid out like an artist's top tracks.
   list: {
     grid: "auto-rows-[56px] grid-cols-[repeat(3,minmax(0,1fr))] gap-[0_16px] max-md:m-0 max-md:grid-cols-[minmax(0,1fr)]",
-    card: `h-[56px] items-center gap-[12px] p-[0_8px] ${ROW_HOVER_CLASS}`,
+    // the right padding leaves the menu where a Works row has it: past the
+    // grid's 8px overhang, and in by the rows' 0.25rem inset
+    card: `h-[56px] items-center gap-[12px] p-[0_calc(8px+0.25rem)_0_8px] max-md:pr-1 ${ROW_HOVER_CLASS}`,
     link: "flex-1 items-center gap-[12px]",
     thumb: "size-[40px] flex-none rounded-[6px]",
     meta: "flex-1",
     name: "font-medium",
     sub: SUB_CLASS,
-    actions: "flex-none",
   },
 };
 </script>

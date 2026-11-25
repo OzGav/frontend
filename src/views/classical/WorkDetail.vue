@@ -1,7 +1,13 @@
 <template>
   <section ref="pageRoot">
     <!-- The work has no artwork of its own; the hero borrows the composer's. -->
-    <ClassicalHero :item="heroItem" section="works" show-favorite>
+    <ClassicalHero
+      :item="heroItem"
+      section="works"
+      show-favorite
+      editable-rows
+      @edit-rows="rowsEditorOpen = true"
+    >
       <template v-if="work" #meta>
         <WorkHeroMeta :work="work" :composer="composer" />
       </template>
@@ -9,72 +15,91 @@
         <WorkHeroLinks :work="work" />
       </template>
     </ClassicalHero>
-    <DetailTextRow
-      v-if="work?.metadata.description"
-      :text="work.metadata.description"
-      :dialog-title="work.name"
-      markdown
-    />
-    <WorkMovements
-      v-if="work?.movements?.length"
-      :key="work.item_id"
-      v-model="selectedMovements"
-      :movements="work.movements"
-      :counts="movementCounts"
-      :part-entries="partEntries"
-      :from-library="!work.movements_from_musicbrainz"
-    />
-
-    <FilterableSection
-      v-model="query"
-      v-model:open="searchOpen"
-      :title="$t('recordings')"
-      :meta="recordingsMeta"
-      :searchable="recordings.length > 0"
-      :placeholder="$t('classical_filter_recordings_placeholder')"
-      :menu="recordingsMenu"
-      :menu-active="yearRangeActive"
-    >
-      <template #actions>
-        <SortDirectionToggle
-          :label="$t('classical_sort_date')"
-          :direction="sortDirection"
-          :description="sortDescription"
-          @toggle="toggleSortDirection"
-        />
-      </template>
-      <template #below-search>
-        <PerformerFilterLine
-          v-if="performerName"
-          :performer="performerName"
-          :count="shownCount"
-          @clear="clearPerformer"
-        />
-      </template>
-      <div v-if="loading">
-        <ListViewSkeleton v-for="n in 4" :key="n" />
-      </div>
-      <MovementGroupList
-        v-else-if="movementGroups.length"
-        :groups="movementGroups"
-        @menu="onMenuMovement"
+    <template v-for="rowId in visibleRows" :key="rowId">
+      <DetailTextRow
+        v-if="rowId === 'description' && work?.metadata.description"
+        :text="work.metadata.description"
+        :dialog-title="work.name"
+        markdown
+        @edit-rows="rowsEditorOpen = true"
       />
-      <RecordingGroupList
-        v-else-if="!selectedMovements.length && displayedRecordings.length"
-        :groups="recordingGroups"
-        :movements="ownMovements"
-        @menu-recording="onMenuRecording"
-        @menu-movement="onMenuMovement"
+      <WorkMovements
+        v-else-if="rowId === 'movements' && work?.movements?.length"
+        :key="work.item_id"
+        v-model="selectedMovements"
+        :movements="work.movements"
+        :counts="movementCounts"
+        :part-entries="partEntries"
+        :from-library="!work.movements_from_musicbrainz"
+        @edit-rows="rowsEditorOpen = true"
       />
-      <ClassicalEmpty v-else :filtered="recordings.length > 0" />
-    </FilterableSection>
+      <FilterableSection
+        v-else-if="rowId === 'recordings'"
+        v-model="query"
+        v-model:open="searchOpen"
+        :title="$t('recordings')"
+        :meta="recordingsMeta"
+        :searchable="recordings.length > 0"
+        :placeholder="$t('classical_filter_recordings_placeholder')"
+        :menu="recordingsMenu"
+        :menu-active="yearRangeActive"
+        @edit-rows="rowsEditorOpen = true"
+      >
+        <template #actions>
+          <SortDirectionToggle
+            :label="$t('classical_sort_date')"
+            :direction="sortDirection"
+            :description="sortDescription"
+            @toggle="toggleSortDirection"
+          />
+        </template>
+        <template #below-search>
+          <PerformerFilterLine
+            v-if="performerName"
+            :performer="performerName"
+            :count="shownCount"
+            @clear="clearPerformer"
+          />
+        </template>
+        <div v-if="loading">
+          <ListViewSkeleton v-for="n in 4" :key="n" />
+        </div>
+        <MovementGroupList
+          v-else-if="movementGroups.length"
+          :groups="movementGroups"
+          @menu="onMenuMovement"
+        />
+        <RecordingGroupList
+          v-else-if="!selectedMovements.length && displayedRecordings.length"
+          :groups="recordingGroups"
+          :movements="ownMovements"
+          @menu-recording="onMenuRecording"
+          @menu-movement="onMenuMovement"
+        />
+        <ClassicalEmpty v-else :filtered="recordings.length > 0" />
+      </FilterableSection>
+      <RelatedWorksSection
+        v-else-if="rowId === 'related_works'"
+        :work="work"
+        @edit-rows="rowsEditorOpen = true"
+      />
+    </template>
 
-    <RelatedWorksSection :work="work" />
+    <!-- previewed with the banner's picture, the composer's -->
+    <RowsEditor
+      v-if="heroItem"
+      v-model:open="rowsEditorOpen"
+      :item="heroItem"
+      :registry="workRows"
+      :available-ids="availableRows"
+      :subtitle="$t('edit_rows_subtitle_work')"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import RowsEditor from "@/components/details/RowsEditor.vue";
 import ListViewSkeleton from "@/components/skeletons/ListViewSkeleton.vue";
 import { useDetailItemUpdates } from "@/composables/useDetailItemUpdates";
 import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
@@ -117,6 +142,7 @@ import {
 } from "@/views/classical/recordingGroups";
 import { useRecordingsFilter } from "@/views/classical/recordingsFilter";
 import { useWorkParts } from "@/views/classical/workParts";
+import { useWorkRows, workRows } from "@/views/classical/workRows";
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -136,6 +162,7 @@ const work = ref<Work | undefined>();
 const composer = ref<Artist | undefined>();
 const recordings = ref<Recording[]>([]);
 const loading = ref(true);
+const { rowsEditorOpen, availableRows, visibleRows } = useWorkRows(work);
 const pageRoot = ref<HTMLElement>();
 useHistoryScrollRestore(pageRoot);
 
@@ -154,6 +181,15 @@ const {
   displayedRecordings,
   selectedMovements,
 } = useRecordingsFilter(props, work, recordings);
+
+// the chosen movements would otherwise keep filtering the recordings while
+// hidden
+watch(
+  () => workRows.resolve(["movements"]).hidden.has("movements"),
+  (hidden) => {
+    if (hidden) selectedMovements.value = [];
+  },
+);
 
 const composerMapping = computed(() => work.value?.composers[0]);
 

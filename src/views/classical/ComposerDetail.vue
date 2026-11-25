@@ -1,61 +1,91 @@
 <template>
   <section ref="pageRoot">
-    <ClassicalHero :item="artist" section="composers" show-favorite>
+    <ClassicalHero
+      :item="artist"
+      section="composers"
+      show-favorite
+      editable-rows
+      @edit-rows="rowsEditorOpen = true"
+    >
       <template v-if="heroMeta" #meta>{{ heroMeta }}</template>
     </ClassicalHero>
-    <DetailTextRow
-      v-if="artist?.metadata.description"
-      :text="artist.metadata.description"
-      :dialog-title="artist.name"
-      markdown
-    />
-    <WorksSection
-      v-slot="{ filtered }"
-      :title="$t('works')"
-      :works="works"
-      :loading="loading"
-      :artist-id="id"
-    >
-      <ClassicalPlayRow
-        v-for="w in filtered"
-        :key="w.work.item_id"
-        tag="li"
-        class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
-        :label="`${$t('play')} ${w.work.name}`"
-        @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
-        @play="(e: Event) => playWork(w.work, e)"
+    <template v-for="rowId in visibleRows" :key="rowId">
+      <DetailTextRow
+        v-if="rowId === 'description' && artist?.metadata.description"
+        :text="artist.metadata.description"
+        :dialog-title="artist.name"
+        markdown
+        @edit-rows="rowsEditorOpen = true"
+      />
+      <WorksSection
+        v-else-if="rowId === 'works'"
+        v-slot="{ filtered }"
+        :title="$t('works')"
+        :works="works"
+        :loading="loading"
+        :artist-id="id"
+        @edit-rows="rowsEditorOpen = true"
       >
-        <!-- the details on their own line, under the title; title and details
-             keep a shared baseline, centred against the play slot -->
-        <span class="flex min-w-0 flex-1 flex-col">
-          <router-link
-            :to="workLink(w.work.item_id)"
-            class="font-semibold text-inherit no-underline"
-          >
-            {{ w.work.name }}
-          </router-link>
-          <span
-            v-if="w.work.version"
-            class="text-[0.875rem] text-muted-foreground"
-            >{{ w.work.version }}</span
-          >
-          <span class="text-[0.875rem] text-muted-foreground">
-            {{ workDetails(w) }}
+        <ClassicalPlayRow
+          v-for="w in filtered"
+          :key="w.work.item_id"
+          tag="li"
+          class="flex cursor-pointer items-center gap-[0.4rem] py-[0.5rem]"
+          :label="`${$t('play')} ${w.work.name}`"
+          @click="navigateOnRowClick($event, router, workLink(w.work.item_id))"
+          @play="(e: Event) => playWork(w.work, e)"
+        >
+          <!-- the details on their own line, under the title; title and details
+               keep a shared baseline, centred against the play slot -->
+          <span class="flex min-w-0 flex-1 flex-col">
+            <router-link
+              :to="workLink(w.work.item_id)"
+              class="font-semibold text-inherit no-underline"
+            >
+              {{ w.work.name }}
+            </router-link>
+            <span
+              v-if="w.work.version"
+              class="text-[0.875rem] text-muted-foreground"
+              >{{ w.work.version }}</span
+            >
+            <span class="text-[0.875rem] text-muted-foreground">
+              {{ workDetails(w) }}
+            </span>
           </span>
-        </span>
-      </ClassicalPlayRow>
-    </WorksSection>
+        </ClassicalPlayRow>
+      </WorksSection>
+      <OtherTracksSection
+        v-else-if="rowId === 'other_tracks'"
+        :artist-id="id"
+        as-composer
+        @edit-rows="rowsEditorOpen = true"
+      />
+    </template>
 
-    <OtherTracksSection :artist-id="id" as-composer />
+    <RowsEditor
+      v-if="artist"
+      v-model:open="rowsEditorOpen"
+      :item="artist"
+      :registry="composerRows"
+      :available-ids="availableRows"
+      :subtitle="$t('edit_rows_subtitle_composer')"
+      round-avatar
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import DetailTextRow from "@/components/details/DetailTextRow.vue";
+import RowsEditor from "@/components/details/RowsEditor.vue";
 import { useHistoryScrollRestore } from "@/composables/useHistoryScrollRestore";
 import type { ClassicalWorkEntry } from "@/plugins/api/interfaces";
 import { $t } from "@/plugins/i18n";
 import { useClassicalArtistPage } from "@/views/classical/artistPage";
+import {
+  composerRows,
+  useClassicalArtistRows,
+} from "@/views/classical/artistRows";
 import ClassicalHero from "@/views/classical/components/ClassicalHero.vue";
 import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
 import OtherTracksSection from "@/views/classical/components/OtherTracksSection.vue";
@@ -98,6 +128,11 @@ const heroMeta = computed(() =>
   ]
     .filter(Boolean)
     .join(" · "),
+);
+
+const { rowsEditorOpen, availableRows, visibleRows } = useClassicalArtistRows(
+  artist,
+  composerRows,
 );
 
 const workLink = (workId: string) => `/classical/works/${workId}`;

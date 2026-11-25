@@ -5,7 +5,12 @@
     <div
       class="mb-[8px] flex flex-wrap items-center justify-between gap-[10px]"
     >
-      <DetailSectionTitle :title="title" :meta="meta" align="baseline">
+      <DetailSectionTitle
+        :title="title"
+        :meta="meta"
+        align="baseline"
+        @edit-rows="emit('edit-rows')"
+      >
         <slot name="title-append"></slot>
       </DetailSectionTitle>
       <slot name="append"></slot>
@@ -25,5 +30,10 @@ defineProps<{
   title: string;
   // short text beside the title, e.g. a count
   meta?: string;
+}>();
+
+const emit = defineEmits<{
+  // a long-press on the title asks for the rows editor
+  (e: "edit-rows"): void;
 }>();
 </script>

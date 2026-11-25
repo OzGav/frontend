@@ -2,8 +2,9 @@
   <DetailHero
     :item="item"
     :backdrop="backdrop"
-    :editable-rows="false"
+    :editable-rows="editableRows"
     :leading-menu-items="leadingMenuItems"
+    @edit-rows="emit('edit-rows')"
   >
     <template #toolbar-append>
       <ClassicalSectionLinks :current="section" />
@@ -52,8 +53,14 @@ export interface Props {
   showFavorite?: boolean;
   // the Classical section the page belongs to, highlighted in the section links
   section?: ClassicalTab;
+  // offers Edit rows in the menu, for a page whose rows can be arranged
+  editableRows?: boolean;
 }
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  (e: "edit-rows"): void;
+}>();
 
 const router = useRouter();
 

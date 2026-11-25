@@ -17,6 +17,7 @@ import { podcastEpisode } from "../fixtures/podcastEpisode";
 import { BUILTIN_ROLE_SCOPES, scopeChecker } from "../fixtures/scopes";
 import { track } from "../fixtures/track";
 import { user } from "../fixtures/user";
+import { work } from "../fixtures/work";
 
 const { apiMock, storeMock } = vi.hoisted(() => ({
   apiMock: {
@@ -325,6 +326,27 @@ describe("FavoriteMenu", () => {
     const wrapper = mountMenu(podcastEpisode());
 
     expect(entryLabels(wrapper)).toEqual(["add_playlist"]);
+  });
+
+  // nothing uses a dislike on a work, so liking is its only action
+  it("toggles a work's like straight from the heart, with no menu", async () => {
+    const item = work();
+    const wrapper = mountMenu(item);
+
+    expect(wrapper.find(".dropdown-item").exists()).toBe(false);
+    expect(wrapper.get(TRIGGER).attributes("aria-label")).toBe("favorites_add");
+    await wrapper.get(TRIGGER).trigger("click");
+    await flushPromises();
+    expect(apiMock.addItemToFavorites).toHaveBeenCalledWith(item);
+    expect(wrapper.get(TRIGGER).attributes("data-active")).toBe("true");
+
+    await wrapper.get(TRIGGER).trigger("click");
+    await flushPromises();
+    expect(apiMock.removeItemFromFavorites).toHaveBeenCalledWith(
+      item.media_type,
+      item.item_id,
+    );
+    expect(wrapper.get(TRIGGER).attributes("data-active")).toBeUndefined();
   });
 
   it("renders no trigger for an item that offers nothing at all", () => {

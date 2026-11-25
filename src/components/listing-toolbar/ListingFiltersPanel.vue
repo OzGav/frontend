@@ -1,6 +1,7 @@
 <template>
   <section class="flex flex-col gap-4" :aria-labelledby="titleId">
-    <div class="flex items-center justify-between">
+    <!-- as tall as "Clear all", so it showing up doesn't move the filters -->
+    <div class="flex min-h-8 items-center justify-between">
       <h2 :id="titleId" class="text-base font-semibold">
         {{ $t("listing_filters.title") }}
       </h2>
@@ -40,6 +41,17 @@
         v-if="filter.kind === 'multi'"
         :filter="filter"
       />
+      <div
+        v-else-if="filter.kind === 'custom'"
+        role="group"
+        :aria-labelledby="controlId(filter.id)"
+        class="flex flex-col gap-2"
+      >
+        <span :id="controlId(filter.id)" :class="SECTION_LABEL_CLASS">
+          {{ filter.label }}
+        </span>
+        <component :is="filter.component" v-bind="filter.props" />
+      </div>
       <div v-else class="flex flex-col gap-2">
         <span :id="controlId(filter.id)" :class="SECTION_LABEL_CLASS">
           {{ filter.label }}
@@ -48,15 +60,18 @@
           :model-value="filter.selected"
           :aria-labelledby="controlId(filter.id)"
           class="gap-0.5"
-          @update:model-value="(value) => filter.select(String(value))"
         >
           <Label
             v-for="option in filter.options"
             :key="option.value"
             class="h-9 cursor-pointer gap-2.5 rounded-md px-1 font-normal hover:bg-accent/50"
           >
-            <RadioGroupItem :value="option.value" />
-            {{ option.label }}
+            <RadioGroupItem
+              :value="option.value"
+              @select="filter.select(option.value)"
+            />
+            <ListingFilterOptionIcon :option="option" />
+            <span class="min-w-0 truncate">{{ option.label }}</span>
           </Label>
         </RadioGroup>
       </div>
@@ -71,14 +86,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import type {
-  ListingChoiceFilter,
   ListingFilter,
-  ListingMultiFilter,
   ListingToggleFilter,
 } from "@/helpers/listing_filters";
 import { computed, useId } from "vue";
 import ListingMultiFilterField from "./ListingMultiFilterField.vue";
 import { SECTION_LABEL_CLASS } from "./constants";
+import ListingFilterOptionIcon from "./ListingFilterOptionIcon.vue";
 
 const props = defineProps<{
   filters: ListingFilter[];
@@ -100,7 +114,7 @@ const toggles = computed(() =>
 );
 const fields = computed(() =>
   props.filters.filter(
-    (filter): filter is ListingMultiFilter | ListingChoiceFilter =>
+    (filter): filter is Exclude<ListingFilter, ListingToggleFilter> =>
       filter.kind !== "toggle",
   ),
 );

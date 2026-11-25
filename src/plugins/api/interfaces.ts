@@ -202,6 +202,7 @@ export enum MediaType {
   GENRE = "genre",
   GENRE_ALIAS = "genre_alias",
   FOLDER = "folder",
+  WORK = "work",
   UNKNOWN = "unknown",
 }
 
@@ -231,6 +232,10 @@ export enum ListingType {
   GENRE_TRACKS = "genre_tracks",
   GENRE_ALBUMS = "genre_albums",
   BROWSE = "browse",
+  CLASSICAL_COMPOSERS = "classical_composers",
+  CLASSICAL_PERFORMERS = "classical_performers",
+  CLASSICAL_WORKS = "classical_works",
+  CLASSICAL_OTHER_TRACKS = "classical_other_tracks",
 }
 
 export enum SortField {
@@ -251,6 +256,10 @@ export enum SortField {
   PROVIDER = "provider",
   FAVORITE_TIMESTAMP = "favorite_timestamp",
   ORIGINAL = "original",
+  RELEASE_DATE = "release_date",
+  COMPOSER = "composer",
+  RECORDING_COUNT = "recording_count",
+  WORK_COUNT = "work_count",
 }
 
 export enum SortDirection {
@@ -265,6 +274,13 @@ export interface SortOptionInfo {
   label_key: string | null;
 }
 
+// where a letter starts in a library listing sorted by name: the letter ("#"
+// for numbers and symbols) and the row of its first item in the listing order
+export interface LetterIndexEntry {
+  letter: string;
+  offset: number;
+}
+
 export enum LinkType {
   WEBSITE = "website",
   FACEBOOK = "facebook",
@@ -277,6 +293,7 @@ export enum LinkType {
   DISCOGS = "discogs",
   WIKIPEDIA = "wikipedia",
   ALLMUSIC = "allmusic",
+  IMSLP = "imslp",
 }
 
 export enum ImageType {
@@ -315,6 +332,7 @@ export enum ExternalID {
   MB_RELEASEGROUP = "musicbrainz_releasegroupid", // MusicBrainz ReleaseGroupID
   MB_TRACK = "musicbrainz_trackid", // MusicBrainz Track ID
   MB_RECORDING = "musicbrainz_recordingid", // MusicBrainz Recording ID
+  MB_WORK = "musicbrainz_workid", // MusicBrainz Work ID
   ISRC = "isrc", // used to identify unique recordings
   BARCODE = "barcode", // EAN-13 barcode for identifying albums
   ACOUSTID = "acoustid", //unique fingerprint (id) for a recording
@@ -423,15 +441,63 @@ export enum PlaybackState {
   PLAYING = "playing",
 }
 
+export enum SleepTimerMode {
+  DURATION = "duration",
+  END_OF_ITEM = "end_of_item",
+  END_OF_CHAPTER = "end_of_chapter",
+}
+
 export enum PlayerType {
   PLAYER = "player", // A regular player.
-  STEREO_PAIR = "stereo_pair",
+  MULTI_CHANNEL = "multi_channel", // One player made of several speakers that play as one.
+  STEREO_PAIR = "stereo_pair", // A stereo pair as an older server reports it.
   GROUP = "group", // A (dedicated) group player or playergroup.
   PROTOCOL = "protocol",
   DISPLAY = "display",
   VISUALIZER = "visualizer",
   LIGHT = "light",
   SOURCE = "source", // A capture-only device that provides audio input.
+  CONTROLLER = "controller", // A device that only controls playback, such as a remote.
+  UNKNOWN = "unknown",
+}
+
+export enum ChannelLayout {
+  // How the speakers of a multi-channel player are laid out: the number of
+  // full-range speakers and of subwoofers; a set of two speakers is stereo.
+  STEREO = "stereo",
+  LAYOUT_1_1 = "1.1",
+  LAYOUT_2_1 = "2.1",
+  LAYOUT_3_0 = "3.0",
+  LAYOUT_3_1 = "3.1",
+  LAYOUT_4_0 = "4.0",
+  LAYOUT_4_1 = "4.1",
+  LAYOUT_5_0 = "5.0",
+  LAYOUT_5_1 = "5.1",
+  LAYOUT_7_1 = "7.1",
+  UNKNOWN = "unknown",
+}
+
+export enum SpeakerChannel {
+  // The channel a speaker of a multi-channel player plays: a speaker position
+  // of the FLAC channel mask, as the Sendspin specification names them.
+  FRONT_LEFT = "front_left",
+  FRONT_RIGHT = "front_right",
+  FRONT_CENTER = "front_center",
+  LFE = "lfe",
+  BACK_LEFT = "back_left",
+  BACK_RIGHT = "back_right",
+  FRONT_LEFT_OF_CENTER = "front_left_of_center",
+  FRONT_RIGHT_OF_CENTER = "front_right_of_center",
+  BACK_CENTER = "back_center",
+  SIDE_LEFT = "side_left",
+  SIDE_RIGHT = "side_right",
+  TOP_CENTER = "top_center",
+  TOP_FRONT_LEFT = "top_front_left",
+  TOP_FRONT_CENTER = "top_front_center",
+  TOP_FRONT_RIGHT = "top_front_right",
+  TOP_REAR_LEFT = "top_rear_left",
+  TOP_REAR_CENTER = "top_rear_center",
+  TOP_REAR_RIGHT = "top_rear_right",
   UNKNOWN = "unknown",
 }
 
@@ -492,6 +558,8 @@ export enum EventType {
   // a user's bookmarks of one copy changed; object_id is the copy's uri, data the user id
   BOOKMARKS_UPDATED = "bookmarks_updated",
   PROVIDERS_UPDATED = "providers_updated",
+  // the community catalog or the provider manifests changed
+  COMMUNITY_CATALOG_UPDATED = "community_catalog_updated",
   TASKS_UPDATED = "tasks_updated",
   MUSIC_SYNC_COMPLETED = "music_sync_completed",
   PLAYER_CONFIG_UPDATED = "player_config_updated",
@@ -508,6 +576,8 @@ export enum EventType {
   // setup_flow_updated: a running setup flow produced a new/updated step;
   // object_id is the flow_id, data is the SetupFlowStep
   SETUP_FLOW_UPDATED = "setup_flow_updated",
+  // data is the ClassicalLinkProgress left after a MusicBrainz linking run
+  CLASSICAL_LINK_PROGRESS = "classical_link_progress",
   // special types for local subscriptions only
   CONNECTED = "connected",
   DISCONNECTED = "disconnected",
@@ -568,10 +638,16 @@ export enum ProviderFeature {
   REMOVE_PLAYER = "remove_player",
   REMOVE_GROUP_PLAYER = "remove_group_player",
   CREATE_GROUP_PLAYER = "create_group_player",
+  CREATE_MULTI_CHANNEL_PLAYER = "create_multi_channel_player",
   // metadata provider specific features
   ARTIST_METADATA = "artist_metadata",
   ALBUM_METADATA = "album_metadata",
   TRACK_METADATA = "track_metadata",
+  // provider delivers live audio sources, such as a receiver or a line-in
+  AUDIO_SOURCE = "audio_source",
+  // plugin specific features
+  AI_QUERY = "ai_query",
+  TTS = "tts",
 }
 
 export enum ProviderType {
@@ -690,6 +766,8 @@ export interface ErrorResultMessage extends ResultMessageBase {
 
   error_code: number;
   details: string | null;
+  // context a client can act on without parsing `details`; the keys depend on the error
+  data: Record<string, unknown> | null;
 }
 
 export interface EventMessage {
@@ -900,6 +978,8 @@ export interface SetupFlowStep {
   last_step?: boolean | null;
   // url [EXTERNAL]: url the user must open (e.g. an OAuth authorize url)
   url?: string | null;
+  // copy_text [FORM, EXTERNAL]: optional value the user can copy to the clipboard
+  copy_text?: string | null;
   // progress_text [PROGRESS]: localized status message
   progress_text?: string | null;
   // progress [PROGRESS]: optional completion fraction between 0 and 1
@@ -1092,6 +1172,8 @@ export interface MediaItemMetadata {
   collections?: MediaItemCollection[] | null;
   life_span?: LifeSpan | null;
   artist_entity_type?: ArtistEntityType | null;
+  // ISO 3166-1 code of the country the artist is from, e.g. PL
+  country?: string | null;
 }
 
 interface _MediaItemBase {
@@ -1174,6 +1256,8 @@ export interface StatisticsListeningTimeItem {
 
 export interface Artist extends MediaItem {
   artist_type: ArtistType;
+  period?: Period | null;
+  is_classical?: boolean;
 }
 
 export interface Album extends MediaItem {
@@ -1188,6 +1272,8 @@ export interface AudioMetadata {
   musical_key: string | null;
   // Camelot wheel notation of musical_key, e.g. "11A"
   camelot_key: string | null;
+  // 1 (calmest) to 10 (most energetic)
+  energy_level: number | null;
 }
 
 export interface Track extends MediaItem {
@@ -1200,6 +1286,257 @@ export interface Track extends MediaItem {
   track_number: number;
   // only populated when the full track is requested (get_track), never on listings
   audio_metadata?: AudioMetadata | null;
+  // credits are only sent with the full track, never on listings
+  credits?: Credit[];
+  work?: ItemMapping | null;
+  is_classical?: boolean;
+}
+
+export enum ArtistRole {
+  MAIN_ARTIST = "main_artist",
+  COMPOSER = "composer",
+  LYRICIST = "lyricist",
+  ARRANGER = "arranger",
+  CONDUCTOR = "conductor",
+  ORCHESTRA = "orchestra",
+  ENSEMBLE = "ensemble",
+  CHOIR = "choir",
+  SOLOIST = "soloist",
+  PERFORMER = "performer",
+}
+
+export enum WorkType {
+  SYMPHONY = "symphony",
+  CONCERTO = "concerto",
+  SONATA = "sonata",
+  SUITE = "suite",
+  OPERA = "opera",
+  ORATORIO = "oratorio",
+  CANTATA = "cantata",
+  MASS = "mass",
+  SONG_CYCLE = "song_cycle",
+  QUARTET = "quartet",
+  OVERTURE = "overture",
+  BALLET = "ballet",
+  ARIA = "aria",
+  MOTET = "motet",
+  MADRIGAL = "madrigal",
+  PARTITA = "partita",
+  SYMPHONIC_POEM = "symphonic_poem",
+  ETUDE = "etude",
+  OPERETTA = "operetta",
+  ZARZUELA = "zarzuela",
+  INCIDENTAL_MUSIC = "incidental_music",
+  OTHER = "other",
+}
+
+export enum Period {
+  MEDIEVAL = "medieval",
+  RENAISSANCE = "renaissance",
+  BAROQUE = "baroque",
+  CLASSICAL = "classical",
+  ROMANTIC = "romantic",
+  MODERN = "modern",
+  CONTEMPORARY = "contemporary",
+}
+
+export interface Credit {
+  artist: ItemMapping | Artist;
+  role: ArtistRole;
+  // the instrument as shown after the name, empty when nothing should show
+  instrument_label?: string;
+  // ordering within a role group
+  position: number;
+}
+
+export interface Work extends MediaItem {
+  composers: Array<ItemMapping | Artist>;
+  catalog_numbers: string[];
+  work_type?: WorkType | null;
+  // on a part, the work it belongs to
+  parent_work?: ItemMapping | null;
+  // the next three are only filled when one work is fetched
+  arrangement_of: Array<Work | ItemMapping>;
+  arrangements?: Array<Work | ItemMapping>;
+  // e.g. the arias of an opera
+  parts?: Array<Work | ItemMapping>;
+  composition_year?: number | null;
+  language?: string | null;
+  musical_key?: string | null;
+  // in number order; empty for works whose parts are works, such as operas
+  movements?: WorkMovement[];
+  // true when the movements are MusicBrainz's, false when read from the tracks
+  movements_from_musicbrainz?: boolean;
+}
+
+export interface WorkMovement {
+  number: number;
+  // e.g. II. Andante con moto
+  name: string;
+  mbid: string | null;
+  // the number of the movement it sits under, e.g. an aria's act
+  parent?: number | null;
+  // the part's library work, for movements that are the work's parts
+  work_id?: string | null;
+  // the name shortened to its quoted words, without any excerpt mark
+  short_name?: string | null;
+  // the name marks the movement as an excerpt
+  excerpt?: boolean;
+  // whether the work's page lists it under a part, e.g. an aria under its act
+  under_part?: boolean;
+}
+
+export enum RecordingHeadingKind {
+  // the work itself or one of its parts, e.g. an act
+  WORK = "work",
+  // the recordings of the whole work
+  COMPLETE = "complete",
+  // a top-level movement of the work, e.g. an act
+  MOVEMENT = "movement",
+  // the recordings that fit under no other heading
+  OTHER = "other",
+}
+
+// The heading a recording shows under on its work's page.
+export interface RecordingHeading {
+  kind: RecordingHeadingKind;
+  // for a work heading, the work it stands for, with its full name and no
+  // composers
+  work?: ItemMapping | null;
+  // for a movement heading, the top-level movement's number
+  movement?: number | null;
+  // the heading's position on the page
+  order: number;
+  // the recording's position under the heading
+  rank: number;
+}
+
+export enum RecordingCoverageKind {
+  // one movement whole, e.g. an act
+  MOVEMENT = "movement",
+  // some of the pieces of one movement, e.g. two arias
+  MOVEMENT_PIECES = "movement_pieces",
+  // some of the movements of the work
+  MOVEMENTS = "movements",
+}
+
+// What part of its work a recording holds, when not all of it.
+export interface RecordingCoverage {
+  kind: RecordingCoverageKind;
+  // the movement it holds whole or pieces of
+  movement?: number | null;
+  // the pieces or movements it holds, 0 for a whole movement
+  held: number;
+  // the pieces or movements there are, 0 when unknown or for a whole movement
+  total: number;
+}
+
+// One performance of a work, grouped by the server from its movement tracks.
+export interface Recording {
+  key: string;
+  work: ItemMapping;
+  // the work `work` is part of, if any
+  parent_work?: ItemMapping | null;
+  // movements in movement order
+  tracks: Track[];
+  // performing credits, the composer excluded
+  credits: Credit[];
+  year: number | null;
+  // every album it appears on, the album its tracks come from first
+  albums: ItemMapping[];
+  // seconds, sum of the movements
+  duration: number;
+  // the numbers of the movements it covers, sorted
+  movement_numbers?: number[];
+  // the next three are only filled when requested for a work's page
+  // the heading it shows under; null when it shows under none
+  heading?: RecordingHeading | null;
+  // what it holds; null for the whole work or when nothing is known
+  coverage?: RecordingCoverage | null;
+  // the movement numbers each track counts towards, by track uri
+  track_movements?: Record<string, number[]>;
+  // each track's name in the recording's track list, by track uri
+  track_names?: Record<string, string>;
+}
+
+// What the server still has to look up on MusicBrainz for the classical view
+export interface ClassicalLinkProgress {
+  albums: number;
+  // tracks whose recording is still to be read
+  recordings: number;
+  works: number;
+  composers: number;
+}
+
+export interface ClassicalComposer {
+  artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalPerformer {
+  artist: Artist;
+  // the artist's first fanart, which the summary metadata leaves out
+  fanart?: MediaItemImage | null;
+  // the performing role with the most credits
+  main_role: ArtistRole;
+  // instruments and voices of their soloist and performer credits, short labels such as
+  // "piano" or "soprano", the most credited first; empty when none
+  instruments: string[];
+  work_count: number;
+  recording_count: number;
+}
+
+export interface ClassicalWorkEntry {
+  work: Work;
+  // scoped to the performer when the list is filtered by one
+  recording_count: number;
+  // names of all the work's parts, for filtering
+  part_names?: string[];
+  // the period of the work's first composer
+  period?: Period | null;
+  // the next two are only filled when the list is filtered by a performer
+  // everyone else on the performer's recordings, most important role first
+  co_performers?: string[];
+  // whether the user likes every track of the performer's recordings; null
+  // without tracks
+  liked?: boolean | null;
+}
+
+// The filter values present across a classical list, for its filter panel.
+export interface ClassicalComposerFilters {
+  periods: Period[];
+  // ISO 3166-1 codes
+  countries: string[];
+  // whether some composer has no country
+  country_unknown: boolean;
+}
+
+export interface ClassicalInstrument {
+  // the short label, such as "piano" or "soprano"
+  name: string;
+  // how many performers are credited with it
+  performer_count: number;
+}
+
+export interface ClassicalPerformerFilters {
+  roles: ArtistRole[];
+  // instruments and voices of the soloist and performer credits, kept apart,
+  // the most performers first, then by name
+  instruments: ClassicalInstrument[];
+  voices: ClassicalInstrument[];
+}
+
+export interface ClassicalWorkFilters {
+  periods: Period[];
+  work_types: WorkType[];
+  // whether some work has no type
+  work_type_unknown: boolean;
+  // both null when no work has a composition year
+  earliest_year: number | null;
+  latest_year: number | null;
 }
 
 export interface Playlist extends MediaItem {
@@ -1322,10 +1659,20 @@ export interface RecommendationFolder extends BrowseFolder {
   enabled_by_default: boolean;
   type: RecommendationFolderType;
   supports_provider_filter: boolean;
+  supports_hide_played: boolean;
+}
+
+// computed over all items of a collection, also when it holds a filtered subset
+export interface MediaCollectionMetadata extends MediaItemMetadata {
+  total_items: number | null;
+  duration: number | null;
+  fully_played: boolean | null;
+  in_progress: boolean | null;
 }
 
 export interface MediaCollection<M extends MediaItemType> extends MediaItem {
   items: M[];
+  metadata: MediaCollectionMetadata;
 }
 
 // unlike the server alias of the same name this includes BrowseFolder, because
@@ -1343,7 +1690,8 @@ export type MediaItemType =
   | PodcastEpisode
   | Genre
   | MediaCollection<MediaItemType>
-  | BrowseFolder;
+  | BrowseFolder
+  | Work;
 
 export type PlayableMediaItemType =
   Track | Radio | AudioSource | Audiobook | PodcastEpisode;
@@ -1476,6 +1824,7 @@ export interface QueueItem {
   extra_attributes?: {
     party_guest?: boolean; // true if added by party guest
     party_boosted?: boolean; // true if added as "boost" (play next)
+    party_skip_votes?: number; // guests that voted to skip this (currently playing) item
     playback_speed?: number; // current playback speed multiplier (audiobook/podcast)
   };
 }
@@ -1563,6 +1912,27 @@ export interface OutputProtocol {
   // derived_from: for a derived transport that rides on another protocol (e.g. a Sendspin
   // bridge over an AirPlay player), the output_protocol_id of the base output; null for direct outputs
   derived_from: string | null;
+}
+
+export enum ProtocolRole {
+  // The role a protocol has within a player.
+  NATIVE = "native", // the vendor-specific protocol of the device, with full control
+  CONTROL = "control", // controls the device (e.g. power, volume) but does not play audio
+  AUDIO = "audio", // a generic protocol that plays audio on the device (e.g. AirPlay)
+  VIRTUAL = "virtual", // a protocol without a physical device behind it (e.g. a group player)
+  UNKNOWN = "unknown",
+}
+
+export interface PlayerProtocolInfo {
+  // A protocol a player is made up of (e.g. the device's own protocol plus AirPlay and Chromecast).
+  protocol_id: string; // Unique ID of the protocol (its own id, not the player id)
+  domain: string; // Domain of the protocol's provider, e.g. "airplay", "sonos"
+  provider: string; // instance_id of the protocol's provider
+  role: ProtocolRole;
+  available: boolean; // Whether this protocol is currently available
+  // active: the player's current playback path: the protocol of an app Music Assistant
+  // did not start that the player shows, else the one of its active output
+  active: boolean;
 }
 
 export interface DeviceInfo {
@@ -1699,8 +2069,19 @@ export interface Player {
   volume_control: string;
   mute_control: string;
   needs_setup: boolean;
+  // setup_reason: why the player needs setup or has no way to play at all, such as
+  // "pairing_required" or "provider_not_installed"; null when it gave no reason
+  setup_reason: string | null;
   // this player (or a wrapped protocol child) offers a setup flow that can be re-run on demand
   has_setup_flow: boolean;
+  // legacy_ids: ids the player was known under before (such as a player merged into it),
+  // which it keeps answering to
+  legacy_ids: string[];
+  // protocols: the protocols the player is made up of, also those that are away
+  protocols: PlayerProtocolInfo[];
+  // channel_layout: how the speakers of a multi-channel player are laid out;
+  // null for a player that is no set of speakers or whose layout is not known
+  channel_layout?: ChannelLayout | null;
 
   // output_protocols: all available output methods for this player
   // Includes native output (if PLAY_MEDIA supported) + protocol outputs
@@ -1714,6 +2095,11 @@ export interface Player {
   // sleep_timer_expires_at: unix (utc) timestamp at which the active sleep timer
   // will stop playback, or null when no sleep timer is set.
   sleep_timer_expires_at: number | null;
+
+  // sleep_timer_mode: the point at which the active sleep timer stops playback, or
+  // null when no sleep timer is set. For END_OF_ITEM/END_OF_CHAPTER,
+  // sleep_timer_expires_at is an estimate while playing and null while paused.
+  sleep_timer_mode: SleepTimerMode | null;
 
   // active_source_audio: audio-path snapshot for a live external source (e.g.
   // Spotify Connect) playing on active_source; null while a queue item is
@@ -1762,6 +2148,67 @@ export interface ProviderManifest {
   icon_images: ProviderIconVariant[];
   // depends on: domain of another provider that is required for this provider
   depends_on: string | null;
+  // menu_actions: entries this provider adds to the menu of a media item;
+  // absent from an older server
+  menu_actions?: ProviderMenuAction[];
+  // provides: what the provider offers whatever its config, for discovery only:
+  // the media types of a music provider, audio_source for one that plays audio
+  // into Music Assistant, or the main features of a plugin; absent from an
+  // older server
+  provides?: ProviderOffering[];
+  // page: a page this provider serves, listed in the app's menu; an older
+  // server declares none
+  page?: ProviderPage | null;
+}
+
+export interface ProviderPage {
+  // A page a provider serves, opened through providers/open_page.
+  // label: the text of the menu entry, already in the user's language
+  label: string;
+  // scope: what a user needs to see and open the page
+  scope: Scope;
+  // icon: name of a material design icon, such as mdi-chart-line
+  icon: string | null;
+}
+
+export interface ProviderMenuAction {
+  // An entry a provider adds to the menu of a media item.
+  // id: names the action within its provider
+  id: string;
+  // label: the text of the entry, already in the user's language
+  label: string;
+  // media_types: the kinds of media item the entry is offered for
+  media_types: MediaType[];
+  // scope: what a user needs to see and use the entry
+  scope: Scope;
+  // icon: name of a material design icon, such as mdi-image-frame
+  icon: string | null;
+  // requires_player: whether the action acts on a player, which the app then passes
+  requires_player: boolean;
+}
+
+export enum ProviderOffering {
+  // what a music provider offers
+  ARTIST = "artist",
+  ALBUM = "album",
+  TRACK = "track",
+  PLAYLIST = "playlist",
+  RADIO = "radio",
+  PODCAST = "podcast",
+  AUDIOBOOK = "audiobook",
+  SOUND_EFFECT = "sound_effect",
+  // live audio played into Music Assistant
+  AUDIO_SOURCE = "audio_source",
+  // what a plugin delivers
+  AI = "ai",
+  TTS = "tts",
+  SCROBBLE = "scrobble",
+  ASSISTANT = "assistant",
+  VISUALIZER = "visualizer",
+  RECOMMENDATIONS = "recommendations",
+  FUN = "fun",
+  // the fallback for a value that is not known
+  UNKNOWN = "unknown",
 }
 
 export enum ProviderStage {
@@ -1785,6 +2232,8 @@ export enum ProviderStatus {
   AUTH_REQUIRED = "auth_required",
   INCOMPATIBLE = "incompatible",
   ERROR = "error",
+  // the code of the provider is not on this server; the reason is in last_error
+  UNAVAILABLE = "unavailable",
 }
 
 export interface ProviderError {
@@ -1793,6 +2242,62 @@ export interface ProviderError {
   // client renders it directly.
   error_code: number;
   message: string;
+}
+
+export enum CommunityProviderState {
+  AVAILABLE = "available",
+  INSTALLED = "installed",
+  UPDATE_AVAILABLE = "update_available",
+  RESTART_REQUIRED = "restart_required",
+  BLOCKED = "blocked",
+  UNAVAILABLE = "unavailable",
+  WITHDRAWN = "withdrawn",
+}
+
+export interface CommunityProvider {
+  // A provider of the community catalog: one that can be installed, or one that is.
+  domain: string;
+  // owner/name of the repository on GitHub
+  repository: string;
+  maintainers: string[];
+  // a data URI to show in an image element
+  icon: string | null;
+  // the manifest of the installed version, else the one of the latest version
+  manifest: ProviderManifest;
+  state: CommunityProviderState;
+  installed_version: string | null;
+  latest_version: string | null;
+  // the version that becomes active at the next start of the server
+  pending_version: string | null;
+  // a version that failed to load here; installed again only when asked for by domain
+  failed_version: string | null;
+  // ISO dates: when it entered the catalog, and when latest_version was released
+  added: string | null;
+  released: string | null;
+  // what the catalog says about a provider it blocked or withdrew, and where it explains it
+  reason: string | null;
+  reason_url: string | null;
+  // why an installed provider does not run
+  error: ProviderError | null;
+  // what the app tells the admin until it is dismissed: "moved"
+  notice: string | null;
+}
+
+export enum CatalogRecommendationReason {
+  // Why the Marketplace suggests a provider, in the order the suggestions come in.
+  DISCOVERED = "discovered",
+  COMPLEMENTS = "complements",
+  POPULAR = "popular",
+  NEW = "new",
+  UPDATED = "updated",
+}
+
+export interface CatalogRecommendation {
+  // A provider the Marketplace suggests the user adds, and why.
+  domain: string;
+  reason: CatalogRecommendationReason;
+  // for complements: the domain of the provider it goes well with, which is set up
+  detail: string | null;
 }
 
 export interface ProviderInstance {
@@ -1804,6 +2309,7 @@ export interface ProviderInstance {
   supported_features: ProviderFeature[];
   available: boolean;
   is_streaming_provider: boolean | null;
+  supported_artist_types: ArtistType[];
 }
 
 export interface DashboardDevice {
@@ -2048,6 +2554,42 @@ export interface SetupRequest {
   device_name?: string;
 }
 
+// AI interfaces
+
+export enum AIEngineKind {
+  TEXT = "text",
+  SPEECH = "speech",
+  IMAGE = "image",
+}
+
+/** An AI engine a plugin provides. */
+export interface AIEngine {
+  uid: string;
+  // the engine name, prefixed with the name of the plugin it comes from
+  name: string;
+  kind: AIEngineKind;
+  // the instance id of the plugin providing the engine
+  provider: string;
+}
+
+/** An engine setting of a core module or provider, with the engine it selects. */
+export interface AIEngineUsage {
+  owner_type: "core" | "provider";
+  // the core module domain or provider instance id
+  owner: string;
+  domain: string;
+  // the provider instance name or the core module name
+  name: string;
+  key: string;
+  kind: AIEngineKind;
+  // the setting is changed through the setup flow of the provider
+  in_setup_data: boolean;
+  // the setting follows the default engine of its kind
+  follows_default: boolean;
+  // the uid of the selected engine, null when it selects no available engine
+  engine: string | null;
+}
+
 // Remote Access interfaces
 
 export interface RemoteAccessInfo {
@@ -2057,11 +2599,6 @@ export interface RemoteAccessInfo {
   remote_id: string;
   using_ha_cloud: boolean;
   signaling_url: string;
-}
-
-/** The address the stream server hands to players, as it is in use right now. */
-export interface StreamServerInfo {
-  base_url: string;
 }
 
 // Storage interfaces
@@ -2182,6 +2719,8 @@ export interface PartyConfig {
   enable_skip_song: boolean;
   skip_song_limit: number;
   skip_song_refill_minutes: number;
+  // Number of distinct guests that must vote before the current song is skipped
+  skip_votes_required: number;
   karaoke_mode: boolean;
   highlight_ahead: boolean;
   request_badge_color?: string;
@@ -2202,6 +2741,7 @@ export interface SmartPlaylistRules {
   album_ids: number[];
   folder_paths?: string[];
   favorites_only: boolean;
+  exclude_favorites?: boolean;
   explicit?: boolean | null;
   seed_track_uris?: string[];
   seed_artist_uris?: string[];

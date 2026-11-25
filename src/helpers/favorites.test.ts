@@ -9,7 +9,9 @@ import { artist } from "../../tests/fixtures/artist";
 import { audioSource } from "../../tests/fixtures/audioSource";
 import { withoutFavorite } from "../../tests/fixtures/mediaItem";
 import { track } from "../../tests/fixtures/track";
+import { work } from "../../tests/fixtures/work";
 import {
+  canBeDisliked,
   canHoldFavorite,
   clearFavorite,
   favoriteState,
@@ -150,6 +152,10 @@ describe("favoriteState", () => {
 });
 
 describe("canHoldFavorite", () => {
+  it("lets a work hold a like", () => {
+    expect(canHoldFavorite(work())).toBe(true);
+  });
+
   it("tells a media item apart from an item mapping", () => {
     expect(canHoldFavorite(withoutFavorite(track()))).toBe(true);
     expect(canHoldFavorite(artist({ favorite: true }))).toBe(true);
@@ -160,6 +166,18 @@ describe("canHoldFavorite", () => {
   // server keeps no favorite for one
   it("turns down a media type that holds no favorite", () => {
     expect(canHoldFavorite(audioSource())).toBe(false);
+  });
+
+  // the state belongs to a library item, which an item the server has not
+  // looked up yet does not have
+  it("turns down an item known only by an external id", () => {
+    const topTrack = track({
+      item_id: "musicbrainz_recordingid:rec-1",
+      provider: "external",
+      provider_mappings: [],
+    });
+
+    expect(canHoldFavorite(topTrack)).toBe(false);
   });
 });
 
@@ -223,5 +241,13 @@ describe("clearFavorite", () => {
     ).resolves.toBe(false);
 
     expect(apiMock.removeItemFromFavorites).not.toHaveBeenCalled();
+  });
+});
+
+describe("canBeDisliked", () => {
+  it("leaves the dislike out for a work only", () => {
+    expect(canBeDisliked(MediaType.WORK)).toBe(false);
+    expect(canBeDisliked(MediaType.TRACK)).toBe(true);
+    expect(canBeDisliked(MediaType.ARTIST)).toBe(true);
   });
 });

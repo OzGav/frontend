@@ -41,6 +41,21 @@ describe("RowPlayButton", () => {
     if (shown) expect(button.attributes("aria-label")).toBe("play One");
   });
 
+  // the reserved slot shows on hover, and the row's own button takes over
+  // where nothing hovers
+  it.each([
+    [false, true],
+    [true, false],
+  ])("reserved, touch screen %s: shown %s", async (touch, shown) => {
+    onScreen(touch);
+    const wrapper = mount(RowPlayButton, {
+      props: { label: "play One", reserved: true },
+    });
+    await flushPromises();
+
+    expect(wrapper.find("button").exists()).toBe(shown);
+  });
+
   it("plays without the click reaching the row", async () => {
     onScreen(false);
     const rowClicked = vi.fn();

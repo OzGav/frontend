@@ -1,0 +1,167 @@
+<template>
+  <!-- --play-offset is the play slot in front of each row, absent on touch
+       screens -->
+  <article
+    :class="[
+      isTouch ? '[--play-offset:0px]' : '[--play-offset:calc(32px_+_0.4rem)]',
+      { expanded },
+    ]"
+  >
+    <ClassicalPlayRow
+      class="flex items-center gap-[0.4rem]"
+      :label="`${$t('play')} ${recordingName}`"
+      @menu="(e: Event) => $emit('menu-recording', recording, e)"
+      @play="(e: Event) => playRecording(recording.tracks, e)"
+    >
+      <!-- Not a <button>, as the credited names inside are links. -->
+      <div
+        role="button"
+        tabindex="0"
+        class="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.6rem] border-0 bg-[transparent] p-[0.7rem_0.25rem_0.7rem_0] text-left [font:inherit] text-inherit"
+        :aria-expanded="expanded"
+        @click="toggle"
+        @keydown.enter.self.prevent="toggle"
+        @keydown.space.self.prevent="toggle"
+      >
+        <ChevronRight
+          class="size-[1.1rem] shrink-0 [transition:transform_0.15s_ease]"
+          :class="{ '[transform:rotate(90deg)]': expanded }"
+        />
+        <RecordingCredits :recording="recording">
+          <span
+            v-if="coverage"
+            class="font-normal text-muted-foreground"
+            :title="coverageTitle || undefined"
+          >
+            · {{ coverage }}
+          </span>
+        </RecordingCredits>
+      </div>
+      <template #actions>
+        <ClassicalRowActions
+          :name="recordingName"
+          :duration="recording.duration"
+          :source-item="recording.tracks[0]"
+          :favorite="favorite"
+          @toggle-favorite="setTracksLiked(recording.tracks, !favorite)"
+          @menu="(e: Event) => $emit('menu-recording', recording, e)"
+        />
+      </template>
+    </ClassicalPlayRow>
+    <div v-if="expanded" class="flex flex-col gap-[0.5rem] p-[0_0_0.8rem]">
+      <ol class="m-0 flex list-none flex-col gap-[0.1rem] p-0">
+        <ClassicalPlayRow
+          v-for="m in recording.tracks"
+          :key="m.item_id"
+          tag="li"
+          class="flex cursor-pointer items-center gap-[0.4rem]"
+          :label="`${$t('play')} ${trackName(m)}`"
+          @click="openTrackOnRowClick($event, m)"
+          @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
+          @play="(e: Event) => playTracks([m], e)"
+        >
+          <!-- movement titles sit indented under the recording's credits -->
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 cursor-pointer items-baseline gap-0 border-0 bg-[transparent] p-[0.25rem_0_0.25rem_2.5rem] text-left [font:inherit] text-inherit"
+            @click="(e: MouseEvent) => openMovement(m, e)"
+          >
+            <span :class="[MOVEMENT_TITLE_CLASS, 'text-[0.95rem]']">{{
+              trackName(m)
+            }}</span>
+          </button>
+          <template #actions>
+            <ClassicalRowActions
+              :name="trackName(m)"
+              :playing="isTrackPlaying(m)"
+              :duration="m.duration"
+              :source-item="m"
+              :favorite-item="m"
+              @menu="(e: Event) => $emit('menu-movement', m, recording, e)"
+            />
+          </template>
+        </ClassicalPlayRow>
+      </ol>
+      <div
+        v-for="album in recording.albums"
+        :key="album.item_id"
+        class="ml-[calc(var(--play-offset)_+_2.5rem)] flex items-baseline gap-[0.4rem] text-[0.85rem] text-muted-foreground"
+      >
+        <span class="opacity-60">→</span>
+        <router-link :to="`/albums/library/${album.item_id}`">
+          {{ album.year ? `${album.name} (${album.year})` : album.name }}
+        </router-link>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script setup lang="ts">
+import { getEventPosition } from "@/composables/useHoldToOpenMenu";
+import { handleMediaItemClick } from "@/helpers/media_item_actions";
+import type { Recording, Track, WorkMovement } from "@/plugins/api/interfaces";
+import ClassicalPlayRow from "@/views/classical/components/ClassicalPlayRow.vue";
+import ClassicalRowActions from "@/views/classical/components/ClassicalRowActions.vue";
+import RecordingCredits from "@/views/classical/components/RecordingCredits.vue";
+import { openTrackOnRowClick } from "@/views/classical/rowClick";
+import { recordingName as nameOf } from "@/views/classical/credits";
+import { allLiked, setTracksLiked } from "@/views/classical/favorites";
+import { movementCoverageLabel } from "@/views/classical/labels";
+import {
+  isTrackPlaying,
+  playRecording,
+  playTracks,
+} from "@/views/classical/playback";
+import { MOVEMENT_TITLE_CLASS } from "@/views/classical/styles";
+import { isTouch } from "@/composables/touchScreen";
+import { ChevronRight } from "@lucide/vue";
+import { computed, ref } from "vue";
+
+defineOptions({ name: "WorkRecordingCard" });
+
+const props = defineProps<{
+  recording: Recording;
+  // the work's movements, to name those the recording covers
+  movements?: WorkMovement[];
+}>();
+
+defineEmits<{
+  (e: "menu-recording", recording: Recording, evt: Event): void;
+  (e: "menu-movement", movement: Track, recording: Recording, evt: Event): void;
+}>();
+
+const expanded = ref(false);
+
+// A movement opens or plays the way a click on any track row does.
+const openMovement = (track: Track, evt: MouseEvent) => {
+  const { x, y } = getEventPosition(evt);
+  handleMediaItemClick(track, x, y);
+};
+
+const toggle = () => {
+  expanded.value = !expanded.value;
+};
+
+// Recording is favourited only when every member movement is. Partial state
+// renders as unfavourited.
+const favorite = computed(() => allLiked(props.recording.tracks));
+
+// names the buttons for screen readers
+const recordingName = computed(() => nameOf(props.recording));
+
+const coverage = computed(() =>
+  movementCoverageLabel(props.recording.coverage, props.movements ?? []),
+);
+
+const trackName = (track: Track) =>
+  props.recording.track_names?.[track.uri] ?? track.name;
+
+// the covered movements' names, on hover
+const coverageTitle = computed(() => {
+  const covered = new Set(props.recording.movement_numbers);
+  return (props.movements ?? [])
+    .filter((m) => covered.has(m.number))
+    .map((m) => m.name)
+    .join("\n");
+});
+</script>

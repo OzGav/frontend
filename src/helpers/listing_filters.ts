@@ -8,6 +8,8 @@ export interface ListingFilterOption {
   value: string;
   // the provider whose icon marks the option, on a source filter
   domain?: string;
+  // marks an option that is no provider, such as the library
+  icon?: Component;
 }
 
 /** A filter that is either on or off, such as "Only favorites". */
@@ -43,16 +45,34 @@ export interface ListingChoiceFilter {
   label: string;
   options: ListingFilterOption[];
   selected: string;
-  // the choice that leaves the listing unfiltered
-  unfiltered: string;
+  // the choice that leaves the listing unfiltered; without one, as for a
+  // required source, no choice counts as a filter
+  unfiltered?: string;
+  // called on every pick, the current choice included
   select: (value: string) => void;
 }
 
+/** A filter drawn by a control of the page's own, such as a year range. */
+export interface ListingCustomFilter {
+  kind: "custom";
+  id: string;
+  label: string;
+  component: Component;
+  // bound to the component, with on-prefixed handlers for its events
+  props: Record<string, unknown>;
+  // the narrowings the control puts on the listing
+  activeCount: number;
+  clear: () => void;
+}
+
 export type ListingFilter =
-  ListingToggleFilter | ListingMultiFilter | ListingChoiceFilter;
+  | ListingToggleFilter
+  | ListingMultiFilter
+  | ListingChoiceFilter
+  | ListingCustomFilter;
 
 /** How many narrowings the filters put on the listing: one per active
- * toggle, picked value or narrowing choice. */
+ * toggle, picked value or narrowing choice, plus those of custom filters. */
 export function activeFilterCount(filters: ListingFilter[]): number {
   return filters.reduce((count, filter) => {
     switch (filter.kind) {
@@ -61,9 +81,40 @@ export function activeFilterCount(filters: ListingFilter[]): number {
       case "multi":
         return count + filter.selected.length;
       case "choice":
-        return count + Number(filter.selected !== filter.unfiltered);
+        return (
+          count +
+          Number(
+            filter.unfiltered !== undefined &&
+              filter.selected !== filter.unfiltered,
+          )
+        );
+      case "custom":
+        return count + filter.activeCount;
     }
   }, 0);
+}
+
+/**
+ * The values a multi-select filter offers: those the listed items have, in the
+ * order of all values, then any chosen value no item has any more, kept so it
+ * can be cleared.
+ */
+export function offeredFilterValues<T>(
+  all: readonly T[],
+  present: ReadonlySet<unknown>,
+  chosen: readonly T[],
+): T[] {
+  return [
+    ...all.filter((v) => present.has(v) || chosen.includes(v)),
+    ...chosen.filter((v) => !all.includes(v)),
+  ];
+}
+
+/** The chosen values with one value removed if chosen, otherwise added. */
+export function toggledValue<T>(chosen: readonly T[], value: T): T[] {
+  return chosen.includes(value)
+    ? chosen.filter((v) => v !== value)
+    : [...chosen, value];
 }
 
 interface ListingCountSource {

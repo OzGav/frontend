@@ -1,6 +1,6 @@
 import { computed, ComputedRef, toRaw } from "vue";
 import { api, type CommandOptions } from "@/plugins/api";
-import { Scope } from "@/plugins/api/interfaces";
+import { Scope, type SortDirection } from "@/plugins/api/interfaces";
 import { authManager } from "@/plugins/auth";
 import { store } from "@/plugins/store";
 import { defaultShowActions } from "@/helpers/grid_size";
@@ -10,6 +10,8 @@ export interface ItemsListingPreferences {
   gridSize?: number;
   showActions?: boolean;
   sortBy?: string;
+  // the order of a list sorted on a single field, e.g. a work's recordings
+  sortDirection?: SortDirection;
   favoriteFilter?: boolean;
   libraryFilter?: boolean;
   albumArtistsFilter?: boolean;
@@ -17,6 +19,14 @@ export interface ItemsListingPreferences {
   hideFullyPlayedFilter?: boolean;
   albumType?: string[];
   providerFilter?: string[];
+  periodFilter?: string[];
+  roleFilter?: string[];
+  instrumentFilter?: string[];
+  voiceFilter?: string[];
+  workTypeFilter?: string[];
+  countryFilter?: string[];
+  yearFrom?: string;
+  yearTo?: string;
   expand?: boolean;
   search?: string;
   collapseCollections?: boolean;

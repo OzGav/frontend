@@ -2,7 +2,11 @@
  * A listing leaves the favorite key out of the rows the user has no state on,
  * which must not cost those rows their favorite actions.
  */
-import { getContextMenuItems } from "@/layouts/default/ItemContextMenu.vue";
+import {
+  getContextMenuItems,
+  getDefaultEnqueueOptionFor,
+} from "@/layouts/default/ItemContextMenu.vue";
+import { authManager } from "@/plugins/auth";
 import {
   MediaType,
   type MediaItemTypeOrItemMapping,
@@ -12,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { withoutFavorite } from "../fixtures/mediaItem";
 import { providerMapping } from "../fixtures/providerMapping";
 import { track } from "../fixtures/track";
+import { work } from "../fixtures/work";
 
 const { apiMock, storeMock } = vi.hoisted(() => ({
   apiMock: {
@@ -20,9 +25,13 @@ const { apiMock, storeMock } = vi.hoisted(() => ({
     } as Record<string, unknown>,
     getProvider: vi.fn(),
     getLibraryItem: vi.fn(),
+    // the classical entries fetch the full track; none comes back
+    getTrack: vi.fn(async () => undefined),
     addItemToFavorites: vi.fn(),
     removeItemFromFavorites: vi.fn(),
     setFavorite: vi.fn(),
+    getCoreConfigValue: vi.fn(),
+    providerManifests: {},
     players: {},
   },
   storeMock: {
@@ -197,5 +206,36 @@ describe("favorites in the item context menu", () => {
 
     expect(labels).toContain("favorites_dislike_remove");
     expect(labels).not.toContain("favorites_dislike");
+  });
+
+  // a work exists only in the library, and nothing uses a dislike on one
+  it("offers a work the like without the dislike", async () => {
+    const labels = await offeredLabels([work()]);
+
+    expect(labels).toContain("favorites_add");
+    expect(labels).not.toContain("favorites_dislike");
+    expect(labels).not.toContain("remove_library");
+    expect(labels).not.toContain("link_to_genre");
+  });
+
+  it("offers to remove the like of a liked work", async () => {
+    const labels = await offeredLabels([work({ favorite: true })]);
+
+    expect(labels).toContain("favorites_remove");
+    expect(labels).not.toContain("favorites_add");
+  });
+});
+
+describe("default play option", () => {
+  // the server keeps no setting for works
+  it("plays a work with the album setting", async () => {
+    vi.mocked(authManager.hasScope).mockReturnValueOnce(true);
+
+    await getDefaultEnqueueOptionFor(MediaType.WORK);
+
+    expect(apiMock.getCoreConfigValue).toHaveBeenCalledWith(
+      "player_queues",
+      "default_enqueue_option_album",
+    );
   });
 });

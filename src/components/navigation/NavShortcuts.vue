@@ -8,6 +8,7 @@ import {
   ListMusic,
   Mic2,
   Music,
+  Music3,
   Podcast,
   Radio,
   Tag,
@@ -88,9 +89,13 @@ const MEDIA_TYPE_FALLBACK_ICON: Partial<Record<MediaType, LucideIcon>> = {
   [MediaType.PODCAST]: Podcast,
   [MediaType.AUDIOBOOK]: BookAudio,
   [MediaType.GENRE]: Tag,
+  [MediaType.WORK]: Music3,
 };
 
 const getItemUrl = (item: ShortcutItem) => {
+  // a work opens on its Classical page, which only knows library works
+  if (item.media_type === MediaType.WORK)
+    return `/classical/works/${encodeURIComponent(item.item_id)}`;
   const base = MEDIA_TYPE_PATH[item.media_type] ?? "playlists";
   const provider = encodeURIComponent(item.provider);
   const itemId = encodeURIComponent(item.item_id);

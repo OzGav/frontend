@@ -3,6 +3,7 @@
 import App from "@/App.vue";
 import {
   EventType,
+  MediaType,
   UserRole,
   type Role,
   type User,
@@ -11,11 +12,13 @@ import {
   leaveFirstRunSetup,
   useFirstRunSetup,
 } from "@/composables/useFirstRunSetup";
+import { isDark } from "@/composables/useThemePreference";
 import { saveDeviceSetting } from "@/helpers/device_settings";
+import { hasClassicalContent } from "@/services/classical";
 import { DASHBOARD_VIEWER_PATH_STORAGE_KEY } from "@/helpers/guest_session";
 import type { MusicAssistantApi } from "@/plugins/api";
 import { flushPromises, shallowMount, type VueWrapper } from "@vue/test-utils";
-import { nextTick } from "vue";
+import { nextTick, reactive } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "vue-sonner";
 import { role } from "./fixtures/role";
@@ -146,6 +149,7 @@ const {
       activePlayer: undefined as
         { current_media?: { title?: string; artist?: string } } | undefined,
       forceMobileLayout: false,
+      hasClassicalContent: undefined as boolean | undefined,
       isIngressSession: false,
       roles: [] as Role[],
       roleScopes: {} as Record<string, string[]>,
@@ -188,6 +192,20 @@ vi.mock("@/plugins/auth", () => ({
 
 vi.mock("@/plugins/store", () => ({
   store: storeMock,
+}));
+
+vi.mock("@/services/classical", () => ({
+  hasClassicalContent: vi.fn().mockResolvedValue(false),
+}));
+
+const { syncCompletedMock } = vi.hoisted(() => ({
+  syncCompletedMock: vi.fn<
+    (mediaType: string, callback: () => unknown) => () => void
+  >(() => () => {}),
+}));
+
+vi.mock("@/composables/useLibrarySync", () => ({
+  onLibrarySyncCompleted: syncCompletedMock,
 }));
 
 vi.mock("@/helpers/connection_identity", () => ({
@@ -357,6 +375,7 @@ describe("App initialization", () => {
       }),
     );
     apiMock.fetchState.mockResolvedValue(undefined);
+    vi.mocked(hasClassicalContent).mockResolvedValue(false);
     apiMock.fetchProviderManifests.mockResolvedValue(undefined);
     apiMock.fetchProviders.mockResolvedValue(undefined);
     apiMock.initialize.mockResolvedValue(undefined);
@@ -501,6 +520,20 @@ describe("App initialization", () => {
 
     saveDeviceSetting("force_mobile_layout", null);
     expect(storeMock.forceMobileLayout).toBe(false);
+  });
+
+  it("shows a theme picked for the account without a reload", async () => {
+    // the preferences are written through the reactive account, as the store
+    // hands it out
+    const account = reactive(user({ preferences: { theme: "light" } }));
+    storeMock.currentUser = account;
+    wrapper = await mountApp();
+    expect(isDark.value).toBe(false);
+
+    account.preferences = { theme: "dark" };
+    await nextTick();
+
+    expect(isDark.value).toBe(true);
   });
 
   describe("onboarding", () => {
@@ -794,6 +827,17 @@ describe("App initialization", () => {
     expect(apiMock.getCurrentUserInfo).toHaveBeenCalledOnce();
     // and the prune takes a turn of its own, after the refresh is in
     expect(mockPruneStaleProviderFilters).toHaveBeenCalledOnce();
+  });
+
+  it("checks for classical content again once a track sync finishes", async () => {
+    wrapper = await mountApp();
+    vi.mocked(hasClassicalContent).mockResolvedValue(true);
+
+    const [mediaType, refresh] = syncCompletedMock.mock.calls.at(-1)!;
+    expect(mediaType).toBe(MediaType.TRACK);
+    await refresh();
+
+    expect(storeMock.hasClassicalContent).toBe(true);
   });
 
   it("leaves an account that was signed in since the event alone", async () => {

@@ -1,8 +1,26 @@
 <template>
+  <!-- with liking the only action, e.g. on a work, the heart toggles it with
+       no menu -->
+  <Button
+    v-if="canEditLibrary && likeOnly"
+    type="button"
+    :variant="variant"
+    :size="size"
+    v-bind="$attrs"
+    :data-active="state === true || undefined"
+    :title="$t(state === true ? labels.remove : labels.add)"
+    :aria-label="$t(state === true ? labels.remove : labels.add)"
+    @click.stop="state === true ? clear() : like()"
+  >
+    <Heart
+      :class="iconClass"
+      :fill="state === true ? 'currentColor' : 'none'"
+    />
+  </Button>
   <!-- reka owns the open state; mirroring it here keeps the trigger's hover
        suppression in step with it -->
   <DropdownMenu
-    v-if="canEditLibrary && hasAnyAction"
+    v-else-if="canEditLibrary && hasAnyAction"
     @update:open="menuOpen = $event"
   >
     <DropdownMenuTrigger as-child>
@@ -12,7 +30,7 @@
         :size="size"
         v-bind="$attrs"
         :disabled="!item"
-        :data-active="state === true || undefined"
+        :data-active="triggerState === true || undefined"
         :data-suppress-hover="suppressHover"
         :title="$t(triggerLabelKey)"
         :aria-label="$t(triggerLabelKey)"
@@ -20,40 +38,46 @@
         @click.stop
       >
         <!-- one slot, three looks: a dislike takes the heart's place -->
-        <ThumbsDown v-if="state === false" :class="iconClass" />
+        <ThumbsDown v-if="triggerState === false" :class="iconClass" />
         <Heart
           v-else
           :class="iconClass"
-          :fill="state === true ? 'currentColor' : 'none'"
+          :fill="triggerState === true ? 'currentColor' : 'none'"
         />
       </Button>
     </DropdownMenuTrigger>
     <!-- the player bar's trigger sits low on the screen, so the menu can be
          asked to hang above it -->
     <DropdownMenuContent :side="side" align="center" class="z-[100001]">
+      <template v-if="$slots.before">
+        <slot name="before"></slot>
+        <DropdownMenuSeparator />
+      </template>
       <template v-if="offersFavorite">
         <DropdownMenuItem v-if="state === true" @click="clear">
           <Heart class="size-4" fill="currentColor" />
-          {{ $t("favorites_remove") }}
+          {{ $t(labels.remove) }}
         </DropdownMenuItem>
         <DropdownMenuItem v-else @click="like">
           <Heart class="size-4" fill="none" />
-          {{ $t("favorites_add") }}
+          {{ $t(labels.add) }}
         </DropdownMenuItem>
         <!-- the heart only ever says "liked", so the dislike gets its own
              entry -->
-        <DropdownMenuItem v-if="state === false" @click="clear">
-          <ThumbsDown class="size-4" />
-          {{ $t("favorites_dislike_remove") }}
-        </DropdownMenuItem>
-        <DropdownMenuItem v-else @click="dislike">
-          <ThumbsDown class="size-4" />
-          {{ $t("favorites_dislike") }}
-        </DropdownMenuItem>
+        <template v-if="offersDislike">
+          <DropdownMenuItem v-if="state === false" @click="clear">
+            <ThumbsDown class="size-4" />
+            {{ $t(labels.dislikeRemove) }}
+          </DropdownMenuItem>
+          <DropdownMenuItem v-else @click="dislike">
+            <ThumbsDown class="size-4" />
+            {{ $t(labels.dislike) }}
+          </DropdownMenuItem>
+        </template>
       </template>
       <DropdownMenuItem v-if="offersPlaylist" @click="addToPlaylist">
         <PlusCircle class="size-4" />
-        {{ $t("add_playlist") }}
+        {{ $t(labels.playlist) }}
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
@@ -66,10 +90,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePopoutTriggerHover } from "@/composables/usePopoutTriggerHover";
 import {
+  canBeDisliked,
   canHoldFavorite,
   clearFavorite,
   favoriteState,
@@ -79,11 +105,29 @@ import {
 } from "@/helpers/favorites";
 import { canAddToPlaylist } from "@/helpers/playlist_access";
 import api from "@/plugins/api";
+import { isExternalItem } from "@/plugins/api/helpers";
 import { Scope } from "@/plugins/api/interfaces";
 import { authManager } from "@/plugins/auth";
 import { eventbus } from "@/plugins/eventbus";
 import { Heart, PlusCircle, ThumbsDown } from "@lucide/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, useSlots } from "vue";
+
+/** Translation keys of the menu's own entries. */
+export interface FavoriteMenuLabels {
+  add: string;
+  remove: string;
+  dislike: string;
+  dislikeRemove: string;
+  playlist: string;
+}
+
+const DEFAULT_LABELS: FavoriteMenuLabels = {
+  add: "favorites_add",
+  remove: "favorites_remove",
+  dislike: "favorites_dislike",
+  dislikeRemove: "favorites_dislike_remove",
+  playlist: "add_playlist",
+};
 
 export interface Props {
   /** The item the menu acts on; without one the trigger is disabled. */
@@ -93,6 +137,10 @@ export interface Props {
    * item; read from the item itself when left out.
    */
   favorite?: boolean | null;
+  /** The state the trigger shows, when it is not the one of the item. */
+  triggerFavorite?: boolean | null;
+  /** Translation keys of the entries, to name what they act on. */
+  labels?: Partial<FavoriteMenuLabels>;
   /** Look of the trigger button. */
   variant?: ButtonVariants["variant"];
   /** Box size of the trigger button. */
@@ -106,6 +154,8 @@ export interface Props {
 const props = withDefaults(defineProps<Props>(), {
   item: undefined,
   favorite: undefined,
+  triggerFavorite: undefined,
+  labels: undefined,
   variant: "ghost-icon",
   size: "icon-sm",
   iconClass: "size-5",
@@ -119,9 +169,13 @@ const emit = defineEmits<{
 const state = computed(() =>
   props.favorite === undefined ? favoriteState(props.item) : props.favorite,
 );
+const triggerState = computed(() =>
+  props.triggerFavorite === undefined ? state.value : props.triggerFavorite,
+);
+const labels = computed(() => ({ ...DEFAULT_LABELS, ...props.labels }));
 const triggerLabelKey = computed(() => {
-  if (state.value === true) return "favorites_menu_liked";
-  if (state.value === false) return "favorites_menu_disliked";
+  if (triggerState.value === true) return "favorites_menu_liked";
+  if (triggerState.value === false) return "favorites_menu_disliked";
   return "favorites_menu";
 });
 // favouring and adding to a playlist both change the library
@@ -133,8 +187,21 @@ const canEditLibrary = computed(() =>
 const offersFavorite = computed(
   () => !!props.item && canHoldFavorite(props.item),
 );
+const offersDislike = computed(
+  () => !!props.item && canBeDisliked(props.item.media_type),
+);
+// an item known only by an external id goes into a playlist once it is found
 const offersPlaylist = computed(
-  () => !!props.item && canAddToPlaylist(props.item),
+  () =>
+    !!props.item && canAddToPlaylist(props.item) && !isExternalItem(props.item),
+);
+const slots = useSlots();
+const likeOnly = computed(
+  () =>
+    offersFavorite.value &&
+    !offersDislike.value &&
+    !offersPlaylist.value &&
+    !slots.before,
 );
 // without an item the trigger stays visible but disabled, e.g. while the
 // player bar has nothing loaded yet

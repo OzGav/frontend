@@ -5,6 +5,12 @@ export const SYNCGROUP_PREFIX = "syncgroup_";
 export const ACTIVE_DOT_CLASS =
   "bg-primary absolute -top-0.5 -right-0.5 size-1.5 rounded-full";
 
+// Spacing of a listing page, shared by the library listings and the Classical
+// tabs so their toolbar buttons and rows line up the same way: the toolbar's
+// inline padding, and the padding around the list or grid below it.
+export const LISTING_TOOLBAR_CLASS = "ps-[5px] pe-[7px]";
+export const LISTING_CONTENT_CLASS = "p-2.5";
+
 // Frontend setting keys that are persisted per-device in localStorage.
 // Every other setting is stored server-side as a per-user preference.
 export const DEVICE_SETTING_KEYS = new Set([
